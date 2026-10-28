@@ -357,8 +357,8 @@ async def get_dynamic_widget_script(
     }}
     .fresh-cosbot-ring {{
       width: 68px; height: 68px; border-radius: 50%; padding: 3px;
-      background: linear-gradient(145deg, #FFFFFF 0%, #BAE6FD 50%, ${{config.primaryColor}} 100%);
-      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18), inset 0 1px 2px rgba(255,255,255,0.9);
+      background: linear-gradient(145deg, #FFFDF9 0%, #F3DFB6 48%, ${{config.primaryColor}} 100%);
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.22), inset 0 1px 2px rgba(255,255,255,0.95);
       display: flex; align-items: center; justify-content: center; box-sizing: border-box;
     }}
     .fresh-cosbot-inner {{
@@ -369,10 +369,10 @@ async def get_dynamic_widget_script(
     .fresh-cosbot-inner svg {{ width: 100%; height: 100%; }}
     .fresh-cosbot-label {{
       margin-top: -13px;
-      background: linear-gradient(90deg, #0284C7 0%, ${{config.primaryColor}} 100%);
+      background: linear-gradient(90deg, #141413 0%, ${{config.primaryColor}} 100%);
       color: #FFFFFF; font-size: 11px; font-weight: 700; letter-spacing: -0.3px;
-      padding: 3px 10px; border-radius: 999px; border: 1.5px solid #FFFFFF;
-      box-shadow: 0 4px 10px rgba(2, 132, 199, 0.28); white-space: nowrap; z-index: 2;
+      padding: 3px 10px; border-radius: 999px; border: 1.5px solid #F3DFB6;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.26); white-space: nowrap; z-index: 2;
     }}
     .fresh-widget-launcher.shape-sticker {{
       width: 72px; height: 72px; background: transparent; display: flex; flex-direction: column; align-items: center;
@@ -385,9 +385,9 @@ async def get_dynamic_widget_script(
     }}
     .fresh-widget-launcher.shape-circle svg {{ width: 64px; height: 64px; }}
     .fresh-widget-launcher.shape-pill {{
-      background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 999px;
+      background: #FFFFFF; border: 1.5px solid #E5D5B5; border-radius: 999px;
       padding: 6px 16px 6px 8px; display: flex; align-items: center; gap: 8px;
-      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14); color: #0F172A; font-size: 13.5px; font-weight: 700;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14); color: #141413; font-size: 13.5px; font-weight: 700;
     }}
     .fresh-widget-launcher.shape-pill svg {{ width: 38px; height: 38px; }}
     .fresh-bot-avatar-img {{ width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }}
@@ -396,8 +396,9 @@ async def get_dynamic_widget_script(
     .fresh-widget-window {{
       position: fixed; bottom: 116px; right: 24px; width: 400px; height: 660px;
       max-width: calc(100vw - 32px); max-height: calc(100vh - 140px);
-      background: #ffffff; border-radius: 18px;
-      box-shadow: 0 14px 36px rgba(15, 23, 42, 0.20);
+      background: #ffffff; border-radius: 22px;
+      border: 1px solid rgba(197, 160, 89, 0.28);
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
       display: none; flex-direction: column; z-index: 999999; overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
     }}
