@@ -60,7 +60,8 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "./uploads"
 
     # Static Outbound IPs for Coupang Wing / Cafe24 / SmartStore IP Whitelist
-    STATIC_OUTBOUND_IPS: str = "44.229.227.142, 54.188.71.94, 52.13.128.108"
+    # Render dashboard > Connect > Outbound (shared by Render services in the same region)
+    STATIC_OUTBOUND_IPS: str = "74.220.49.0/24, 74.220.57.0/24"
     OUTBOUND_PROXY_URL: Optional[str] = None
 
 

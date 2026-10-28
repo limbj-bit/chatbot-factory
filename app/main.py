@@ -103,10 +103,28 @@ async def get_server_integration_info(request: Request):
     except Exception:
         detected_ip = ""
 
-    if detected_ip and detected_ip not in static_ips:
+    def _ip_in_static_ranges(ip: str) -> bool:
+        import ipaddress
+
+        try:
+            addr = ipaddress.ip_address(ip)
+        except ValueError:
+            return False
+        for part in static_ips.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                if addr in ipaddress.ip_network(part, strict=False):
+                    return True
+            except ValueError:
+                continue
+        return False
+
+    if detected_ip and not _ip_in_static_ranges(detected_ip):
         outbound_ip = f"{static_ips}, {detected_ip}" if static_ips else detected_ip
     else:
-        outbound_ip = static_ips or detected_ip or "44.229.227.142, 54.188.71.94, 52.13.128.108"
+        outbound_ip = static_ips or detected_ip or "74.220.49.0/24, 74.220.57.0/24"
 
     base_url = str(request.base_url).rstrip("/")
     return {
