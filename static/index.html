@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>신선마켓 - AI 클레임 자동화 데모</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 40px 20px;
+      background: #F3F4F6;
+      color: #1F2937;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #FFFFFF;
+      padding: 32px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    h1 { color: #2E7D32; margin-top: 0; }
+    .badge {
+      display: inline-block;
+      background: #E8F5E9;
+      color: #2E7D32;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .order-box {
+      border: 1px solid #E5E7EB;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 20px;
+      background: #FAFAFA;
+    }
+    .order-box h4 { margin-top: 0; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">SaaS MVP Live Demo</div>
+    <h1>신선식품 이커머스 쇼핑몰</h1>
+    <p>우측 하단의 <strong>초록색 원형 위젯 버튼</strong>을 클릭하여 AI 상담 및 사진 클레임 접수를 테스트해 보세요.</p>
+    
+    <div class="order-box">
+      <h4>📦 테스트용 가상 주문 정보</h4>
+      <ul>
+        <li><strong>ORD-NORMAL</strong> : 정상 배송 완료 (설향 딸기 1kg / 24,000원) - 사진 업로드 시 자동 환불 판정</li>
+        <li><strong>ORD-EXPIRED</strong> : 배송 완료 4일 경과 (보상 기한 48시간 초과 건)</li>
+        <li><strong>ORD-SHIPPING</strong> : 배송 진행 중 (아직 미배송된 주문)</li>
+      </ul>
+      <p style="font-size: 13px; color: #6B7280;">채팅창에 "배송비 얼마예요?", "딸기 보관법", 또는 주문번호 "ORD-NORMAL"을 입력해 보세요.</p>
+    </div>
+  </div>
+
+  <!-- Embed Widget Script -->
+  <script src="/static/chatbot-widget.js"></script>
+</body>
+</html>
