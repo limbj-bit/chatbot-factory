@@ -219,7 +219,11 @@ async def get_dynamic_widget_script(
     title = preview_store_name or (store.store_name if store else "코스라프리")
     industry = preview_industry or (store.industry if store else "general")
     ind_defaults = INDUSTRY_DEFAULTS.get(industry, INDUSTRY_DEFAULTS["general"])
-    theme_color = store.theme_color if store else ind_defaults.get("theme_color", "#0284C7")
+    theme_color = (
+        ind_defaults.get("theme_color", "#0284C7")
+        if preview_industry
+        else (store.theme_color if store else ind_defaults.get("theme_color", "#0284C7"))
+    )
     bot_name = preview_bot_name or (store.bot_name if store and store.bot_name else ind_defaults.get("bot_name", "코스봇"))
     brand_badge = preview_badge or (store.brand_badge if store and store.brand_badge else title[:8])
     header_title = (store.header_title if store and store.header_title else "고객상담센터")
@@ -228,8 +232,8 @@ async def get_dynamic_widget_script(
     business_hours = (store.business_hours if store and store.business_hours else "평일 09:00~18:00")
     input_placeholder = (
         store.input_placeholder
-        if store and store.input_placeholder
-        else ind_defaults.get("input_placeholder", "궁금한 성분명(예: 레티놀)이나 질문을 입력하세요...")
+        if store and store.input_placeholder and not preview_industry
+        else ind_defaults.get("input_placeholder", "궁금한 내용이나 질문을 입력하세요...")
     )
 
     quick_buttons: List[str] = []
@@ -239,13 +243,29 @@ async def get_dynamic_widget_script(
         except Exception:
             quick_buttons = []
     if not quick_buttons:
-        quick_buttons = ind_defaults.get("quick_buttons", [])
+        if industry not in INDUSTRY_DEFAULTS and industry.strip():
+            custom_ind = industry.strip()
+            quick_buttons = [
+                f"📌 {custom_ind} 주요 안내",
+                "💰 비용 / 견적 / 가격 문의",
+                "📅 예약 / 신청 / 일정 확인",
+                "📍 위치 / 운영시간 안내",
+                "💬 담당자 연결 / 기타 문의",
+            ]
+        else:
+            quick_buttons = ind_defaults.get("quick_buttons", [])
 
-    welcome_msg = (
-        store.welcome_message.replace("\n", "\\n")
-        if store and store.welcome_message and not preview_store_name and not preview_bot_name
-        else f"안녕하세요. {title}의 AI 상담사 <b>'{bot_name}'</b> 입니다. 🧪\\n어떤 원료나 서비스가 궁금하신가요?"
-    )
+    if store and store.welcome_message and not preview_store_name and not preview_bot_name and not preview_industry:
+        welcome_msg = store.welcome_message.replace("\n", "\\n")
+    elif industry in INDUSTRY_DEFAULTS and industry != "raw_materials":
+        base_welcome = ind_defaults.get("welcome_message", "")
+        welcome_msg = f"안녕하세요! <b>{title}</b> AI 상담사 <b>'{bot_name}'</b>입니다. ✨\\n" + (
+            base_welcome.split("\n", 1)[1] if "\n" in base_welcome else base_welcome
+        )
+    elif industry not in INDUSTRY_DEFAULTS and industry.strip():
+        welcome_msg = f"안녕하세요! <b>{title} ({industry.strip()})</b> AI 상담사 <b>'{bot_name}'</b>입니다. ✨\\n궁금하신 서비스, 예약/견적 문의 또는 상담 내용을 편하게 말씀해 주세요!"
+    else:
+        welcome_msg = f"안녕하세요. {title}의 AI 상담사 <b>'{bot_name}'</b> 입니다. 🧪\\n어떤 원료나 서비스가 궁금하신가요?"
 
     bot_icon_style = preview_icon or (store.bot_icon_style if store and store.bot_icon_style else ind_defaults.get("bot_icon_style", "flaticon_cute_robot"))
     launcher_shape = preview_shape or (store.launcher_shape if store and store.launcher_shape else "cosbot_badge")
@@ -269,13 +289,7 @@ async def get_dynamic_widget_script(
             store_service.evaluate_subscription_status(store)
         )
 
-    upload_guide = "📷 손상 상품 사진 업로드 접수"
-    if industry == "electronics":
-        upload_guide = "🔧 고장/파손 부위 사진 및 A/S 진단 요청"
-    elif industry == "fashion":
-        upload_guide = "👗 원단 오염/봉제 불량 사진 교환 접수"
-    elif industry == "beauty":
-        upload_guide = "💄 용기 누유/파손 및 트러블 사진 진단 접수"
+    upload_guide = ind_defaults.get("upload_guide", "📷 손상 상품 / 참고 사진 업로드 접수")
 
     is_expired_js = "true" if is_expired else "false"
     expiry_warning_js = "true" if expiry_warning else "false"
@@ -369,10 +383,10 @@ async def get_dynamic_widget_script(
     .fresh-cosbot-inner svg {{ width: 100%; height: 100%; }}
     .fresh-cosbot-label {{
       margin-top: -13px;
-      background: linear-gradient(90deg, #141413 0%, ${{config.primaryColor}} 100%);
+      background: linear-gradient(90deg, ${{config.primaryColor}} 0%, #D97706 100%);
       color: #FFFFFF; font-size: 11px; font-weight: 700; letter-spacing: -0.3px;
-      padding: 3px 10px; border-radius: 999px; border: 1.5px solid #F3DFB6;
-      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.26); white-space: nowrap; z-index: 2;
+      padding: 3px 10px; border-radius: 999px; border: 1.5px solid #FFFFFF;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18); white-space: nowrap; z-index: 2;
     }}
     .fresh-widget-launcher.shape-sticker {{
       width: 72px; height: 72px; background: transparent; display: flex; flex-direction: column; align-items: center;
@@ -407,7 +421,7 @@ async def get_dynamic_widget_script(
       display: flex; justify-content: space-between; align-items: center;
     }}
     .fresh-widget-window.tpl-cosraw_grid .fresh-widget-header {{
-      background: #0F172A;
+      background: linear-gradient(135deg, ${{config.primaryColor}} 0%, #3B82F6 100%);
     }}
     .fresh-header-left {{ display: flex; align-items: center; gap: 10px; }}
     .fresh-brand-pill {{
@@ -562,8 +576,9 @@ async def get_dynamic_widget_script(
       padding: 10px 16px; font-size: 13.5px; outline: none; color: #1E293B;
     }}
     .fresh-btn-send {{
-      width: 40px; height: 40px; border-radius: 50%; background: #0F172A; color: #ffffff;
+      width: 40px; height: 40px; border-radius: 50%; background: ${{config.primaryColor}}; color: #ffffff;
       border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
     }}
     .fresh-btn-send svg {{ width: 18px; height: 18px; fill: #FFFFFF; margin-left: 2px; }}
     .fresh-upload-btn {{
