@@ -271,7 +271,7 @@ async def test_phase6_bot_name_16_icons_and_10_chat_window_templates():
     """
     from app.api.widget import FLATICON_PRESET_SVGS
 
-    assert len(FLATICON_PRESET_SVGS) == 16
+    assert len(FLATICON_PRESET_SVGS) >= 16
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         templates = [

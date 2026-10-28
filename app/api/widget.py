@@ -8,136 +8,188 @@ from app.infrastructure.database.session import get_db
 router = APIRouter(prefix="/api/widget", tags=["Widget"])
 
 
-# 16 Commercial-Grade Multi-Color Flaticon-Style Vector Illustrations
+# 18 Luxury Commercial-Grade Vector & Portrait Badges (Bright, Minimal, Real Photo Portrait & Brand Signatures)
 FLATICON_PRESET_SVGS: Dict[str, str] = {
-    # 1. 코스봇 안테나 로봇 (COSRAWFREE Signature)
-    "flaticon_cute_robot": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <line x1="30" y1="9" x2="30" y2="17" stroke="#60A5FA" stroke-width="3" stroke-linecap="round"/>
-      <circle cx="30" cy="8" r="4" fill="#38BDF8"/>
-      <rect x="13" y="25" width="4" height="12" rx="2" fill="#38BDF8"/>
-      <rect x="43" y="25" width="4" height="12" rx="2" fill="#38BDF8"/>
-      <rect x="16" y="17" width="28" height="26" rx="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="2.5"/>
-      <rect x="20" y="22" width="20" height="14" rx="6" fill="#0F172A"/>
-      <circle cx="25.5" cy="28.5" r="2.5" fill="#38BDF8"/>
-      <circle cx="34.5" cy="28.5" r="2.5" fill="#38BDF8"/>
-      <path d="M26.5 33C27.5 34.2 32.5 34.2 33.5 33" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/>
-      <rect x="40" y="11" width="16" height="11" rx="5.5" fill="#0284C7"/>
-      <circle cx="44.5" cy="16.5" r="1.3" fill="#FFFFFF"/><circle cx="48" cy="16.5" r="1.3" fill="#FFFFFF"/><circle cx="51.5" cy="16.5" r="1.3" fill="#FFFFFF"/>
+    # 1. K-뷰티 실사 모델 카운슬러 (사장님 업로드 뷰티 화보 모델 아바타)
+    "preset_beauty_model": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <clipPath id="clip_bm"><circle cx="32" cy="32" r="29.5"/></clipPath>
+        <linearGradient id="ring_bm" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#F9A8D4"/><stop offset="0.5" stop-color="#EC4899"/><stop offset="1" stop-color="#F43F5E"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="31" fill="url(#ring_bm)"/>
+      <image href="/static/presets/beauty_model.jpg" x="2" y="2" width="60" height="60" preserveAspectRatio="xMidYMin slice" clip-path="url(#clip_bm)"/>
     </svg>""",
-    # 2. 뷰티 스파클 요정봇 (Beauty Fairy)
-    "flaticon_beauty_fairy": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M23 17L26 11L30 15L34 11L37 17H23Z" fill="#FBBF24"/>
-      <rect x="16" y="17" width="28" height="26" rx="12" fill="#FFF1F2" stroke="#F472B6" stroke-width="2.5"/>
-      <rect x="20" y="22" width="20" height="14" rx="6" fill="#831843"/>
-      <circle cx="25.5" cy="28.5" r="2.4" fill="#F9A8D4"/><circle cx="34.5" cy="28.5" r="2.4" fill="#F9A8D4"/>
-      <circle cx="22.5" cy="31.5" r="1.6" fill="#FB7185"/><circle cx="37.5" cy="31.5" r="1.6" fill="#FB7185"/>
-      <path d="M27 32.5C28 33.8 32 33.8 33 32.5" stroke="#F9A8D4" stroke-width="2" stroke-linecap="round"/>
-      <path d="M48 11L49.5 14.5L53 16L49.5 17.5L48 21L46.5 17.5L43 16L46.5 14.5L48 11Z" fill="#FDE047"/>
+    # 2. 세이지 그린 지식백과 & 아이디어 전구 (사장님 업로드 원료/지식 일러스트)
+    "preset_sage_book": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <clipPath id="clip_sb"><circle cx="32" cy="32" r="30"/></clipPath>
+      </defs>
+      <circle cx="32" cy="32" r="31" fill="#A3B19B"/>
+      <image href="/static/presets/sage_book_bulb.jpg" x="1" y="1" width="62" height="62" preserveAspectRatio="xMidYMid slice" clip-path="url(#clip_sb)"/>
     </svg>""",
-    # 3. 헤드셋 CS 여성 매니저
-    "flaticon_cs_agent": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M16 28C16 19.1634 23.1634 12 32 12C40.8366 12 48 19.1634 48 28" stroke="#38BDF8" stroke-width="3.5" stroke-linecap="round"/>
-      <rect x="13" y="25" width="5" height="11" rx="2.5" fill="#0284C7"/><rect x="46" y="25" width="5" height="11" rx="2.5" fill="#0284C7"/>
-      <circle cx="32" cy="29" r="12" fill="#FDE68A"/>
-      <path d="M20 26C20 19.5 25.5 16 32 16C38.5 16 44 19.5 44 26C41 23 36 22 32 22C28 22 23 23 20 26Z" fill="#475569"/>
-      <circle cx="28" cy="29" r="1.8" fill="#1E293B"/><circle cx="36" cy="29" r="1.8" fill="#1E293B"/>
-      <path d="M28.5 34C30 35.5 34 35.5 35.5 34" stroke="#E11D48" stroke-width="2" stroke-linecap="round"/>
-      <path d="M47 34C47 38 41 40 35 40" stroke="#0284C7" stroke-width="2" stroke-linecap="round"/>
-      <circle cx="34" cy="40" r="2" fill="#0284C7"/>
-    </svg>""",
-    # 4. 말풍선 윙크봇
+    # 3. 모던 에메랄드 미니멀 톡 (사장님 첨부 레퍼런스: 깔끔한 그린 원형 + 화이트 라인 말풍선)
     "flaticon_bubble_bot": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M14 26C14 17.7157 21.1634 11 30 11H34C42.8366 11 50 17.7157 50 26C50 34.2843 42.8366 41 34 41H24L16 46V38.5C14.7 36.2 14 31.2 14 26Z" fill="#FFFFFF" stroke="#34D399" stroke-width="2.5"/>
-      <circle cx="26" cy="25" r="2.6" fill="#059669"/>
-      <path d="M35 25L39 23.5M35 25L39 26.5" stroke="#059669" stroke-width="2.2" stroke-linecap="round"/>
-      <path d="M27 31C28.8 33 35.2 33 37 31" stroke="#10B981" stroke-width="2.2" stroke-linecap="round"/>
+      <defs>
+        <linearGradient id="bg_emerald" x1="10" y1="6" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#34A853"/><stop offset="1" stop-color="#1E7E34"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="url(#bg_emerald)"/>
+      <path d="M20 22H44C45.6569 22 47 23.3431 47 25V37C47 38.6569 45.6569 40 44 40H27L20 45.5V40C18.8954 40 18 39.1046 18 38V25C18 23.3431 19.3431 22 20 22Z" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>""",
-    # 5. 스마트 AI 스파클
+    # 2. 코스봇 시그니처 로봇 (밝은 스카이블루 & 화이트 3D 글래스 로봇)
+    "flaticon_cute_robot": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bg_cosbot" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#0284C7"/><stop offset="1" stop-color="#1E3A8A"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="url(#bg_cosbot)"/>
+      <line x1="32" y1="12" x2="32" y2="18" stroke="#BAE6FD" stroke-width="2.8" stroke-linecap="round"/>
+      <circle cx="32" cy="11" r="3.2" fill="#38BDF8"/>
+      <rect x="17" y="18" width="30" height="26" rx="11" fill="#FFFFFF"/>
+      <rect x="21" y="23" width="22" height="13" rx="6" fill="#0F172A"/>
+      <circle cx="27.5" cy="29.5" r="2.3" fill="#38BDF8"/><circle cx="36.5" cy="29.5" r="2.3" fill="#38BDF8"/>
+      <path d="M28.5 39C30 40.3 34 40.3 35.5 39" stroke="#0284C7" stroke-width="2.2" stroke-linecap="round"/>
+    </svg>""",
+    # 3. 브라이트 오로라 AI 스파클 (Apple Intelligence 감성 화이트&라벤더 오로라)
     "flaticon_smart_ai": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M32 10L36.5 23.5L50 28L36.5 32.5L32 46L27.5 32.5L14 28L27.5 23.5L32 10Z" fill="#60A5FA" stroke="#EFF6FF" stroke-width="2"/>
-      <path d="M46 11L47.5 15.5L52 17L47.5 18.5L46 23L44.5 18.5L40 17L44.5 15.5L46 11Z" fill="#FBBF24"/>
+      <defs>
+        <linearGradient id="bg_aurora" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#EEF2FF"/><stop offset="0.5" stop-color="#FCE7F3"/><stop offset="1" stop-color="#E0F2FE"/>
+        </linearGradient>
+        <linearGradient id="star_grad" x1="16" y1="16" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#6366F1"/><stop offset="0.5" stop-color="#EC4899"/><stop offset="1" stop-color="#06B6D4"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="url(#bg_aurora)" stroke="#E2E8F0" stroke-width="1.5"/>
+      <path d="M31 14C31.8 23.2 34.8 26.2 44 27C34.8 27.8 31.8 30.8 31 40C30.2 30.8 27.2 27.8 18 27C27.2 26.2 30.2 23.2 31 14Z" fill="url(#star_grad)"/>
+      <path d="M45 36C45.4 40.2 46.8 41.6 51 42C46.8 42.4 45.4 43.8 45 48C44.6 43.8 43.2 42.4 39 42C43.2 41.6 44.6 40.2 45 36Z" fill="#EC4899"/>
     </svg>""",
-    # 6. 더마/원료 연구원 닥터봇 (Doctor / Lab Researcher)
-    "flaticon_derma_doctor": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="20" y="10" width="24" height="10" rx="3" fill="#FFFFFF" stroke="#38BDF8" stroke-width="2"/>
-      <path d="M32 12V18M29 15H35" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
-      <circle cx="32" cy="30" r="12" fill="#FDE68A"/>
-      <rect x="24" y="26" width="7" height="5" rx="1.5" stroke="#0F172A" stroke-width="1.8"/>
-      <rect x="33" y="26" width="7" height="5" rx="1.5" stroke="#0F172A" stroke-width="1.8"/>
-      <line x1="31" y1="28" x2="33" y2="28" stroke="#0F172A" stroke-width="1.8"/>
-      <path d="M29 35C30.5 36.2 33.5 36.2 35 35" stroke="#0F172A" stroke-width="1.8" stroke-linecap="round"/>
-      <path d="M18 48C18 42.5 24 40 32 40C40 40 46 42.5 46 48H18Z" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>
-    </svg>""",
-    # 7. 원료/바이오 플라스크 봇 (Cosmetic Raw Material Lab)
-    "flaticon_lab_flask": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M26 14H38M29 14V24L18 42C16.8 44 18.2 46.5 20.6 46.5H43.4C45.8 46.5 47.2 44 46 42L35 24V14" stroke="#38BDF8" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M21 37H43L45.5 41.5C46.5 43.2 45.2 45 43.2 45H20.8C18.8 45 17.5 43.2 18.5 41.5L21 37Z" fill="#34D399"/>
-      <circle cx="29" cy="32" r="2" fill="#A7F3D0"/><circle cx="35" cy="29" r="1.5" fill="#A7F3D0"/>
-      <circle cx="28" cy="41" r="1.8" fill="#064E3B"/><circle cx="36" cy="41" r="1.8" fill="#064E3B"/>
-    </svg>""",
-    # 8. 스킨케어 수분 세럼 드롭 (Water Drop Bot)
-    "flaticon_serum_drop": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M32 11C32 11 17 28 17 38C17 46.2843 23.7157 53 32 53C40.2843 53 47 46.2843 47 38C47 28 32 11 32 11Z" fill="#38BDF8" stroke="#BAE6FD" stroke-width="2.5"/>
-      <circle cx="27" cy="36" r="2.2" fill="#FFFFFF"/><circle cx="37" cy="36" r="2.2" fill="#FFFFFF"/>
-      <path d="M28.5 41.5C30 43 34 43 35.5 41.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
-      <ellipse cx="24" cy="29" rx="2" ry="4" transform="rotate(25 24 29)" fill="#E0F2FE"/>
-    </svg>""",
-    # 9. 럭셔리 골드 크라운 봇 (VIP Luxury Brand)
-    "flaticon_luxury_crown": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M14 42L18 22L27 31L32 18L37 31L46 22L50 42H14Z" fill="#FBBF24" stroke="#FEF08A" stroke-width="2" stroke-linejoin="round"/>
-      <rect x="14" y="44" width="36" height="4" rx="2" fill="#D97706"/>
-      <circle cx="18" cy="19" r="2.5" fill="#FDE047"/><circle cx="32" cy="15" r="3" fill="#FDE047"/><circle cx="46" cy="19" r="2.5" fill="#FDE047"/>
-      <circle cx="27" cy="36" r="1.8" fill="#78350F"/><circle cx="37" cy="36" r="1.8" fill="#78350F"/>
-    </svg>""",
-    # 10. 사이버 네온 로봇 (Cyber Tech Bot)
-    "flaticon_cyber_bot": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <polygon points="32,10 50,20 50,42 32,52 14,42 14,20" fill="#1E1B4B" stroke="#A855F7" stroke-width="2.5"/>
-      <rect x="20" y="25" width="24" height="10" rx="5" fill="#090D16" stroke="#22D3EE" stroke-width="2"/>
-      <circle cx="27" cy="30" r="2.2" fill="#22D3EE"/><circle cx="37" cy="30" r="2.2" fill="#F43F5E"/>
-      <line x1="26" y1="40" x2="38" y2="40" stroke="#A855F7" stroke-width="2.5" stroke-linecap="round"/>
-    </svg>""",
-    # 11. 친근한 강아지 마스코트 봇 (Friendly Pet/Mascot)
-    "flaticon_cute_puppy": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="16" cy="28" rx="5" ry="10" transform="rotate(-15 16 28)" fill="#D97706"/>
-      <ellipse cx="48" cy="28" rx="5" ry="10" transform="rotate(15 48 28)" fill="#D97706"/>
-      <circle cx="32" cy="32" r="14" fill="#FDE68A" stroke="#F59E0B" stroke-width="2"/>
-      <circle cx="27" cy="29" r="2.2" fill="#451A03"/><circle cx="37" cy="29" r="2.2" fill="#451A03"/>
-      <ellipse cx="32" cy="34" rx="3" ry="2" fill="#451A03"/>
-      <path d="M29 38C30.5 39.5 33.5 39.5 35 38" stroke="#451A03" stroke-width="2" stroke-linecap="round"/>
-    </svg>""",
-    # 12. 귀여운 고양이 집사 봇 (Cat Butler Bot)
-    "flaticon_cat_butler": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M18 28L16 14L27 21H37L48 14L46 28" fill="#F8FAFC" stroke="#94A3B8" stroke-width="2"/>
-      <circle cx="32" cy="33" r="14" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
-      <circle cx="26.5" cy="31" r="2.2" fill="#0F172A"/><circle cx="37.5" cy="31" r="2.2" fill="#0F172A"/>
-      <polygon points="32,34 30,36.5 34,36.5" fill="#FB7185"/>
-      <path d="M28 45L32 42L36 45L32 48L28 45Z" fill="#E11D48"/>
-    </svg>""",
-    # 13. 쇼핑백 & 선물 컨시어지 (Shopping Concierge)
-    "flaticon_shopping_bag": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M24 22V18C24 13.5817 27.5817 10 32 10C36.4183 10 40 13.5817 40 18V22" stroke="#F472B6" stroke-width="3" stroke-linecap="round"/>
-      <rect x="16" y="21" width="32" height="28" rx="6" fill="#EC4899" stroke="#FBCFE8" stroke-width="2"/>
-      <circle cx="27" cy="33" r="2.3" fill="#FFFFFF"/><circle cx="37" cy="33" r="2.3" fill="#FFFFFF"/>
-      <path d="M28.5 38.5C30 40 34 40 35.5 38.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
-    </svg>""",
-    # 14. 프레시 오가닉 사과/새싹 봇 (Fresh Organic Bot)
-    "flaticon_fresh_leaf": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M32 12C35 8 41 9 41 13C41 17 35 17 32 15" fill="#4ADE80"/>
-      <circle cx="32" cy="33" r="15" fill="#22C55E" stroke="#BBF7D0" stroke-width="2"/>
-      <circle cx="27" cy="31" r="2.3" fill="#FFFFFF"/><circle cx="37" cy="31" r="2.3" fill="#FFFFFF"/>
-      <path d="M28 37C30 39 34 39 36 37" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
-    </svg>""",
-    # 15. 안심 보증 실드 가디언 봇 (Trust Shield A/S Bot)
-    "flaticon_shield_as": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M32 11L48 17V30C48 41.5 41 49.5 32 53C23 49.5 16 41.5 16 30V17L32 11Z" fill="#2563EB" stroke="#93C5FD" stroke-width="2.5"/>
-      <path d="M25 32L30 37L40 26" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>""",
-    # 16. 카카오톡 감성 옐로우 톡봇 (Yellow Talk Bot)
+    # 4. 채널톡 스타일 브라이트 스마일톡 (선명한 로얄블루 + 화이트 스마일 버블)
     "flaticon_yellow_talk": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="32" cy="30" rx="18" ry="15" fill="#FACC15" stroke="#FEF08A" stroke-width="2"/>
-      <path d="M22 42L16 48L27 44" fill="#FACC15"/>
-      <circle cx="26.5" cy="29" r="2.3" fill="#3B1E1E"/><circle cx="37.5" cy="29" r="2.3" fill="#3B1E1E"/>
-      <path d="M29 34.5C30.5 36 33.5 36 35 34.5" stroke="#3B1E1E" stroke-width="2.2" stroke-linecap="round"/>
+      <defs>
+        <linearGradient id="bg_ch" x1="10" y1="8" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#4F46E5"/><stop offset="1" stop-color="#2563EB"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="url(#bg_ch)"/>
+      <path d="M18 30.5C18 22.5 24.3 16.5 32.5 16.5C40.7 16.5 47 22.5 47 30.5C47 38.5 40.7 44.5 32.5 44.5C29.8 44.5 27.3 43.8 25.1 42.6L18.5 45.5L20.1 39.2C18.8 36.7 18 33.7 18 30.5Z" fill="#FFFFFF"/>
+      <circle cx="27.5" cy="29" r="2.2" fill="#2563EB"/><circle cx="37.5" cy="29" r="2.2" fill="#2563EB"/>
+      <path d="M27.5 34.2C29.5 36.8 35.5 36.8 37.5 34.2" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>""",
+    # 5. 로즈골드 뷰티 컨시어지 (화사한 핑크 코랄 + 세련된 부티크 보틀 라인아트)
+    "flaticon_beauty_fairy": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bg_rose" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#FFF1F2"/><stop offset="1" stop-color="#FCE7F3"/>
+        </linearGradient>
+        <linearGradient id="fg_rose" x1="20" y1="16" x2="44" y2="48" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#F43F5E"/><stop offset="1" stop-color="#DB2777"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="url(#bg_rose)" stroke="#FBCFE8" stroke-width="1.5"/>
+      <rect x="28" y="15" width="8" height="5" rx="2" fill="url(#fg_rose)"/>
+      <path d="M26 22H38L41 27V44C41 46.2 39.2 48 37 48H27C24.8 48 23 46.2 23 44V27L26 22Z" fill="#FFFFFF" stroke="url(#fg_rose)" stroke-width="2.6" stroke-linejoin="round"/>
+      <circle cx="32" cy="35" r="4.5" stroke="url(#fg_rose)" stroke-width="2"/>
+      <path d="M46 16L47 19L50 20L47 21L46 24L45 21L42 20L45 19L46 16Z" fill="#F43F5E"/>
+    </svg>""",
+    # 6. 클린 화이트 헤드셋 컨시어지 (밝은 스카이화이트 + 모던 블루 헤드셋 아이콘)
+    "flaticon_cs_agent": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bg_sky" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#F0F9FF"/><stop offset="1" stop-color="#DBEAFE"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="url(#bg_sky)" stroke="#BFDBFE" stroke-width="1.5"/>
+      <path d="M19 32V29C19 21.8203 24.8203 16 32 16C39.1797 16 45 21.8203 45 29V32" stroke="#0284C7" stroke-width="3.2" stroke-linecap="round"/>
+      <rect x="16" y="29" width="6" height="11" rx="3" fill="#0284C7"/>
+      <rect x="42" y="29" width="6" height="11" rx="3" fill="#0284C7"/>
+      <path d="M45 38C45 42.5 40.5 46 34 46H30" stroke="#0284C7" stroke-width="2.8" stroke-linecap="round"/>
+      <circle cx="30" cy="46" r="2.5" fill="#0284C7"/>
+    </svg>""",
+    # 7. 티파니 민트 더마 클리닉 (화사한 민트 배경 + 에메랄드 더마 실드 & 크로스)
+    "flaticon_derma_doctor": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="30" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1.5"/>
+      <path d="M32 15L46 20.5V31C46 40.5 39.8 47.5 32 50.5C24.2 47.5 18 40.5 18 31V20.5L32 15Z" fill="#FFFFFF" stroke="#059669" stroke-width="2.6" stroke-linejoin="round"/>
+      <path d="M32 25V37M26 31H38" stroke="#10B981" stroke-width="3.2" stroke-linecap="round"/>
+    </svg>""",
+    # 8. 바이오 랩 글래스 플라스크 (아이스블루 배경 + 미니멀 연구 플라스크)
+    "flaticon_lab_flask": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="30" fill="#F0FDFA" stroke="#99F6E4" stroke-width="1.5"/>
+      <path d="M27 17H37M29.5 17V26L20.5 41.5C19.5 43.2 20.7 45.5 22.8 45.5H41.2C43.3 45.5 44.5 43.2 43.5 41.5L34.5 26V17" stroke="#0D9488" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M23 37.5H41L43 41.2C43.8 42.6 42.8 44 41.2 44H22.8C21.2 44 20.2 42.6 21 41.2L23 37.5Z" fill="#14B8A6"/>
+      <circle cx="30" cy="32" r="1.8" fill="#14B8A6"/><circle cx="34.5" cy="29" r="1.4" fill="#14B8A6"/>
+    </svg>""",
+    # 9. 아쿠아 수분 세럼 드롭 (투명감 있는 아쿠아 블루 그라데이션 + 화이트 물방울)
+    "flaticon_serum_drop": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bg_aqua" x1="12" y1="8" x2="52" y2="56" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#38BDF8"/><stop offset="1" stop-color="#0284C7"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="url(#bg_aqua)"/>
+      <path d="M32 15C32 15 19 29.5 19 38.5C19 45.6797 24.8203 51.5 32 51.5C39.1797 51.5 45 45.6797 45 38.5C45 29.5 32 15 32 15Z" fill="#FFFFFF"/>
+      <path d="M25.5 36.5C25.5 39.8 27.8 42.5 31 43.2" stroke="#0284C7" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>""",
+    # 10. 샴페인 골드 VIP 크라운 (크림 아이보리 배경 + 럭셔리 골드 라인 크라운)
+    "flaticon_luxury_crown": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="30" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1.5"/>
+      <path d="M17 42L20.5 24L28 31.5L32 20L36 31.5L43.5 24L47 42H17Z" fill="#FEF3C7" stroke="#D97706" stroke-width="2.6" stroke-linejoin="round"/>
+      <line x1="18" y1="46" x2="46" y2="46" stroke="#D97706" stroke-width="2.8" stroke-linecap="round"/>
+      <circle cx="32" cy="17.5" r="2.2" fill="#D97706"/><circle cx="19.5" cy="21" r="1.8" fill="#D97706"/><circle cx="44.5" cy="21" r="1.8" fill="#D97706"/>
+    </svg>""",
+    # 11. 인터콤 스타일 듀얼 버블 (세련된 바이올렛 퍼플 + 겹침 말풍선)
+    "flaticon_cyber_bot": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bg_violet" x1="10" y1="8" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#8B5CF6"/><stop offset="1" stop-color="#6D28D9"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="url(#bg_violet)"/>
+      <rect x="16" y="18" width="24" height="18" rx="6" fill="#DDD6FE" fill-opacity="0.45"/>
+      <path d="M23 25H44C46.2091 25 48 26.7909 48 29V39C48 41.2091 46.2091 43 44 43H31L24 47.5V43H23C20.7909 43 19 41.2091 19 39V29C19 26.7909 20.7909 25 23 25Z" fill="#FFFFFF"/>
+      <line x1="26" y1="32" x2="41" y2="32" stroke="#6D28D9" stroke-width="2.6" stroke-linecap="round"/>
+      <line x1="26" y1="36.5" x2="36" y2="36.5" stroke="#6D28D9" stroke-width="2.6" stroke-linecap="round"/>
+    </svg>""",
+    # 12. 파스텔 코랄 하트 케어 (따뜻한 피치핑크 + 하트 말풍선 아이콘)
+    "flaticon_cute_puppy": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="30" fill="#FFF1F2" stroke="#FECDD3" stroke-width="1.5"/>
+      <path d="M32 45.5C32 45.5 17 36.2 17 26.2C17 21.4 20.8 17.8 25.3 17.8C28.2 17.8 30.7 19.3 32 21.6C33.3 19.3 35.8 17.8 38.7 17.8C43.2 17.8 47 21.4 47 26.2C47 36.2 32 45.5 32 45.5Z" fill="#FB7185" stroke="#E11D48" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M23.5 24C22.2 25.2 21.8 27 22.2 28.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+    </svg>""",
+    # 13. 호텔 컨시어지 골드 벨 (밝은 웜그레이 + 프리미엄 컨시어지 데스크 벨)
+    "flaticon_cat_butler": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="30" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.5"/>
+      <path d="M29 18H35M32 18V21" stroke="#0F172A" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M19 39C19 31.8203 24.8203 26 32 26C39.1797 26 45 31.8203 45 39H19Z" fill="#FBBF24" stroke="#0F172A" stroke-width="2.6" stroke-linejoin="round"/>
+      <line x1="16" y1="43" x2="48" y2="43" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/>
+    </svg>""",
+    # 14. 부티크 쇼퍼백 컨시어지 (화사한 핑크 화이트 + 미니멀 브랜드 쇼퍼백)
+    "flaticon_shopping_bag": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="30" fill="#FDF2F8" stroke="#FBCFE8" stroke-width="1.5"/>
+      <rect x="19" y="24" width="26" height="23" rx="4" fill="#FFFFFF" stroke="#DB2777" stroke-width="2.6"/>
+      <path d="M26 26V21C26 17.6863 28.6863 15 32 15C35.3137 15 38 17.6863 38 21V26" stroke="#DB2777" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M28 35.5L31 38.5L37 32.5" stroke="#EC4899" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>""",
+    # 15. 오가닉 보태니컬 리프 (밝은 프레시 그린 + 자연주의 보태니컬 잎사귀)
+    "flaticon_fresh_leaf": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="30" fill="#F0FDF4" stroke="#BBF7D0" stroke-width="1.5"/>
+      <path d="M21 43C21 29 31 19 45 19C45 33 35 43 21 43Z" fill="#DCFCE7" stroke="#16A34A" stroke-width="2.6" stroke-linejoin="round"/>
+      <path d="M21 43L36 28" stroke="#16A34A" stroke-width="2.6" stroke-linecap="round"/>
+    </svg>""",
+    # 16. 트러스트 실드 A/S 보증 (선명한 코발트 블루 + 화이트 안심 체크 실드)
+    "flaticon_shield_as": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bg_trust" x1="10" y1="8" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#2563EB"/><stop offset="1" stop-color="#1D4ED8"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="url(#bg_trust)"/>
+      <path d="M32 15L46 20.5V31C46 40.5 39.8 47.5 32 50.5C24.2 47.5 18 40.5 18 31V20.5L32 15Z" stroke="#FFFFFF" stroke-width="2.8" stroke-linejoin="round"/>
+      <path d="M26.5 32.5L30.5 36.5L38.5 27.5" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>""",
 }
 
@@ -304,38 +356,38 @@ async def get_dynamic_widget_script(
       width: 78px; height: 84px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
     }}
     .fresh-cosbot-ring {{
-      width: 68px; height: 68px; border-radius: 50%; padding: 3.5px;
-      background: linear-gradient(145deg, #E0F2FE 0%, #38BDF8 50%, ${{config.primaryColor}} 100%);
-      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.28), inset 0 1px 2px rgba(255,255,255,0.8);
+      width: 68px; height: 68px; border-radius: 50%; padding: 3px;
+      background: linear-gradient(145deg, #FFFFFF 0%, #BAE6FD 50%, ${{config.primaryColor}} 100%);
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18), inset 0 1px 2px rgba(255,255,255,0.9);
       display: flex; align-items: center; justify-content: center; box-sizing: border-box;
     }}
     .fresh-cosbot-inner {{
       width: 100%; height: 100%; border-radius: 50%;
-      background: radial-gradient(circle at 30% 25%, #1E293B 0%, #0F172A 85%);
+      background: #FFFFFF;
       display: flex; align-items: center; justify-content: center; overflow: hidden;
     }}
-    .fresh-cosbot-inner svg {{ width: 50px; height: 50px; }}
+    .fresh-cosbot-inner svg {{ width: 100%; height: 100%; }}
     .fresh-cosbot-label {{
       margin-top: -13px;
       background: linear-gradient(90deg, #0284C7 0%, ${{config.primaryColor}} 100%);
       color: #FFFFFF; font-size: 11px; font-weight: 700; letter-spacing: -0.3px;
-      padding: 3px 10px; border-radius: 999px; border: 1.5px solid #E0F2FE;
-      box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35); white-space: nowrap; z-index: 2;
+      padding: 3px 10px; border-radius: 999px; border: 1.5px solid #FFFFFF;
+      box-shadow: 0 4px 10px rgba(2, 132, 199, 0.28); white-space: nowrap; z-index: 2;
     }}
     .fresh-widget-launcher.shape-sticker {{
       width: 72px; height: 72px; background: transparent; display: flex; flex-direction: column; align-items: center;
-      filter: drop-shadow(0 6px 14px rgba(0,0,0,0.22));
+      filter: drop-shadow(0 6px 14px rgba(15,23,42,0.18));
     }}
     .fresh-widget-launcher.shape-sticker svg {{ width: 64px; height: 64px; }}
     .fresh-widget-launcher.shape-circle {{
-      width: 64px; height: 64px; border-radius: 50%; background: ${{config.primaryColor}};
-      box-shadow: 0 6px 18px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center;
+      width: 64px; height: 64px; border-radius: 50%; background: transparent;
+      filter: drop-shadow(0 6px 16px rgba(15, 23, 42, 0.22)); display: flex; align-items: center; justify-content: center;
     }}
-    .fresh-widget-launcher.shape-circle svg {{ width: 44px; height: 44px; }}
+    .fresh-widget-launcher.shape-circle svg {{ width: 64px; height: 64px; }}
     .fresh-widget-launcher.shape-pill {{
-      background: #0F172A; border: 2px solid ${{config.primaryColor}}; border-radius: 999px;
-      padding: 6px 16px 6px 10px; display: flex; align-items: center; gap: 8px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.25); color: #FFFFFF; font-size: 13px; font-weight: 700;
+      background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 999px;
+      padding: 6px 16px 6px 8px; display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14); color: #0F172A; font-size: 13.5px; font-weight: 700;
     }}
     .fresh-widget-launcher.shape-pill svg {{ width: 38px; height: 38px; }}
     .fresh-bot-avatar-img {{ width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }}
@@ -345,18 +397,24 @@ async def get_dynamic_widget_script(
       position: fixed; bottom: 116px; right: 24px; width: 400px; height: 660px;
       max-width: calc(100vw - 32px); max-height: calc(100vh - 140px);
       background: #ffffff; border-radius: 18px;
-      box-shadow: 0 14px 36px rgba(15, 23, 42, 0.24);
+      box-shadow: 0 14px 36px rgba(15, 23, 42, 0.20);
       display: none; flex-direction: column; z-index: 999999; overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
     }}
     .fresh-widget-header {{
-      background: #0F172A; color: #ffffff; padding: 15px 18px;
+      background: linear-gradient(135deg, ${{config.primaryColor}} 0%, #2563EB 100%); color: #ffffff; padding: 15px 18px;
       display: flex; justify-content: space-between; align-items: center;
+    }}
+    .fresh-widget-window.tpl-cosraw_grid .fresh-widget-header {{
+      background: #0F172A;
     }}
     .fresh-header-left {{ display: flex; align-items: center; gap: 10px; }}
     .fresh-brand-pill {{
-      background: #0284C7; color: #FFFFFF; font-size: 12px; font-weight: 700;
+      background: rgba(255, 255, 255, 0.22); backdrop-filter: blur(4px); color: #FFFFFF; font-size: 12px; font-weight: 700;
       padding: 4px 10px; border-radius: 6px; letter-spacing: -0.2px;
+    }}
+    .fresh-widget-window.tpl-cosraw_grid .fresh-brand-pill {{
+      background: #0284C7;
     }}
     .fresh-header-main-title {{ margin: 0; font-size: 16px; font-weight: 700; color: #FFFFFF; }}
     .fresh-header-controls {{ display: flex; align-items: center; gap: 14px; color: #CBD5E1; }}
@@ -414,7 +472,7 @@ async def get_dynamic_widget_script(
     /* 7. channel_card & 8. commerce_showcase */
     .fresh-widget-window.tpl-channel_card .fresh-widget-header,
     .fresh-widget-window.tpl-commerce_showcase .fresh-widget-header {{
-      background: linear-gradient(135deg, #0F172A 0%, ${{config.primaryColor}} 100%);
+      background: linear-gradient(135deg, ${{config.primaryColor}} 0%, #6366F1 100%);
     }}
     /* 9. glass_dark */
     .fresh-widget-window.tpl-glass_dark {{ background: #0F172A; border: 1px solid #1E293B; }}
@@ -446,10 +504,10 @@ async def get_dynamic_widget_script(
     .fresh-bot-block {{ display: flex; flex-direction: column; align-items: flex-start; gap: 6px; width: 100%; }}
     .fresh-bot-meta {{ display: flex; align-items: center; gap: 7px; }}
     .fresh-bot-sq-avatar {{
-      width: 26px; height: 26px; border-radius: 8px; background: #0F172A;
+      width: 28px; height: 28px; border-radius: 50%; background: transparent;
       display: flex; align-items: center; justify-content: center; overflow: hidden;
     }}
-    .fresh-bot-sq-avatar svg {{ width: 22px; height: 22px; }}
+    .fresh-bot-sq-avatar svg {{ width: 28px; height: 28px; }}
     .fresh-bot-meta-name {{ font-size: 12.5px; font-weight: 700; color: #1E293B; }}
     .fresh-bot-meta-time {{ font-size: 11.5px; color: #94A3B8; }}
     .fresh-msg {{

@@ -100,16 +100,20 @@
       box-shadow: 0 3px 10px rgba(2,132,199,0.18);
     }
     .icon-option .preview-circle {
-      width: 42px;
-      height: 42px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
-      background: #0F172A;
-      border: 2px solid #38BDF8;
-      margin: 0 auto 5px;
+      background: transparent;
+      border: none;
+      margin: 0 auto 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
+      filter: drop-shadow(0 3px 8px rgba(15, 23, 42, 0.12));
+    }
+    .icon-option .preview-circle svg {
+      width: 48px;
+      height: 48px;
     }
     .icon-option span {
       font-size: 11.5px;
@@ -211,26 +215,28 @@
       </div>
       <input type="text" id="quickButtonsInput" style="width:100%;padding:8px 12px;margin-bottom:8px;border:1px solid #CBD5E1;border-radius:8px;box-sizing:border-box;font-size:13px;" placeholder="커스텀 5개 빠른 메뉴 버튼 (콤마 구분, 비워두면 업종별 5개 버튼 자동 세팅)" />
 
-      <!-- 16 Flaticon Icons Picker -->
-      <div class="section-label">🤖 16종 Flaticon 캐릭터 아이콘 선택 (클릭 즉시 우측하단 반영):</div>
-      <input type="hidden" id="botIconStyle" value="flaticon_cute_robot" />
+      <!-- 18 Luxury Commercial Bot Icons Picker -->
+      <div class="section-label">✨ 18종 프리미엄 챗봇 아이콘 & 실사 모델 선택 (클릭 즉시 우측하단 반영):</div>
+      <input type="hidden" id="botIconStyle" value="preset_beauty_model" />
       <div class="icon-picker-grid">
-        <div class="icon-option selected" onclick="selectIcon('flaticon_cute_robot', this)"><div class="preview-circle">🤖</div><span>1. 코스봇 로봇</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_beauty_fairy', this)"><div class="preview-circle" style="border-color:#F472B6;">💄</div><span>2. 뷰티 요정봇</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_cs_agent', this)"><div class="preview-circle" style="border-color:#38BDF8;">👩‍💼</div><span>3. CS 여성매니저</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_bubble_bot', this)"><div class="preview-circle" style="border-color:#34D399;">💬</div><span>4. 말풍선 윙크봇</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_smart_ai', this)"><div class="preview-circle" style="border-color:#FBBF24;">✨</div><span>5. AI 스파클</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_derma_doctor', this)"><div class="preview-circle" style="border-color:#EF4444;">👨‍⚕️</div><span>6. 더마 닥터봇</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_lab_flask', this)"><div class="preview-circle" style="border-color:#10B981;">🧪</div><span>7. 원료 플라스크</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_serum_drop', this)"><div class="preview-circle" style="border-color:#60A5FA;">💧</div><span>8. 수분 세럼드롭</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_luxury_crown', this)"><div class="preview-circle" style="border-color:#FBBF24;">👑</div><span>9. 럭셔리 크라운</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_cyber_bot', this)"><div class="preview-circle" style="border-color:#A855F7;">🚀</div><span>10. 사이버 네온봇</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_cute_puppy', this)"><div class="preview-circle" style="border-color:#F59E0B;">🐶</div><span>11. 강아지 마스코트</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_cat_butler', this)"><div class="preview-circle" style="border-color:#FB7185;">🐱</div><span>12. 고양이 집사봇</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_shopping_bag', this)"><div class="preview-circle" style="border-color:#EC4899;">🛍️</div><span>13. 쇼핑 컨시어지</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_fresh_leaf', this)"><div class="preview-circle" style="border-color:#22C55E;">🍎</div><span>14. 프레시 오가닉</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_shield_as', this)"><div class="preview-circle" style="border-color:#3B82F6;">🛡️</div><span>15. 안심보증 실드</span></div>
-        <div class="icon-option" onclick="selectIcon('flaticon_yellow_talk', this)"><div class="preview-circle" style="border-color:#FACC15;">💛</div><span>16. 옐로우 톡봇</span></div>
+        <div class="icon-option selected" onclick="selectIcon('preset_beauty_model', this)"><div class="preview-circle" data-icon-key="preset_beauty_model"></div><span>1. K-뷰티 화보모델</span></div>
+        <div class="icon-option" onclick="selectIcon('preset_sage_book', this)"><div class="preview-circle" data-icon-key="preset_sage_book"></div><span>2. 세이지 지식백과</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_bubble_bot', this)"><div class="preview-circle" data-icon-key="flaticon_bubble_bot"></div><span>3. 에메랄드 미니멀톡</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_cute_robot', this)"><div class="preview-circle" data-icon-key="flaticon_cute_robot"></div><span>4. 코스봇 3D 로봇</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_smart_ai', this)"><div class="preview-circle" data-icon-key="flaticon_smart_ai"></div><span>5. 애플 오로라 AI</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_yellow_talk', this)"><div class="preview-circle" data-icon-key="flaticon_yellow_talk"></div><span>6. 브라이트 스마일톡</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_beauty_fairy', this)"><div class="preview-circle" data-icon-key="flaticon_beauty_fairy"></div><span>7. 로즈골드 뷰티보틀</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_cs_agent', this)"><div class="preview-circle" data-icon-key="flaticon_cs_agent"></div><span>8. 화이트 헤드셋 CS</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_derma_doctor', this)"><div class="preview-circle" data-icon-key="flaticon_derma_doctor"></div><span>9. 티파니 민트 더마</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_lab_flask', this)"><div class="preview-circle" data-icon-key="flaticon_lab_flask"></div><span>10. 바이오 랩 플라스크</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_serum_drop', this)"><div class="preview-circle" data-icon-key="flaticon_serum_drop"></div><span>11. 아쿠아 세럼드롭</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_luxury_crown', this)"><div class="preview-circle" data-icon-key="flaticon_luxury_crown"></div><span>12. 샴페인 골드 VIP</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_cyber_bot', this)"><div class="preview-circle" data-icon-key="flaticon_cyber_bot"></div><span>13. 인터콤 듀얼버블</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_cute_puppy', this)"><div class="preview-circle" data-icon-key="flaticon_cute_puppy"></div><span>14. 파스텔 코랄 하트</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_cat_butler', this)"><div class="preview-circle" data-icon-key="flaticon_cat_butler"></div><span>15. 호텔 컨시어지 벨</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_shopping_bag', this)"><div class="preview-circle" data-icon-key="flaticon_shopping_bag"></div><span>16. 부티크 쇼퍼백</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_fresh_leaf', this)"><div class="preview-circle" data-icon-key="flaticon_fresh_leaf"></div><span>17. 오가닉 보태니컬</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_shield_as', this)"><div class="preview-circle" data-icon-key="flaticon_shield_as"></div><span>18. 트러스트 안심실드</span></div>
       </div>
 
       <!-- 10 Chat Window UX Templates Picker -->
@@ -281,9 +287,9 @@
 
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;">
         <button class="btn" onclick="createMyTrialStore()">🎁 선택한 디자인으로 30일 무료 체험 코드 발급받기</button>
-        <label style="font-size:12px;color:#475569;background:#fff;padding:7px 12px;border:1px solid #CBD5E1;border-radius:8px;">
-          📁 또는 내 로고/Flaticon 파일(PNG/GIF/SVG) 직접 업로드:
-          <input type="file" id="customAvatarFile" accept="image/*" style="font-size:12px;" />
+        <label style="font-size:12.5px;color:#0F172A;font-weight:600;background:#F0F9FF;padding:8px 14px;border:1.5px dashed #0284C7;border-radius:8px;cursor:pointer;">
+          📸 내 사진/모델/로고 파일(JPG/PNG/GIF/SVG) 즉시 적용해보기:
+          <input type="file" id="customAvatarFile" accept="image/*" onchange="previewCustomFile(this)" style="font-size:12px;" />
         </label>
       </div>
 
@@ -320,21 +326,59 @@
   </div>
 
   <script>
+    let customPreviewDataUrl = "";
+
+    function populateShowroomIcons() {
+      if (!window.CHATBOT_FACTORY_SVGS) return;
+      document.querySelectorAll(".preview-circle[data-icon-key]").forEach(el => {
+        const key = el.getAttribute("data-icon-key");
+        if (window.CHATBOT_FACTORY_SVGS[key]) {
+          el.innerHTML = window.CHATBOT_FACTORY_SVGS[key];
+        }
+      });
+    }
+
+    function applyCustomAvatarToLiveDom(dataUrl) {
+      if (!dataUrl) return;
+      const imgHtml = `<img src="${dataUrl}" class="fresh-bot-avatar-img" style="object-position:center 18%;" />`;
+      const inner = document.querySelector(".fresh-cosbot-inner");
+      if (inner) inner.innerHTML = imgHtml;
+      document.querySelectorAll(".fresh-bot-sq-avatar").forEach(el => { el.innerHTML = imgHtml; });
+      const circleLauncher = document.querySelector(".fresh-widget-launcher.shape-circle, .fresh-widget-launcher.shape-sticker");
+      if (circleLauncher) {
+        const labelEl = circleLauncher.querySelector(".fresh-cosbot-label");
+        circleLauncher.innerHTML = `<div style="width:64px;height:64px;border-radius:50%;overflow:hidden;border:2.5px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.18);">${imgHtml}</div>` + (labelEl ? labelEl.outerHTML : "");
+      }
+    }
+
+    function previewCustomFile(inputEl) {
+      if (!inputEl.files || !inputEl.files[0]) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        customPreviewDataUrl = e.target.result;
+        applyCustomAvatarToLiveDom(customPreviewDataUrl);
+        const win = document.querySelector(".fresh-widget-window");
+        if (win) win.style.display = "flex";
+      };
+      reader.readAsDataURL(inputEl.files[0]);
+    }
+
     function selectIcon(styleName, el) {
+      customPreviewDataUrl = "";
       document.getElementById("botIconStyle").value = styleName;
       document.querySelectorAll(".icon-option").forEach(item => item.classList.remove("selected"));
       el.classList.add("selected");
-      triggerInstantPreview();
+      triggerInstantPreview(true);
     }
 
     function selectTemplate(tplName, el) {
       document.getElementById("chatTemplate").value = tplName;
       document.querySelectorAll(".tpl-card").forEach(item => item.classList.remove("selected"));
       el.classList.add("selected");
-      triggerInstantPreview();
+      triggerInstantPreview(true);
     }
 
-    function triggerInstantPreview() {
+    function triggerInstantPreview(openWindow = true) {
       const icon = document.getElementById("botIconStyle").value;
       const tpl = document.getElementById("chatTemplate").value;
       const shape = document.getElementById("launcherShape").value;
@@ -363,8 +407,14 @@
       s.id = "dynamic-preview-script";
       s.src = `/api/widget/script?${params.toString()}`;
       s.onload = () => {
-        const win = document.querySelector(".fresh-widget-window");
-        if (win) win.style.display = "flex";
+        populateShowroomIcons();
+        if (customPreviewDataUrl) {
+          applyCustomAvatarToLiveDom(customPreviewDataUrl);
+        }
+        if (openWindow) {
+          const win = document.querySelector(".fresh-widget-window");
+          if (win) win.style.display = "flex";
+        }
       };
       document.body.appendChild(s);
     }
@@ -483,9 +533,9 @@
         document.getElementById("knowledgeStatus").innerText = `⚠️ URL 크롤링 실패 (외부 접속 제한 등)`;
       }
     }
+    window.addEventListener("DOMContentLoaded", () => {
+      triggerInstantPreview(false);
+    });
   </script>
-
-  <!-- Initial Default Widget Script -->
-  <script src="/static/chatbot-widget.js"></script>
 </body>
 </html>
