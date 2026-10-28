@@ -21,12 +21,11 @@ RUN uv pip install --system --no-cache ".[dev]" greenlet
 # Copy application source code
 COPY app/ ./app/
 COPY static/ ./static/
-COPY prompts/ ./prompts/ 2>/dev/null || true
 COPY docs/ ./docs/
 
 # Create non-root user and directories
 RUN useradd -m -u 1000 appuser && \
-    mkdir -p data uploads && \
+    mkdir -p data uploads prompts && \
     chown -R appuser:appuser /app
 
 USER appuser
@@ -34,6 +33,6 @@ USER appuser
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
+  CMD sh -c "curl -f http://localhost:${PORT:-8000}/health || exit 1"
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
