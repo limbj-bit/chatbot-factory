@@ -409,7 +409,13 @@
         <div class="field-card">
           <div class="field-title"><span>④ 우리 고객센터 이메일</span><span class="field-tag">직접입력</span></div>
           <div class="field-desc">채팅창 맨 아랫줄에 표시되어 고객이 이메일 문의를 보낼 수 있는 주소입니다.</div>
-          <input type="text" id="contactEmail" value="help@mycompany.com" placeholder="예: help@mycompany.com" />
+          <input type="text" id="contactEmail" value="help@mycompany.com" oninput="triggerInstantPreview();" placeholder="예: help@mycompany.com" />
+        </div>
+
+        <div class="field-card">
+          <div class="field-title"><span>⑤ 고객센터 상담 운영시간</span><span class="field-tag">직접입력</span></div>
+          <div class="field-desc">채팅창 맨 아래 이메일 옆에 표시되는 상담 가능 시간 안내입니다.</div>
+          <input type="text" id="businessHours" value="평일 09:00~18:00" oninput="triggerInstantPreview();" placeholder="예: 평일 09:00~18:00 또는 365일 24시간" />
         </div>
       </div>
 
@@ -522,11 +528,6 @@
             <input type="text" id="botLabel" value="엘라봇 상담" oninput="this.dataset.manual='1'; triggerInstantPreview();" placeholder="비워두면 'OO봇 상담' 자동 적용" />
           </div>
           <div class="field-card">
-            <div class="field-title"><span>고객센터 운영시간</span><span class="field-tag opt">기본: 평일 09~18시</span></div>
-            <div class="field-desc">채팅창 하단 이메일 옆에 표시되는 상담 가능 시간입니다.</div>
-            <input type="text" id="businessHours" value="평일 09:00~18:00" placeholder="예: 평일 09:00~18:00" />
-          </div>
-          <div class="field-card">
             <div class="field-title"><span>희망 몰 ID (영문)</span><span class="field-tag opt">자동 생성됨</span></div>
             <div class="field-desc">비워두시면 고유 영문 ID가 자동으로 생성됩니다.</div>
             <input type="text" id="mallId" placeholder="비워두면 자동 생성" />
@@ -540,7 +541,7 @@
         <div class="field-card">
           <div class="field-title"><span>채팅창 첫 화면 '빠른 질문 버튼 5개' 직접 지정</span><span class="field-tag opt">자동: 업종별 5개 버튼 자동 세팅됨</span></div>
           <div class="field-desc">비워두시면 선택한 업종에 맞는 5개 버튼이 자동 생성됩니다. 직접 바꾸시려면 쉼표(<code>,</code>)로 구분해 적어주세요.</div>
-          <input type="text" id="quickButtonsInput" placeholder="비워두면 자동 생성! (직접 입력 예: 🚚 배송조회, 💄 피부맞춤 추천, 🌿 전성분 문의, 🎁 이벤트, 🔄 교환/환불)" />
+          <input type="text" id="quickButtonsInput" oninput="triggerInstantPreview();" placeholder="비워두면 자동 생성! (직접 입력 예: 🚚 배송조회, 💄 피부맞춤 추천, 🌿 전성분 문의, 🎁 이벤트, 🔄 교환/환불)" />
         </div>
       </details>
 
@@ -560,10 +561,13 @@
             </div>
             <div class="form-grid" style="margin-bottom:0;">
               <div class="field-card" style="background:#FAF9F6;">
-                <div class="field-title"><span>🌐 우리 챗봇 서버 공인 IP (쿠팡 Wing 허용 IP 등록용)</span><span class="field-tag">복사용</span></div>
+                <div class="field-title"><span>🌐 우리 챗봇 서버 영구 고정 IP (쿠팡 Wing 허용 IP 등록용)</span><span class="field-tag">영구고정 · 복사용</span></div>
                 <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
-                  <input type="text" id="serverOutboundIp" readonly value="서버 IP 조회 중..." style="background:#FFFFFF;font-family:monospace;" />
+                  <input type="text" id="serverOutboundIp" readonly value="44.229.227.142, 54.188.71.94, 52.13.128.108" style="background:#FFFFFF;font-family:monospace;" />
                   <button type="button" class="btn" style="padding:9px 14px;font-size:12px;white-space:nowrap;" onclick="copyTextValue('serverOutboundIp', this)">📋 IP 복사</button>
+                </div>
+                <div style="font-size:11.5px;color:#B45309;font-weight:700;margin-top:4px;">
+                  ⏱️ <b>[쿠팡 Wing 필수 안내]</b> 쿠팡은 IP 최초 등록 후 실제 쿠팡 시스템 반영까지 <b>약 30분</b>이 소요됩니다. (1회 등록 후에는 서버 업그레이드 시에도 바뀌지 않으며, 챗봇 디자인·사진 판독은 대기 없이 즉시 작동합니다!)
                 </div>
               </div>
               <div class="field-card" style="background:#FAF9F6;">
@@ -849,6 +853,9 @@
       const label = document.getElementById("botLabel").value.trim() || `${botName} 상담`;
       const badge = document.getElementById("brandBadge").value.trim() || storeName.slice(0, 8);
       const industry = getSelectedIndustryValue();
+      const email = document.getElementById("contactEmail").value.trim() || "help@mycompany.com";
+      const hours = document.getElementById("businessHours").value.trim() || "평일 09:00~18:00";
+      const qbRaw = document.getElementById("quickButtonsInput").value.trim();
 
       const params = new URLSearchParams({
         mall_id: "showroom_preview",
@@ -860,6 +867,9 @@
         preview_label: label,
         preview_badge: badge,
         preview_industry: industry,
+        preview_email: email,
+        preview_hours: hours,
+        preview_quick_buttons: qbRaw,
         t: Date.now()
       });
 

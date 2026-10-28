@@ -92,19 +92,26 @@ async def serve_master_admin_console():
 
 @app.get("/api/system/server-info", tags=["System"])
 async def get_server_integration_info(request: Request):
-    """Return the server's outbound public IP (for Coupang Wing IP whitelist) and base callback URLs."""
-    outbound_ip = "자동 감지 중 (고정 IP 대역)"
+    """Return the server's permanent static outbound IPs (for Coupang Wing IP whitelist) and base callback URLs."""
+    static_ips = settings.STATIC_OUTBOUND_IPS.strip()
+    detected_ip = ""
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
             resp = await client.get("https://api.ipify.org?format=json")
             if resp.status_code == 200:
-                outbound_ip = resp.json().get("ip", outbound_ip)
+                detected_ip = resp.json().get("ip", "")
     except Exception:
-        outbound_ip = request.client.host if request.client else "Render Cloud Outbound IP"
+        detected_ip = ""
+
+    if detected_ip and detected_ip not in static_ips:
+        outbound_ip = f"{static_ips}, {detected_ip}" if static_ips else detected_ip
+    else:
+        outbound_ip = static_ips or detected_ip or "44.229.227.142, 54.188.71.94, 52.13.128.108"
 
     base_url = str(request.base_url).rstrip("/")
     return {
         "outbound_ip": outbound_ip,
+        "static_outbound_ips": static_ips,
         "base_url": base_url,
         "oauth_redirect_uri": f"{base_url}/api/orders/oauth/callback",
         "order_webhook_url": f"{base_url}/api/orders/webhook",

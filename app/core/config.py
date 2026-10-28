@@ -59,5 +59,9 @@ class Settings(BaseSettings):
     ADMIN_API_KEY: str = "admin-dev-secret-key-change-in-prod"
     UPLOAD_DIR: str = "./uploads"
 
+    # Static Outbound IPs for Coupang Wing / Cafe24 / SmartStore IP Whitelist
+    STATIC_OUTBOUND_IPS: str = "44.229.227.142, 54.188.71.94, 52.13.128.108"
+    OUTBOUND_PROXY_URL: Optional[str] = None
+
 
 settings = Settings()

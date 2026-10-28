@@ -206,6 +206,9 @@ async def get_dynamic_widget_script(
     preview_label: str = Query("", description="Instant preview bot label override"),
     preview_badge: str = Query("", description="Instant preview brand badge override"),
     preview_industry: str = Query("", description="Instant preview industry override"),
+    preview_email: str = Query("", description="Instant preview contact email override"),
+    preview_hours: str = Query("", description="Instant preview business hours override"),
+    preview_quick_buttons: str = Query("", description="Instant preview comma-separated quick buttons override"),
     session: AsyncSession = Depends(get_db),
 ):
     """Serve a dynamically customized JavaScript widget with 10 Commercial Chat Window Templates & 16 Flaticon Avatars."""
@@ -228,8 +231,8 @@ async def get_dynamic_widget_script(
     brand_badge = preview_badge or (store.brand_badge if store and store.brand_badge else title[:8])
     header_title = (store.header_title if store and store.header_title else "고객상담센터")
     chat_template = preview_template or (store.chat_template if store and store.chat_template else "cosraw_grid")
-    contact_email = (store.contact_email if store and store.contact_email else ind_defaults.get("contact_email", "contact@cosrawfree.com"))
-    business_hours = (store.business_hours if store and store.business_hours else "평일 09:00~18:00")
+    contact_email = preview_email or (store.contact_email if store and store.contact_email else ind_defaults.get("contact_email", "contact@cosrawfree.com"))
+    business_hours = preview_hours or (store.business_hours if store and store.business_hours else "평일 09:00~18:00")
     input_placeholder = (
         store.input_placeholder
         if store and store.input_placeholder and not preview_industry
@@ -237,7 +240,9 @@ async def get_dynamic_widget_script(
     )
 
     quick_buttons: List[str] = []
-    if store and store.quick_buttons_json and not preview_industry:
+    if preview_quick_buttons.strip():
+        quick_buttons = [x.strip() for x in preview_quick_buttons.split(",") if x.strip()]
+    elif store and store.quick_buttons_json and not preview_industry:
         try:
             quick_buttons = json.loads(store.quick_buttons_json)
         except Exception:
