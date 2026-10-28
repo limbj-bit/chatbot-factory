@@ -44,7 +44,7 @@ class StoreModel(Base):
     policy_config_json: Mapped[str] = mapped_column(Text, default="{}")
     welcome_message: Mapped[str] = mapped_column(Text, default="")
     plan_type: Mapped[str] = mapped_column(String(32), default="free_trial")  # free_trial, active, unlimited, suspended
-    trial_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=14)
+    trial_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=30)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     webhook_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)

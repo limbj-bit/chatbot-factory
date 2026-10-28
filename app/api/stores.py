@@ -26,12 +26,12 @@ async def create_store_endpoint(
     x_admin_key: Optional[str] = Header(None, alias="X-Admin-Key"),
 ):
     """Register a new e-commerce store and generate an intelligent AS chatbot.
-    If called from public self-service showroom without X-Admin-Key, trial_days is capped at 14 days (cannot be unlimited or >14).
+    If called from public self-service showroom without X-Admin-Key, trial_days is capped at 30 days (cannot be unlimited or >30).
     """
     is_admin = bool(x_admin_key and x_admin_key == settings.ADMIN_API_KEY)
     if not is_admin:
-        if request.trial_days is None or request.trial_days > 14:
-            request.trial_days = 14
+        if request.trial_days is None or request.trial_days > 30:
+            request.trial_days = 30
         if request.daily_quota_limit > 300:
             request.daily_quota_limit = 300
     return await store_service.create_store(session, request)

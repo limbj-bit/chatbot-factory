@@ -181,7 +181,7 @@
       <a href="/admin" class="admin-link">🔐 공장장 마스터 콘솔 (관리자 전용)</a>
     </div>
     <p style="font-size:14px;color:#475569;">
-      아래에서 <strong>16가지 캐릭터 아이콘</strong>과 <strong>10가지 채팅창 템플릿</strong>을 클릭해 보세요! 클릭하는 즉시 <strong>화면 우측 하단 챗봇 모양이 실시간으로 변신</strong>합니다. 마음에 드는 조합을 고른 뒤 <strong>[🎁 14일 무료 체험 코드 발급받기]</strong>를 누르면 내 쇼핑몰 전용 설치 코드가 즉시 발급됩니다.
+      아래에서 <strong>16가지 캐릭터 아이콘</strong>과 <strong>10가지 채팅창 템플릿</strong>을 클릭해 보세요! 클릭하는 즉시 <strong>화면 우측 하단 챗봇 모양이 실시간으로 변신</strong>합니다. 마음에 드는 조합을 고른 뒤 <strong>[🎁 30일 무료 체험 코드 발급받기]</strong>를 누르면 내 쇼핑몰 전용 설치 코드가 즉시 발급됩니다.
     </p>
     
     <div class="factory-box">
@@ -280,7 +280,7 @@
       </div>
 
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;">
-        <button class="btn" onclick="createMyTrialStore()">🎁 선택한 디자인으로 14일 무료 체험 코드 발급받기</button>
+        <button class="btn" onclick="createMyTrialStore()">🎁 선택한 디자인으로 30일 무료 체험 코드 발급받기</button>
         <label style="font-size:12px;color:#475569;background:#fff;padding:7px 12px;border:1px solid #CBD5E1;border-radius:8px;">
           📁 또는 내 로고/Flaticon 파일(PNG/GIF/SVG) 직접 업로드:
           <input type="file" id="customAvatarFile" accept="image/*" style="font-size:12px;" />
@@ -402,7 +402,7 @@
           business_hours,
           quick_buttons,
           allowed_domains,
-          trial_days: 14
+          trial_days: 30
         })
       });
       let createdStore = await createRes.json();
@@ -425,7 +425,7 @@
       const box = document.getElementById("issuedResultBox");
       box.style.display = "block";
       box.innerHTML = `
-        <h4 style="margin:0 0 6px 0;color:#065F46;">🎉 [${createdStore.store_name}] 챗봇 14일 무료 체험 코드가 발급되었습니다!</h4>
+        <h4 style="margin:0 0 6px 0;color:#065F46;">🎉 [${createdStore.store_name}] 챗봇 30일 무료 체험 코드가 발급되었습니다!</h4>
         <div style="font-size:13px;color:#047857;">
           • 발급된 몰 ID: <b>${createdStore.mall_id}</b> | 봇 이름: <b>${createdStore.bot_name}</b> | 무료 체험 상태: <b>${createdStore.status_message}</b>
         </div>

@@ -343,8 +343,8 @@ async def test_phase7_zero_hole_security_showroom_vs_admin_separation():
         )
         assert cheat_res.status_code == 201
         cheat_data = cheat_res.json()
-        assert cheat_data["trial_days"] == 14
-        assert cheat_data["remaining_days"] == 14
+        assert cheat_data["trial_days"] == 30
+        assert cheat_data["remaining_days"] == 30
         assert cheat_data["daily_quota_limit"] == 300
 
         # 2. Unauthorized user tries to list all stores -> 401 Unauthorized
@@ -353,11 +353,29 @@ async def test_phase7_zero_hole_security_showroom_vs_admin_separation():
         unauth_admin_list = await client.get("/api/admin/stores")
         assert unauth_admin_list.status_code == 401
 
-        # 3. Authorized Master Admin lists all stores and extends subscription
+        # 3. Authorized Master Admin lists all stores, upgrades to unlimited, then converts back to 30 days
         admin_headers = {"X-Admin-Key": "admin-dev-secret-key-change-in-prod"}
         auth_list = await client.get("/api/admin/stores", headers=admin_headers)
         assert auth_list.status_code == 200
         assert any(s["mall_id"] == "sneaky_store" for s in auth_list.json())
+
+        vip_res = await client.patch(
+            "/api/admin/stores/sneaky_store/subscription",
+            headers=admin_headers,
+            json={"plan_type": "unlimited", "is_active": True},
+        )
+        assert vip_res.status_code == 200
+        assert vip_res.json()["plan_type"] == "unlimited"
+        assert vip_res.json()["remaining_days"] is None
+
+        revert_30_res = await client.patch(
+            "/api/admin/stores/sneaky_store/subscription",
+            headers=admin_headers,
+            json={"reset_days": 30, "plan_type": "active", "is_active": True},
+        )
+        assert revert_30_res.status_code == 200
+        assert revert_30_res.json()["plan_type"] == "active"
+        assert revert_30_res.json()["remaining_days"] == 30
 
         # 4. Verify /showroom and /admin routes serve their respective HTML pages
         showroom_page = await client.get("/showroom")

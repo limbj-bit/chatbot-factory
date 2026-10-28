@@ -424,6 +424,16 @@ class StoreService:
             if update_req.bot_avatar_url and not update_req.bot_icon_style:
                 store.bot_icon_style = "custom_upload"
 
+        if update_req.reset_days is not None:
+            store.trial_days = update_req.reset_days
+            if update_req.reset_days == 0:
+                store.expires_at = now - timedelta(seconds=10)
+            else:
+                store.expires_at = now + timedelta(days=update_req.reset_days)
+            store.is_active = True
+            if update_req.plan_type is None and store.plan_type in ("unlimited", "suspended"):
+                store.plan_type = "active"
+
         if update_req.extend_days is not None and update_req.extend_days > 0:
             base_time = now
             if store.expires_at:
@@ -434,8 +444,8 @@ class StoreService:
                     base_time = exp
             store.expires_at = base_time + timedelta(days=update_req.extend_days)
             store.is_active = True
-            if store.plan_type == "suspended":
-                store.plan_type = "active"
+            if store.plan_type in ("suspended", "unlimited"):
+                store.plan_type = update_req.plan_type or "active"
 
         await session.commit()
         await session.refresh(store)

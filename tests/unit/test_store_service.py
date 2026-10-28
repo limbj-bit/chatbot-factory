@@ -59,10 +59,10 @@ async def test_create_beauty_store(db_session: AsyncSession):
     assert store_resp.theme_color == "#EC4899"
     assert "피부" in store_resp.welcome_message
     assert "트러블" in store_resp.welcome_message
-    assert store_resp.trial_days == 14
+    assert store_resp.trial_days == 30
     assert store_resp.is_expired is False
     assert store_resp.expiry_warning is False
-    assert store_resp.remaining_days == 14
+    assert store_resp.remaining_days == 30
 
 
 @pytest.mark.asyncio

@@ -183,9 +183,10 @@
               <code>${fullScript.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button class="btn btn-green" onclick="updateSub('${s.mall_id}', { extend_days: 30, plan_type: 'active', is_active: true })">+30일 연장</button>
-              <button class="btn btn-purple" onclick="updateSub('${s.mall_id}', { plan_type: 'unlimited', is_active: true })">무제한 VIP 전환</button>
-              <button class="btn btn-red" onclick="updateSub('${s.mall_id}', { plan_type: 'suspended', is_active: false })">일시 정지</button>
+              <button class="btn" onclick="updateSub('${s.mall_id}', { reset_days: 30, plan_type: 'active', is_active: true })">🔄 오늘부터 30일로 전환(무제한 해제)</button>
+              <button class="btn btn-green" onclick="updateSub('${s.mall_id}', { extend_days: 30, plan_type: 'active', is_active: true })">➕ +30일 연장</button>
+              <button class="btn btn-purple" onclick="updateSub('${s.mall_id}', { plan_type: 'unlimited', is_active: true })">👑 무제한 VIP 전환</button>
+              <button class="btn btn-red" onclick="updateSub('${s.mall_id}', { plan_type: 'suspended', is_active: false })">⛔ 일시 정지</button>
             </div>
           </div>
         `;

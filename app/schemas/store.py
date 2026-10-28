@@ -10,10 +10,10 @@ class StoreCreateRequest(BaseModel):
     welcome_message: Optional[str] = Field(None, description="고객 첫 접속 웰컴 인사말 (생략 시 스토어명+봇이름으로 자동 생성)")
     policy_config: Optional[Dict[str, Any]] = Field(None, description="스토어별 AS/환불 정책 임계값")
     trial_days: Optional[int] = Field(
-        14,
+        30,
         ge=0,
         le=3650,
-        description="무료 사용기한 일수 (예: 14일, 0이면 즉시 만료 테스트, None이면 무제한)",
+        description="무료 사용기한 일수 (예: 30일, 0이면 즉시 만료 테스트, None이면 무제한)",
     )
     webhook_url: Optional[str] = Field(None, description="인간 상담원 이관/긴급 클레임 발생 시 알림을 받을 웹훅 URL")
     allowed_domains: Optional[str] = Field(None, description="위젯 설치 허용 도메인 목록 (콤마 구분)")
@@ -63,7 +63,8 @@ class StoreCreateRequest(BaseModel):
 
 
 class StoreSubscriptionUpdateRequest(BaseModel):
-    extend_days: Optional[int] = Field(None, ge=1, le=3650, description="연장할 일수 (예: 30)")
+    extend_days: Optional[int] = Field(None, ge=1, le=3650, description="기존 남은 기간에 추가로 연장할 일수 (예: 30)")
+    reset_days: Optional[int] = Field(None, ge=0, le=3650, description="오늘부터 정확히 N일로 사용기한 재설정 (무제한 해제 포함, 예: 30)")
     plan_type: Optional[str] = Field(None, description="요금제 상태 (free_trial, active, unlimited, suspended)")
     is_active: Optional[bool] = Field(None, description="활성화 여부")
     webhook_url: Optional[str] = Field(None, description="알림 웹훅 URL 변경")
