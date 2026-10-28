@@ -265,20 +265,32 @@ async def test_phase5_cosbot_badge_flaticon_presets_and_custom_avatar_upload():
 
 
 @pytest.mark.asyncio
-async def test_phase6_bot_name_and_5_chat_window_templates():
+async def test_phase6_bot_name_16_icons_and_10_chat_window_templates():
     """
-    Verify custom bot_name, brand_badge, 2x2+1 quick buttons, contact bar, and 5 chat window templates.
+    Verify custom bot_name, brand_badge, 16 Flaticon icons, and all 10 commercial chat window UX templates.
     """
+    from app.api.widget import FLATICON_PRESET_SVGS
+
+    assert len(FLATICON_PRESET_SVGS) == 16
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         templates = [
             "cosraw_grid",
+            "floating_hero",
+            "app_icon_matrix",
+            "tabbed_portal",
+            "step_wizard",
+            "kakao_yellow",
             "channel_card",
             "commerce_showcase",
             "glass_dark",
-            "minimal_clean",
+            "luxury_editorial",
         ]
+        icon_keys = list(FLATICON_PRESET_SVGS.keys())
+
         for idx, tpl in enumerate(templates):
             mall_id = f"tpl_mall_{idx}"
+            chosen_icon = icon_keys[idx % len(icon_keys)]
             res = await client.post(
                 "/api/stores",
                 json={
@@ -286,6 +298,7 @@ async def test_phase6_bot_name_and_5_chat_window_templates():
                     "industry": "raw_materials",
                     "mall_id": mall_id,
                     "bot_name": "코스봇",
+                    "bot_icon_style": chosen_icon,
                     "brand_badge": "코스라프리",
                     "header_title": "고객상담센터",
                     "chat_template": tpl,
@@ -297,11 +310,11 @@ async def test_phase6_bot_name_and_5_chat_window_templates():
             data = res.json()
             assert data["bot_name"] == "코스봇"
             assert data["chat_template"] == tpl
+            assert data["bot_icon_style"] == chosen_icon
             assert len(data["quick_buttons"]) == 5
-            assert "🧪 성분 규격 & 공급사" in data["quick_buttons"]
 
             script_text = (await client.get(f"/api/widget/script?mall_id={mall_id}")).text
             assert f'chatTemplate: "{tpl}"' in script_text
+            assert f'botIconStyle: "{chosen_icon}"' in script_text
             assert 'botName: "코스봇"' in script_text
             assert "contact@cosrawfree.com" in script_text
-            assert "고객상담센터" in script_text

@@ -3,106 +3,142 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>챗봇공장 & 신선마켓 - AI 클레임 자동화 데모</title>
+  <title>챗봇공장 프로 스튜디오 & 신선마켓 - AI 클레임 자동화 데모</title>
   <style>
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
       margin: 0;
-      padding: 40px 20px;
-      background: #F3F4F6;
-      color: #1F2937;
+      padding: 36px 20px;
+      background: #F1F5F9;
+      color: #1E293B;
     }
     .container {
-      max-width: 1000px;
+      max-width: 1080px;
       margin: 0 auto;
       background: #FFFFFF;
       padding: 32px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
     }
-    h1 { color: #2E7D32; margin-top: 0; }
+    h1 { color: #0F172A; margin-top: 0; font-size: 24px; }
     .badge {
       display: inline-block;
-      background: #E8F5E9;
-      color: #2E7D32;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 16px;
+      background: #E0F2FE;
+      color: #0284C7;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 700;
+      margin-bottom: 12px;
     }
     .order-box, .factory-box {
-      border: 1px solid #E5E7EB;
-      border-radius: 8px;
-      padding: 20px;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 22px;
       margin-top: 24px;
-      background: #FAFAFA;
+      background: #F8FAFC;
     }
-    .order-box h4, .factory-box h3 { margin-top: 0; margin-bottom: 12px; }
+    .order-box h4, .factory-box h3 { margin-top: 0; margin-bottom: 14px; color: #0F172A; }
     .form-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
       gap: 10px;
       margin-bottom: 12px;
     }
     .form-grid input, .form-grid select {
-      padding: 8px 12px;
-      border: 1px solid #D1D5DB;
-      border-radius: 6px;
+      padding: 9px 12px;
+      border: 1px solid #CBD5E1;
+      border-radius: 8px;
       font-size: 13px;
+      background: #FFFFFF;
+    }
+    .section-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #334155;
+      margin: 14px 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
     .icon-picker-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
-      gap: 10px;
-      margin: 12px 0;
+      grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
     }
     .icon-option {
-      border: 2px solid #E5E7EB;
+      border: 2px solid #E2E8F0;
       background: #FFFFFF;
       border-radius: 10px;
-      padding: 10px;
+      padding: 8px 6px;
       text-align: center;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.18s;
     }
+    .icon-option:hover { border-color: #93C5FD; transform: translateY(-2px); }
     .icon-option.selected {
       border-color: #0284C7;
       background: #F0F9FF;
-      box-shadow: 0 2px 8px rgba(2,132,199,0.2);
+      box-shadow: 0 3px 10px rgba(2,132,199,0.18);
     }
     .icon-option .preview-circle {
-      width: 48px;
-      height: 48px;
+      width: 42px;
+      height: 42px;
       border-radius: 50%;
       background: #0F172A;
       border: 2px solid #38BDF8;
-      margin: 0 auto 6px;
+      margin: 0 auto 5px;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 20px;
     }
     .icon-option span {
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 600;
       display: block;
+      color: #1E293B;
     }
+    .tpl-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .tpl-card {
+      border: 2px solid #E2E8F0;
+      background: #FFFFFF;
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .tpl-card:hover { border-color: #93C5FD; }
+    .tpl-card.selected {
+      border-color: #0284C7;
+      background: #F0F9FF;
+      box-shadow: 0 3px 10px rgba(2,132,199,0.16);
+    }
+    .tpl-card strong { display: block; font-size: 12.5px; color: #0F172A; margin-bottom: 3px; }
+    .tpl-card small { font-size: 11px; color: #64748B; line-height: 1.35; display: block; }
     .btn {
-      background: #2E7D32;
+      background: #0284C7;
       color: #fff;
       border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-weight: 600;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-weight: 700;
       cursor: pointer;
       font-size: 13px;
     }
-    .btn-sm { padding: 5px 10px; font-size: 12px; background: #1E40AF; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; background: #1E40AF; }
     .btn-pink { background: #EC4899; }
+    .btn-dark { background: #0F172A; }
     .store-card {
       background: #fff;
-      border: 1px solid #E5E7EB;
-      border-radius: 8px;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
       padding: 14px;
       margin-top: 10px;
       display: flex;
@@ -115,17 +151,17 @@
       display: inline-block;
       padding: 3px 8px;
       border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11.5px;
+      font-weight: 700;
     }
     .status-ok { background: #DCFCE7; color: #166534; }
     .status-warn { background: #FEF3C7; color: #92400E; }
     .status-exp { background: #FEE2E2; color: #991B1B; }
     code {
       display: block;
-      background: #111827;
-      color: #10B981;
-      padding: 6px 10px;
+      background: #0F172A;
+      color: #38BDF8;
+      padding: 7px 10px;
       border-radius: 6px;
       font-size: 12px;
       margin-top: 6px;
@@ -134,17 +170,17 @@
 </head>
 <body>
   <div class="container">
-    <div class="badge">SaaS v2.0 Enterprise Chatbot Factory</div>
-    <h1>신선식품 이커머스 쇼핑몰 & 지능형 챗봇 분양 공장</h1>
-    <p>우측 하단의 <strong>원형 위젯 버튼</strong>을 클릭하여 AI 상담 및 사진 클레임 접수를 테스트해 보세요.</p>
+    <div class="badge">PRO AGENCY EDITION · 16 Icons × 10 UX Templates</div>
+    <h1>신선식품 이커머스 쇼핑몰 & 지능형 챗봇 분양 스튜디오</h1>
+    <p style="font-size:14px;color:#475569;">아이콘과 채팅창 템플릿을 고르고 <strong>[✨ 새 스토어 챗봇 분양하기]</strong> 또는 스토어 목록의 <strong>[👁️ 우측하단 실시간 미리보기]</strong>를 눌러 바로 확인해 보세요.</p>
     
     <div class="factory-box">
-      <h3>🏭 1. 스토어별 챗봇 분양 (봇 이름 + 5대 채팅창 템플릿 + 코스봇 배지 + 무료 체험)</h3>
+      <h3>🏭 1. 프리미엄 챗봇 디자인 & 템플릿 빌더 (유료 분양 스튜디오)</h3>
       <div class="form-grid">
         <input type="text" id="storeName" placeholder="스토어명 (예: 코스라프리, 루미에르)" />
         <input type="text" id="mallId" placeholder="몰 ID (예: cosrawfree)" />
         <select id="industry">
-          <option value="raw_materials">🧪 원료/B2B 플랫폼 (코스라프리 기본)</option>
+          <option value="raw_materials">🧪 원료/B2B 플랫폼 (코스라프리)</option>
           <option value="beauty">💄 뷰티 & 코스메틱 (핑크)</option>
           <option value="electronics">⚡ 디지털 & 가전 (블루)</option>
           <option value="fashion">👗 패션 & 의류 (퍼플)</option>
@@ -152,13 +188,6 @@
         </select>
         <input type="text" id="botName" value="코스봇" placeholder="봇 이름 (예: 코스봇, 루나봇)" />
         <input type="text" id="brandBadge" placeholder="헤더 좌측 배지 (예: 코스라프리)" />
-        <select id="chatTemplate">
-          <option value="cosraw_grid">1. 코스라프리 시그니처 (2x2+1 버튼 그리드 ⭐️기본)</option>
-          <option value="channel_card">2. 채널톡 ALF 워크플로우 칩 스타일</option>
-          <option value="commerce_showcase">3. AI 뷰티/쇼핑 쇼케이스 배너형</option>
-          <option value="glass_dark">4. 2026 모던 다크 글래스모피즘</option>
-          <option value="minimal_clean">5. 애플/카카오 심플 미니멀형</option>
-        </select>
         <select id="launcherShape">
           <option value="cosbot_badge">👑 코스봇 배지형 (원형+하단캡슐 ⭐️추천)</option>
           <option value="sticker">✨ Flaticon 투명 스티커형 (둥둥 떠다님)</option>
@@ -169,39 +198,81 @@
         <input type="text" id="contactEmail" value="contact@cosrawfree.com" placeholder="하단 문의 이메일" />
         <input type="text" id="businessHours" value="평일 09:00~18:00" placeholder="운영시간 안내" />
         <input type="number" id="trialDays" value="14" min="0" placeholder="무료 체험 일수 (14)" />
-        <input type="text" id="allowedDomains" placeholder="허용 도메인 (예: cosrawfree.com)" />
       </div>
-      <input type="text" id="quickButtonsInput" style="width:100%;padding:8px;margin-bottom:8px;border:1px solid #D1D5DB;border-radius:6px;box-sizing:border-box;font-size:13px;" placeholder="커스텀 5개 빠른 메뉴 버튼 (콤마 구분, 비워두면 업종별 5개 버튼 자동 세팅)" />
+      <input type="text" id="quickButtonsInput" style="width:100%;padding:8px 12px;margin-bottom:8px;border:1px solid #CBD5E1;border-radius:8px;box-sizing:border-box;font-size:13px;" placeholder="커스텀 5개 빠른 메뉴 버튼 (콤마 구분, 비워두면 업종별 5개 버튼 자동 세팅)" />
 
-      <div style="font-size:13px;font-weight:600;margin-top:6px;">🎨 Flaticon 스타일 봇 캐릭터 선택 (클릭):</div>
+      <!-- 16 Flaticon Icons Picker -->
+      <div class="section-label">🎨 16종 Flaticon 스타일 봇 아이콘 카탈로그 (클릭 선택 또는 직접 파일 업로드):</div>
       <input type="hidden" id="botIconStyle" value="flaticon_cute_robot" />
       <div class="icon-picker-grid">
-        <div class="icon-option selected" onclick="selectIcon('flaticon_cute_robot', this)">
-          <div class="preview-circle">🤖</div>
-          <span>코스봇 안테나 로봇</span>
+        <div class="icon-option selected" onclick="selectIcon('flaticon_cute_robot', this)"><div class="preview-circle">🤖</div><span>1. 코스봇 로봇</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_beauty_fairy', this)"><div class="preview-circle" style="border-color:#F472B6;">💄</div><span>2. 뷰티 요정봇</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_cs_agent', this)"><div class="preview-circle" style="border-color:#38BDF8;">👩‍💼</div><span>3. CS 여성매니저</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_bubble_bot', this)"><div class="preview-circle" style="border-color:#34D399;">💬</div><span>4. 말풍선 윙크봇</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_smart_ai', this)"><div class="preview-circle" style="border-color:#FBBF24;">✨</div><span>5. AI 스파클</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_derma_doctor', this)"><div class="preview-circle" style="border-color:#EF4444;">👨‍⚕️</div><span>6. 더마 닥터봇</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_lab_flask', this)"><div class="preview-circle" style="border-color:#10B981;">🧪</div><span>7. 원료 플라스크</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_serum_drop', this)"><div class="preview-circle" style="border-color:#60A5FA;">💧</div><span>8. 수분 세럼드롭</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_luxury_crown', this)"><div class="preview-circle" style="border-color:#FBBF24;">👑</div><span>9. 럭셔리 크라운</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_cyber_bot', this)"><div class="preview-circle" style="border-color:#A855F7;">🚀</div><span>10. 사이버 네온봇</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_cute_puppy', this)"><div class="preview-circle" style="border-color:#F59E0B;">🐶</div><span>11. 강아지 마스코트</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_cat_butler', this)"><div class="preview-circle" style="border-color:#FB7185;">🐱</div><span>12. 고양이 집사봇</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_shopping_bag', this)"><div class="preview-circle" style="border-color:#EC4899;">🛍️</div><span>13. 쇼핑 컨시어지</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_fresh_leaf', this)"><div class="preview-circle" style="border-color:#22C55E;">🍎</div><span>14. 프레시 오가닉</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_shield_as', this)"><div class="preview-circle" style="border-color:#3B82F6;">🛡️</div><span>15. 안심보증 실드</span></div>
+        <div class="icon-option" onclick="selectIcon('flaticon_yellow_talk', this)"><div class="preview-circle" style="border-color:#FACC15;">💛</div><span>16. 옐로우 톡봇</span></div>
+      </div>
+
+      <!-- 10 Chat Window UX Templates Picker -->
+      <div class="section-label">🪟 10종 상용 UX 채팅창 구성 템플릿 (첨부 아티클 & 최신 트렌드 반영):</div>
+      <input type="hidden" id="chatTemplate" value="cosraw_grid" />
+      <div class="tpl-picker-grid">
+        <div class="tpl-card selected" onclick="selectTemplate('cosraw_grid', this)">
+          <strong>1. 코스라프리 2x2+1 그리드</strong>
+          <small>다크네이비 헤더 + 파란 배지 + 5대 핵심 버튼 그리드 (기본)</small>
         </div>
-        <div class="icon-option" onclick="selectIcon('flaticon_beauty_fairy', this)">
-          <div class="preview-circle" style="border-color:#F472B6;">💄</div>
-          <span>뷰티 스파클 요정봇</span>
+        <div class="tpl-card" onclick="selectTemplate('floating_hero', this)">
+          <strong>2. 플로팅 히어로 라운지형</strong>
+          <small>[첨부자료1] 딥 그라데이션 헤더 위로 겹쳐 올라오는 VIP 웰컴 카드</small>
         </div>
-        <div class="icon-option" onclick="selectIcon('flaticon_cs_agent', this)">
-          <div class="preview-circle" style="border-color:#38BDF8;">👩‍💼</div>
-          <span>헤드셋 CS 상담원</span>
+        <div class="tpl-card" onclick="selectTemplate('app_icon_matrix', this)">
+          <strong>3. 슈퍼앱 3x2 원형 아이콘판</strong>
+          <small>[첨부자료2] 동그란 컬러 아이콘 배지가 바둑판처럼 정렬된 앱 스타일</small>
         </div>
-        <div class="icon-option" onclick="selectIcon('flaticon_bubble_bot', this)">
-          <div class="preview-circle" style="border-color:#34D399;">💬</div>
-          <span>말풍선 윙크봇</span>
+        <div class="tpl-card" onclick="selectTemplate('tabbed_portal', this)">
+          <strong>4. 멀티 탭 포털 대시보드형</strong>
+          <small>[첨부자료IA] 상단 [🏠홈 메뉴 / 💬실시간 상담 / 📸A/S판독] 탭 전환형</small>
         </div>
-        <div class="icon-option" onclick="selectIcon('flaticon_smart_ai', this)">
-          <div class="preview-circle" style="border-color:#FBBF24;">✨</div>
-          <span>스마트 AI 스파클</span>
+        <div class="tpl-card" onclick="selectTemplate('step_wizard', this)">
+          <strong>5. STEP 문진/자가진단 위저드</strong>
+          <small>STEP 1 ➔ STEP 2 진행 바와 함께 피부문진/고장진단을 유도</small>
+        </div>
+        <div class="tpl-card" onclick="selectTemplate('kakao_yellow', this)">
+          <strong>6. 카카오 옐로우 알림톡 감성</strong>
+          <small>한국 고객에게 가장 친숙한 노란색 헤더 + 파스텔블루 대화방</small>
+        </div>
+        <div class="tpl-card" onclick="selectTemplate('channel_card', this)">
+          <strong>7. 채널톡 ALF 워크플로우 칩</strong>
+          <small>부드러운 그라데이션 헤더 + 가로 알약형 빠른 질문 칩(Chips)</small>
+        </div>
+        <div class="tpl-card" onclick="selectTemplate('commerce_showcase', this)">
+          <strong>8. AI 뷰티/쇼핑 쇼케이스형</strong>
+          <small>상단 핑크 카운슬링 배너 + 맞춤 상품 구매 카드 추천 특화</small>
+        </div>
+        <div class="tpl-card" onclick="selectTemplate('glass_dark', this)">
+          <strong>9. 2026 다크 글래스모피즘</strong>
+          <small>채팅창 전체가 다크 슬레이트(#0F172A)로 빛나는 미래형 UI</small>
+        </div>
+        <div class="tpl-card" onclick="selectTemplate('luxury_editorial', this)">
+          <strong>10. 럭셔리 블랙 & 골드 에디션</strong>
+          <small>명품·프리미엄 코스메틱 브랜드용 블랙 & 골드 테두리 스타일</small>
         </div>
       </div>
 
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;">
-        <button class="btn" onclick="createStore()">✨ 새 스토어 챗봇 분양하기</button>
-        <label style="font-size:12px;color:#4B5563;">
-          📁 또는 Flaticon에서 다운받은 내 아이콘(PNG/GIF/SVG) 직접 업로드:
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;">
+        <button class="btn" onclick="createStore()">✨ 새 스토어 챗봇 분양 & 즉시 미리보기</button>
+        <label style="font-size:12px;color:#475569;background:#fff;padding:6px 10px;border:1px solid #CBD5E1;border-radius:8px;">
+          📁 내 Flaticon 파일(PNG/GIF/SVG) 직접 업로드:
           <input type="file" id="customAvatarFile" accept="image/*" style="font-size:12px;" />
         </label>
       </div>
@@ -217,7 +288,7 @@
         <input type="text" id="prodUrl" placeholder="구매 링크 또는 크롤링할 URL" />
         <input type="text" id="prodTags" placeholder="추천 태그 (예: 건성,미백,나이아신,임산부)" />
       </div>
-      <input type="text" id="prodContent" style="width:100%;padding:8px;margin-bottom:10px;border:1px solid #D1D5DB;border-radius:6px;box-sizing:border-box;" placeholder="전성분/특징 입력 (또는 비워두고 URL 자동 크롤링 실행)" />
+      <input type="text" id="prodContent" style="width:100%;padding:8px 12px;margin-bottom:10px;border:1px solid #CBD5E1;border-radius:8px;box-sizing:border-box;" placeholder="전성분/특징 입력 (또는 비워두고 URL 자동 크롤링 실행)" />
       <div style="display:flex;gap:8px;">
         <button class="btn btn-pink" onclick="addKnowledge()">📚 상품 지식 & 추천카드 등록</button>
         <button class="btn btn-sm" onclick="crawlUrl()">🌐 상품 URL 자동 크롤링 학습</button>
@@ -243,6 +314,25 @@
       el.classList.add("selected");
     }
 
+    function selectTemplate(tplName, el) {
+      document.getElementById("chatTemplate").value = tplName;
+      document.querySelectorAll(".tpl-card").forEach(item => item.classList.remove("selected"));
+      el.classList.add("selected");
+    }
+
+    function previewStoreWidget(mallId) {
+      const oldScript = document.getElementById("dynamic-preview-script");
+      if (oldScript) oldScript.remove();
+      const s = document.createElement("script");
+      s.id = "dynamic-preview-script";
+      s.src = `/api/widget/script?mall_id=${encodeURIComponent(mallId)}&t=${Date.now()}`;
+      s.onload = () => {
+        const win = document.querySelector(".fresh-widget-window");
+        if (win) win.style.display = "flex";
+      };
+      document.body.appendChild(s);
+    }
+
     async function loadStores() {
       const res = await fetch("/api/stores");
       const stores = await res.json();
@@ -261,14 +351,15 @@
               <strong>[${s.brand_badge}] ${s.store_name}</strong> — 봇이름: <b>${s.bot_name}</b> (${s.mall_id})
               <span class="status-pill ${pillClass}">${s.status_message}</span>
               <div style="font-size:12px;color:#4B5563;margin-top:4px;">
-                🪟 채팅창 템플릿: <b>${s.chat_template}</b> |
-                🤖 버튼 모양: <b>${s.launcher_shape}</b> (${s.bot_icon_style} / "${s.bot_label}") |
-                📧 ${s.contact_email} (${s.business_hours})
+                🪟 템플릿: <b>${s.chat_template}</b> |
+                🎨 아이콘: <b>${s.bot_icon_style}</b> (${s.launcher_shape} / "${s.bot_label}") |
+                📧 ${s.contact_email}
               </div>
               <code>${s.embed_script_tag.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
             </div>
-            <div>
-              <button class="btn btn-sm" onclick="extendStore('${s.mall_id}', 30)">+30일 기한 연장</button>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-sm btn-dark" onclick="previewStoreWidget('${s.mall_id}')">👁️ 우측하단 실시간 미리보기</button>
+              <button class="btn btn-sm" onclick="extendStore('${s.mall_id}', 30)">+30일 연장</button>
             </div>
           </div>
         `;
@@ -288,7 +379,6 @@
       const contact_email = document.getElementById("contactEmail").value.trim() || "contact@cosrawfree.com";
       const business_hours = document.getElementById("businessHours").value.trim() || "평일 09:00~18:00";
       const trial_days = parseInt(document.getElementById("trialDays").value || "14", 10);
-      const allowed_domains = document.getElementById("allowedDomains").value.trim() || undefined;
       const qbRaw = document.getElementById("quickButtonsInput").value.trim();
       const quick_buttons = qbRaw ? qbRaw.split(",").map(x => x.trim()).filter(Boolean) : undefined;
 
@@ -308,8 +398,7 @@
           contact_email,
           business_hours,
           quick_buttons,
-          trial_days,
-          allowed_domains
+          trial_days
         })
       });
       const createdStore = await createRes.json();
@@ -326,6 +415,7 @@
       }
 
       await loadStores();
+      previewStoreWidget(createdStore.mall_id);
     }
 
     async function extendStore(mallId, days) {
@@ -378,7 +468,7 @@
     loadStores();
   </script>
 
-  <!-- Embed Widget Script -->
+  <!-- Initial Default Widget Script -->
   <script src="/static/chatbot-widget.js"></script>
 </body>
 </html>
