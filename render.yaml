@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: chatbot-factory
+    runtime: docker
+    dockerfilePath: ./docker/Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./chatbot_factory.db
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: GROQ_API_KEY
+        sync: false
+      - key: NVIDIA_NIM_API_KEY
+        sync: false
