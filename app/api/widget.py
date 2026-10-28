@@ -212,6 +212,7 @@ async def get_dynamic_widget_script(
     preview_pos: str = Query("", description="Instant preview horizontal position (bottom_right or bottom_left)"),
     preview_bottom: int = Query(0, description="Instant preview bottom offset in px"),
     preview_side: int = Query(0, description="Instant preview side offset in px"),
+    preview_commerce: str = Query("", description="Instant preview commerce platform override"),
     session: AsyncSession = Depends(get_db),
 ):
     """Serve a dynamically customized JavaScript widget with 10 Commercial Chat Window Templates & 16 Flaticon Avatars."""
@@ -300,13 +301,28 @@ async def get_dynamic_widget_script(
     upload_guide = ind_defaults.get("upload_guide", "📷 손상 상품 / 참고 사진 업로드 접수")
 
     saved_layout = {}
+    saved_commerce_platform = "none"
     if store and store.policy_config_json:
         try:
             p_dict = json.loads(store.policy_config_json)
             if isinstance(p_dict, dict):
                 saved_layout = p_dict.get("widget_layout", {}) or {}
+                comm_info = p_dict.get("commerce_api", {}) or {}
+                if isinstance(comm_info, dict) and comm_info.get("platform"):
+                    saved_commerce_platform = str(comm_info.get("platform"))
         except Exception:
             saved_layout = {}
+
+    commerce_platform = (preview_commerce or saved_commerce_platform or "none").strip()
+    commerce_badge_map = {
+        "coupang_wing": "🚀 쿠팡 Wing 실시간 연동",
+        "coupang": "🚀 쿠팡 Wing 실시간 연동",
+        "naver_smartstore": "🟢 스마트스토어 실시간 연동",
+        "smartstore": "🟢 스마트스토어 실시간 연동",
+        "cafe24": "🛍️ 카페24 실시간 연동",
+        "imweb": "🎨 아임웹 실시간 연동",
+    }
+    commerce_badge = commerce_badge_map.get(commerce_platform, "📦 스토어 API 실시간 연동" if commerce_platform != "none" else "")
 
     widget_pos = preview_pos or saved_layout.get("pos", "bottom_right")
     bottom_px = preview_bottom if preview_bottom > 0 else int(saved_layout.get("bottom_px", 24))
@@ -327,6 +343,8 @@ async def get_dynamic_widget_script(
     safe_email = contact_email.replace('"', '\\"')
     safe_hours = business_hours.replace('"', '\\"')
     safe_placeholder = input_placeholder.replace('"', '\\"')
+    safe_commerce_platform = commerce_platform.replace('"', '\\"')
+    safe_commerce_badge = commerce_badge.replace('"', '\\"')
     quick_buttons_js = json.dumps(quick_buttons, ensure_ascii=False)
     presets_js = json.dumps(
         {k: " ".join(line.strip() for line in v.splitlines()) for k, v in FLATICON_PRESET_SVGS.items()},
@@ -363,6 +381,8 @@ async def get_dynamic_widget_script(
     inputPlaceholder: "{safe_placeholder}",
     welcomeMessage: "{welcome_msg}",
     uploadGuide: "{upload_guide}",
+    commercePlatform: "{safe_commerce_platform}",
+    commerceBadge: "{safe_commerce_badge}",
     isExpired: {is_expired_js},
     expiryWarning: {expiry_warning_js},
     remainingDays: {remaining_days_js},
@@ -611,6 +631,52 @@ async def get_dynamic_widget_script(
       background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 8px; padding: 5px 10px;
       font-size: 11.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; color: #475569;
     }}
+    .fresh-order-lookup-box {{
+      background: linear-gradient(145deg, #FFFDF9 0%, #FFF8EC 100%);
+      border: 1.5px solid #E5C17B; border-radius: 14px; padding: 13px 14px;
+      width: 100%; box-sizing: border-box;
+      box-shadow: 0 4px 14px rgba(180, 83, 9, 0.08);
+      display: flex; flex-direction: column; gap: 8px;
+    }}
+    .fresh-order-box-header {{
+      display: flex; justify-content: space-between; align-items: center; gap: 6px;
+    }}
+    .fresh-order-box-title {{
+      font-size: 13.5px; font-weight: 800; color: #1E293B; letter-spacing: -0.2px;
+    }}
+    .fresh-order-box-badge {{
+      font-size: 10.5px; font-weight: 800; color: #92400E;
+      background: #FEF3C7; border: 1px solid #FDE68A;
+      padding: 2.5px 8px; border-radius: 999px; white-space: nowrap;
+    }}
+    .fresh-order-box-desc {{
+      font-size: 11.5px; color: #64748B; line-height: 1.4;
+    }}
+    .fresh-order-box-row {{
+      display: flex; gap: 6px; align-items: center;
+    }}
+    .fresh-order-input {{
+      flex: 1; height: 36px; border: 1.5px solid #CBD5E1; border-radius: 9px;
+      padding: 0 11px; font-size: 12.5px; outline: none; background: #FFFFFF; color: #1E293B;
+      box-sizing: border-box;
+    }}
+    .fresh-order-input:focus {{ border-color: ${{config.primaryColor}}; box-shadow: 0 0 0 2px rgba(2,132,199,0.12); }}
+    .fresh-order-btn {{
+      height: 36px; padding: 0 13px; border-radius: 9px; border: none;
+      background: ${{config.primaryColor}}; color: #FFFFFF;
+      font-size: 12.5px; font-weight: 800; cursor: pointer; white-space: nowrap;
+    }}
+    .fresh-order-quick-row {{
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 2px;
+    }}
+    .fresh-order-mini-btn {{
+      background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px;
+      padding: 6.5px 8px; font-size: 11.5px; font-weight: 700; color: #334155;
+      cursor: pointer; text-align: center; transition: all 0.15s ease;
+    }}
+    .fresh-order-mini-btn:hover {{
+      border-color: ${{config.primaryColor}}; color: ${{config.primaryColor}}; background: #F8FAFC;
+    }}
   `;
   document.head.appendChild(style);
 
@@ -646,6 +712,27 @@ async def get_dynamic_widget_script(
   const inputPlaceholder = config.isExpired ? "사용기한이 만료되어 입력할 수 없습니다." : config.inputPlaceholder;
 
   // Build Template-Specific Header/Top & Quick Action Area (10 Commercial Templates)
+  let orderLookupBoxHtml = "";
+  if (config.commercePlatform && config.commercePlatform !== "none") {{
+    orderLookupBoxHtml = `
+      <div class="fresh-order-lookup-box">
+        <div class="fresh-order-box-header">
+          <span class="fresh-order-box-title">📦 실시간 주문 · 배송 · A/S 조회</span>
+          <span class="fresh-order-box-badge">${{config.commerceBadge}}</span>
+        </div>
+        <div class="fresh-order-box-desc">주문번호를 입력하시면 실시간 배송 상태와 반품·교환·A/S 가능 여부를 즉시 확인합니다.</div>
+        <div class="fresh-order-box-row">
+          <input type="text" id="dyn-order-input" class="fresh-order-input" placeholder="주문번호 입력 (예: ORD-NORMAL)" ${{disabledAttr}} />
+          <button type="button" id="dyn-order-btn" class="fresh-order-btn" ${{disabledAttr}}>🔍 조회</button>
+        </div>
+        <div class="fresh-order-quick-row">
+          <button type="button" class="fresh-order-mini-btn" data-order-q="ORD-NORMAL" ${{disabledAttr}}>🚚 내 주문·배송 조회</button>
+          <button type="button" class="fresh-order-mini-btn" data-q="📸 사진 판독" ${{disabledAttr}}>📸 파손·불량 A/S 접수</button>
+        </div>
+      </div>
+    `;
+  }}
+
   let topExtraHtml = "";
   let templateQuickAreaHtml = "";
   const btns = config.quickButtons || [];
@@ -720,6 +807,7 @@ async def get_dynamic_widget_script(
     </div>
     ${{bannerHtml}}
     <div class="fresh-widget-body" id="dyn-messages">
+      ${{orderLookupBoxHtml}}
       ${{topExtraHtml}}
       <div class="fresh-bot-block">
         <div class="fresh-bot-meta">
@@ -773,6 +861,38 @@ async def get_dynamic_widget_script(
         userInput.value = qText;
         sendMessage();
       }}
+    }});
+  }});
+
+  const orderInput = chatWindow.querySelector("#dyn-order-input");
+  const orderBtn = chatWindow.querySelector("#dyn-order-btn");
+  function runOrderBoxLookup(overrideOrderNo) {{
+    if (config.isExpired) return;
+    const val = (overrideOrderNo || (orderInput ? orderInput.value.trim() : "")).trim();
+    if (!val) {{
+      if (orderInput) {{
+        orderInput.focus();
+        orderInput.style.borderColor = "#EA580C";
+        setTimeout(() => {{ orderInput.style.borderColor = ""; }}, 1400);
+      }}
+      return;
+    }}
+    if (orderInput) orderInput.value = "";
+    userInput.value = "주문/배송 조회 요청 (" + val + ")";
+    sendMessage();
+  }}
+  if (orderBtn) {{
+    orderBtn.addEventListener("click", () => runOrderBoxLookup());
+  }}
+  if (orderInput) {{
+    orderInput.addEventListener("keydown", (e) => {{
+      if (e.key === "Enter") runOrderBoxLookup();
+    }});
+  }}
+  chatWindow.querySelectorAll("[data-order-q]").forEach(btn => {{
+    btn.addEventListener("click", () => {{
+      const sampleOrd = btn.getAttribute("data-order-q") || "ORD-NORMAL";
+      runOrderBoxLookup(sampleOrd);
     }});
   }});
 

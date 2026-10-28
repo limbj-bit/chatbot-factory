@@ -950,6 +950,7 @@
       const pos = document.getElementById("widgetPos").value || "bottom_right";
       const bottomPx = document.getElementById("widgetBottomPx").value || "24";
       const sidePx = document.getElementById("widgetSidePx").value || "24";
+      const commerce = document.getElementById("commercePlatform")?.value || "none";
 
       const params = new URLSearchParams({
         mall_id: "showroom_preview",
@@ -967,6 +968,7 @@
         preview_pos: pos,
         preview_bottom: bottomPx,
         preview_side: sidePx,
+        preview_commerce: commerce,
         t: Date.now()
       });
 
@@ -1070,6 +1072,7 @@
       } else {
         guide.innerText = "연동할 플랫폼을 선택하면 아래 입력칸 이름이 해당 플랫폼 규격으로 자동 전환됩니다.";
       }
+      triggerInstantPreview(true);
     }
 
     async function createMyTrialStore() {
