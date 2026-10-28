@@ -58,6 +58,23 @@ async def test_multitenant_store_registration_and_widget_serving():
         assert "#2E7D32" in script2_text
         assert "손상 상품 사진 업로드" in script2_text
 
+        # 5. Register Beauty Store
+        res3 = await client.post(
+            "/api/stores",
+            json={
+                "store_name": "벨라 뷰티 코스메틱",
+                "industry": "beauty",
+                "mall_id": "bella_beauty",
+            },
+        )
+        assert res3.status_code == 201
+        widget3_resp = await client.get("/api/widget/script?mall_id=bella_beauty")
+        assert widget3_resp.status_code == 200
+        script3_text = widget3_resp.text
+        assert "벨라 뷰티 코스메틱" in script3_text
+        assert "#EC4899" in script3_text
+        assert "용기 누유/파손" in script3_text
+
 
 @pytest.mark.asyncio
 async def test_intelligent_as_troubleshooting_faq():
@@ -72,3 +89,13 @@ async def test_intelligent_as_troubleshooting_faq():
         assert "충전 케이블" in data["message"]
         assert "리셋" in data["message"]
         assert "A/S 사진 접수" in data["message"]
+
+        # Beauty skin trouble guarantee FAQ
+        beauty_resp = await client.post(
+            "/api/chat",
+            json={"message": "화장품 쓰고 피부트러블 났는데 환불 되나요?", "customer_id": "guest_beauty_user"},
+        )
+        assert beauty_resp.status_code == 200
+        bdata = beauty_resp.json()
+        assert "피부과 진단서" in bdata["message"]
+        assert "전액 환불" in bdata["message"]

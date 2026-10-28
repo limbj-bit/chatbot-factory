@@ -34,6 +34,16 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
             "free_exchange_for_defects": True,
         },
     },
+    "beauty": {
+        "theme_color": "#EC4899",
+        "welcome_message": "안녕하세요! 뷰티&코스메틱 스킨케어 도우미입니다. 💄✨\n피부타입별 전성분 상담, 용기 누유/파손 사진 진단, 피부 트러블 안심 보장 접수를 도와드립니다.",
+        "default_policy": {
+            "skin_trouble_warranty_days": 14,
+            "require_doctor_note_for_trouble": True,
+            "unopened_seal_required_for_return": True,
+            "leakage_auto_replacement": True,
+        },
+    },
     "general": {
         "theme_color": "#0D9488",
         "welcome_message": "안녕하세요! 고객센터 AI 도우미입니다. 💬\n배송 조회, 상품 문의 및 불량 접수를 도와드립니다.",

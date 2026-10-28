@@ -28,6 +28,8 @@ async def get_dynamic_widget_script(
         upload_guide = "🔧 고장/파손 부위 사진 및 A/S 진단 요청"
     elif industry == "fashion":
         upload_guide = "👗 원단 오염/봉제 불량 사진 교환 접수"
+    elif industry == "beauty":
+        upload_guide = "💄 용기 누유/파손 및 트러블 사진 진단 접수"
 
     js_content = f"""
 (function () {{

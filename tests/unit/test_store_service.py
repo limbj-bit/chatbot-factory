@@ -44,3 +44,18 @@ async def test_create_fashion_store_auto_mall_id(db_session: AsyncSession):
     assert store_resp.industry == "fashion"
     assert store_resp.theme_color == "#7C3AED"
     assert "사이즈" in store_resp.welcome_message
+
+
+@pytest.mark.asyncio
+async def test_create_beauty_store(db_session: AsyncSession):
+    req = StoreCreateRequest(
+        store_name="글로우 뷰티 코스메틱",
+        industry="beauty",
+        mall_id="glow_beauty_kr",
+    )
+    store_resp = await store_service.create_store(db_session, req)
+    assert store_resp.mall_id == "glow_beauty_kr"
+    assert store_resp.industry == "beauty"
+    assert store_resp.theme_color == "#EC4899"
+    assert "피부" in store_resp.welcome_message
+    assert "트러블" in store_resp.welcome_message
