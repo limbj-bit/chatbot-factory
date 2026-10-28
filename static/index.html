@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>신선마켓 - AI 클레임 자동화 데모</title>
+  <title>챗봇공장 & 신선마켓 - AI 클레임 자동화 데모</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -13,7 +13,7 @@
       color: #1F2937;
     }
     .container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       background: #FFFFFF;
       padding: 32px;
@@ -31,22 +31,93 @@
       font-weight: 600;
       margin-bottom: 16px;
     }
-    .order-box {
+    .order-box, .factory-box {
       border: 1px solid #E5E7EB;
       border-radius: 8px;
-      padding: 16px;
-      margin-top: 20px;
+      padding: 20px;
+      margin-top: 24px;
       background: #FAFAFA;
     }
-    .order-box h4 { margin-top: 0; margin-bottom: 8px; }
+    .order-box h4, .factory-box h3 { margin-top: 0; margin-bottom: 12px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .form-grid input, .form-grid select {
+      padding: 8px 12px;
+      border: 1px solid #D1D5DB;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .btn {
+      background: #2E7D32;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-sm { padding: 5px 10px; font-size: 12px; background: #1E40AF; }
+    .store-card {
+      background: #fff;
+      border: 1px solid #E5E7EB;
+      border-radius: 8px;
+      padding: 14px;
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .status-pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status-ok { background: #DCFCE7; color: #166534; }
+    .status-warn { background: #FEF3C7; color: #92400E; }
+    .status-exp { background: #FEE2E2; color: #991B1B; }
+    code {
+      display: block;
+      background: #111827;
+      color: #10B981;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="badge">SaaS MVP Live Demo</div>
-    <h1>신선식품 이커머스 쇼핑몰</h1>
+    <div class="badge">SaaS MVP Live Demo & Chatbot Factory</div>
+    <h1>신선식품 이커머스 쇼핑몰 & 지능형 챗봇 분양 공장</h1>
     <p>우측 하단의 <strong>초록색 원형 위젯 버튼</strong>을 클릭하여 AI 상담 및 사진 클레임 접수를 테스트해 보세요.</p>
     
+    <div class="factory-box">
+      <h3>🏭 스토어별 지능형 챗봇 분양 & 무료 사용기한(Trial) 관리</h3>
+      <div class="form-grid">
+        <input type="text" id="storeName" placeholder="스토어명 (예: 루미에르 뷰티)" />
+        <input type="text" id="mallId" placeholder="몰 ID (예: lumiere_beauty)" />
+        <select id="industry">
+          <option value="beauty">뷰티 & 코스메틱 (핑크)</option>
+          <option value="electronics">디지털 & 가전 (블루)</option>
+          <option value="fashion">패션 & 의류 (퍼플)</option>
+          <option value="fresh_food">신선식품 (그린)</option>
+        </select>
+        <input type="number" id="trialDays" value="14" min="0" placeholder="무료 체험 일수 (예: 14)" />
+      </div>
+      <button class="btn" onclick="createStore()">✨ 새 스토어 챗봇 분양하기</button>
+      <div id="storeList" style="margin-top: 16px;"></div>
+    </div>
+
     <div class="order-box">
       <h4>📦 테스트용 가상 주문 정보</h4>
       <ul>
@@ -57,6 +128,60 @@
       <p style="font-size: 13px; color: #6B7280;">채팅창에 "배송비 얼마예요?", "딸기 보관법", 또는 주문번호 "ORD-NORMAL"을 입력해 보세요.</p>
     </div>
   </div>
+
+  <script>
+    async function loadStores() {
+      const res = await fetch("/api/stores");
+      const stores = await res.json();
+      const container = document.getElementById("storeList");
+      if (!stores.length) {
+        container.innerHTML = "<p style='font-size:13px;color:#6B7280;'>아직 분양된 스토어가 없습니다.</p>";
+        return;
+      }
+      container.innerHTML = stores.map(s => {
+        let pillClass = "status-ok";
+        if (s.is_expired) pillClass = "status-exp";
+        else if (s.expiry_warning) pillClass = "status-warn";
+        return `
+          <div class="store-card">
+            <div>
+              <strong>${s.store_name}</strong> (${s.mall_id} / ${s.industry})
+              <span class="status-pill ${pillClass}">${s.status_message}</span>
+              <code>${s.embed_script_tag.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
+            </div>
+            <div>
+              <button class="btn btn-sm" onclick="extendStore('${s.mall_id}', 30)">+30일 기한 연장</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function createStore() {
+      const store_name = document.getElementById("storeName").value.trim() || "루미에르 뷰티";
+      const mall_id = document.getElementById("mallId").value.trim() || undefined;
+      const industry = document.getElementById("industry").value;
+      const trial_days = parseInt(document.getElementById("trialDays").value || "14", 10);
+
+      await fetch("/api/stores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ store_name, mall_id, industry, trial_days })
+      });
+      await loadStores();
+    }
+
+    async function extendStore(mallId, days) {
+      await fetch(`/api/stores/${mallId}/subscription`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ extend_days: days, plan_type: "active" })
+      });
+      await loadStores();
+    }
+
+    loadStores();
+  </script>
 
   <!-- Embed Widget Script -->
   <script src="/static/chatbot-widget.js"></script>

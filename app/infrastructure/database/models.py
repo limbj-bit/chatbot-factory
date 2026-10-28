@@ -38,11 +38,15 @@ class StoreModel(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     mall_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     store_name: Mapped[str] = mapped_column(String(128), index=True)
-    industry: Mapped[str] = mapped_column(String(32), default="fresh_food")  # fresh_food, electronics, fashion, general
+    industry: Mapped[str] = mapped_column(String(32), default="fresh_food")  # fresh_food, electronics, fashion, beauty, general
     as_type: Mapped[str] = mapped_column(String(64), default="refund_and_warranty")
     theme_color: Mapped[str] = mapped_column(String(16), default="#2E7D32")
     policy_config_json: Mapped[str] = mapped_column(Text, default="{}")
     welcome_message: Mapped[str] = mapped_column(Text, default="")
+    plan_type: Mapped[str] = mapped_column(String(32), default="free_trial")  # free_trial, active, unlimited, suspended
+    trial_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=14)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

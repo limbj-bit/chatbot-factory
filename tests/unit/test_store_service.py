@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from app.application.store_service import store_service
 from app.infrastructure.database.models import Base
-from app.schemas.store import StoreCreateRequest
+from app.schemas.store import StoreCreateRequest, StoreSubscriptionUpdateRequest
 
 
 @pytest.fixture
@@ -59,3 +59,47 @@ async def test_create_beauty_store(db_session: AsyncSession):
     assert store_resp.theme_color == "#EC4899"
     assert "피부" in store_resp.welcome_message
     assert "트러블" in store_resp.welcome_message
+    assert store_resp.trial_days == 14
+    assert store_resp.is_expired is False
+    assert store_resp.expiry_warning is False
+    assert store_resp.remaining_days == 14
+
+
+@pytest.mark.asyncio
+async def test_store_trial_expiry_warning_and_extension(db_session: AsyncSession):
+    # 1. Create store with 2 days trial -> triggers expiry_warning (<= 3 days)
+    req_warn = StoreCreateRequest(
+        store_name="임박 뷰티 스토어",
+        industry="beauty",
+        mall_id="warn_beauty",
+        trial_days=2,
+    )
+    resp_warn = await store_service.create_store(db_session, req_warn)
+    assert resp_warn.is_expired is False
+    assert resp_warn.expiry_warning is True
+    assert resp_warn.remaining_days == 2
+    assert "만료 임박" in resp_warn.status_message
+
+    # 2. Create store with 0 days trial -> immediately expired
+    req_exp = StoreCreateRequest(
+        store_name="만료 뷰티 스토어",
+        industry="beauty",
+        mall_id="exp_beauty",
+        trial_days=0,
+    )
+    resp_exp = await store_service.create_store(db_session, req_exp)
+    assert resp_exp.is_expired is True
+    assert resp_exp.remaining_days == 0
+    assert "만료되었습니다" in resp_exp.status_message
+
+    # 3. Extend expired store by 30 days -> immediately active and warning cleared
+    extended = await store_service.update_subscription(
+        db_session,
+        "exp_beauty",
+        StoreSubscriptionUpdateRequest(extend_days=30, plan_type="active"),
+    )
+    assert extended is not None
+    assert extended.is_expired is False
+    assert extended.expiry_warning is False
+    assert extended.remaining_days == 30
+    assert extended.plan_type == "active"

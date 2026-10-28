@@ -99,3 +99,54 @@ async def test_intelligent_as_troubleshooting_faq():
         bdata = beauty_resp.json()
         assert "피부과 진단서" in bdata["message"]
         assert "전액 환불" in bdata["message"]
+
+
+@pytest.mark.asyncio
+async def test_widget_trial_warning_expiry_and_remote_extension():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        # 1. Register store with 2 days left (pre-expiration warning)
+        res_warn = await client.post(
+            "/api/stores",
+            json={
+                "store_name": "루미에르 뷰티 (체험 2일 남음)",
+                "industry": "beauty",
+                "mall_id": "lumiere_warn",
+                "trial_days": 2,
+            },
+        )
+        assert res_warn.status_code == 201
+        warn_script = (await client.get("/api/widget/script?mall_id=lumiere_warn")).text
+        assert "expiryWarning: true" in warn_script
+        assert "isExpired: false" in warn_script
+        assert "사용기한 만료 임박" in warn_script
+
+        # 2. Register store with 0 days (expired)
+        res_exp = await client.post(
+            "/api/stores",
+            json={
+                "store_name": "루미에르 뷰티 (체험 만료)",
+                "industry": "beauty",
+                "mall_id": "lumiere_expired",
+                "trial_days": 0,
+            },
+        )
+        assert res_exp.status_code == 201
+        exp_script = (await client.get("/api/widget/script?mall_id=lumiere_expired")).text
+        assert "isExpired: true" in exp_script
+        assert "기간 만료 안내" in exp_script
+        assert "사용기한이 만료되어 입력할 수 없습니다" in exp_script
+
+        # 3. Extend subscription by 30 days remotely via PATCH API
+        patch_res = await client.patch(
+            "/api/stores/lumiere_expired/subscription",
+            json={"extend_days": 30, "plan_type": "active"},
+        )
+        assert patch_res.status_code == 200
+        patch_data = patch_res.json()
+        assert patch_data["is_expired"] is False
+        assert patch_data["remaining_days"] == 30
+
+        # 4. Widget script immediately reflects active state without changing script tag
+        restored_script = (await client.get("/api/widget/script?mall_id=lumiere_expired")).text
+        assert "isExpired: false" in restored_script
+        assert "expiryWarning: false" in restored_script
