@@ -13,7 +13,7 @@
       color: #1F2937;
     }
     .container {
-      max-width: 900px;
+      max-width: 960px;
       margin: 0 auto;
       background: #FFFFFF;
       padding: 32px;
@@ -42,14 +42,14 @@
     .form-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
+      gap: 10px;
       margin-bottom: 12px;
     }
     .form-grid input, .form-grid select {
       padding: 8px 12px;
       border: 1px solid #D1D5DB;
       border-radius: 6px;
-      font-size: 14px;
+      font-size: 13px;
     }
     .btn {
       background: #2E7D32;
@@ -62,6 +62,7 @@
       font-size: 13px;
     }
     .btn-sm { padding: 5px 10px; font-size: 12px; background: #1E40AF; }
+    .btn-pink { background: #EC4899; }
     .store-card {
       background: #fff;
       border: 1px solid #E5E7EB;
@@ -97,12 +98,12 @@
 </head>
 <body>
   <div class="container">
-    <div class="badge">SaaS MVP Live Demo & Chatbot Factory</div>
+    <div class="badge">SaaS v2.0 Enterprise Chatbot Factory</div>
     <h1>신선식품 이커머스 쇼핑몰 & 지능형 챗봇 분양 공장</h1>
     <p>우측 하단의 <strong>초록색 원형 위젯 버튼</strong>을 클릭하여 AI 상담 및 사진 클레임 접수를 테스트해 보세요.</p>
     
     <div class="factory-box">
-      <h3>🏭 스토어별 지능형 챗봇 분양 & 무료 사용기한(Trial) 관리</h3>
+      <h3>🏭 1. 스토어별 챗봇 분양 + 무료 체험(Trial) + 웹훅/도메인/쿼터 설정</h3>
       <div class="form-grid">
         <input type="text" id="storeName" placeholder="스토어명 (예: 루미에르 뷰티)" />
         <input type="text" id="mallId" placeholder="몰 ID (예: lumiere_beauty)" />
@@ -112,10 +113,30 @@
           <option value="fashion">패션 & 의류 (퍼플)</option>
           <option value="fresh_food">신선식품 (그린)</option>
         </select>
-        <input type="number" id="trialDays" value="14" min="0" placeholder="무료 체험 일수 (예: 14)" />
+        <input type="number" id="trialDays" value="14" min="0" placeholder="무료 체험 일수 (14)" />
+        <input type="text" id="webhookUrl" placeholder="사장님 슬랙/텔레그램 웹훅 URL" />
+        <input type="text" id="allowedDomains" placeholder="허용 도메인 (예: lumiere.co.kr)" />
+        <input type="number" id="dailyQuota" value="300" min="1" placeholder="일일 AI 한도 (300)" />
       </div>
       <button class="btn" onclick="createStore()">✨ 새 스토어 챗봇 분양하기</button>
       <div id="storeList" style="margin-top: 16px;"></div>
+    </div>
+
+    <div class="factory-box">
+      <h3>🧠 2. 스토어별 상품 URL 자동 학습기 & AI 카운슬러 지식 주입</h3>
+      <div class="form-grid">
+        <input type="text" id="targetMallId" placeholder="대상 몰 ID (예: lumiere_beauty)" />
+        <input type="text" id="prodTitle" placeholder="상품명 (예: 로즈 글로우 세럼)" />
+        <input type="number" id="prodPrice" placeholder="판매가 (예: 38000)" />
+        <input type="text" id="prodUrl" placeholder="구매 링크 또는 크롤링할 URL" />
+        <input type="text" id="prodTags" placeholder="추천 태그 (예: 건성,미백,나이아신,임산부)" />
+      </div>
+      <input type="text" id="prodContent" style="width:100%;padding:8px;margin-bottom:10px;border:1px solid #D1D5DB;border-radius:6px;box-sizing:border-box;" placeholder="전성분/특징 입력 (또는 비워두고 URL 자동 크롤링 실행)" />
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-pink" onclick="addKnowledge()">📚 상품 지식 & 추천카드 등록</button>
+        <button class="btn btn-sm" onclick="crawlUrl()">🌐 상품 URL 자동 크롤링 학습</button>
+      </div>
+      <div id="knowledgeStatus" style="margin-top:10px;font-size:13px;color:#059669;"></div>
     </div>
 
     <div class="order-box">
@@ -125,7 +146,7 @@
         <li><strong>ORD-EXPIRED</strong> : 배송 완료 4일 경과 (보상 기한 48시간 초과 건)</li>
         <li><strong>ORD-SHIPPING</strong> : 배송 진행 중 (아직 미배송된 주문)</li>
       </ul>
-      <p style="font-size: 13px; color: #6B7280;">채팅창에 "배송비 얼마예요?", "딸기 보관법", 또는 주문번호 "ORD-NORMAL"을 입력해 보세요.</p>
+      <p style="font-size: 13px; color: #6B7280;">채팅창에 "배송비 얼마예요?", "민감성 피부 앰플 추천해줘", 또는 주문번호 "ORD-NORMAL"을 입력해 보세요.</p>
     </div>
   </div>
 
@@ -147,6 +168,11 @@
             <div>
               <strong>${s.store_name}</strong> (${s.mall_id} / ${s.industry})
               <span class="status-pill ${pillClass}">${s.status_message}</span>
+              <div style="font-size:12px;color:#4B5563;margin-top:4px;">
+                📊 일일 쿼터: ${s.daily_quota_used} / ${s.daily_quota_limit}건 |
+                🔒 허용 도메인: ${s.allowed_domains || "전체(*)"} |
+                🔔 웹훅: ${s.webhook_url || "미설정"}
+              </div>
               <code>${s.embed_script_tag.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
             </div>
             <div>
@@ -162,11 +188,14 @@
       const mall_id = document.getElementById("mallId").value.trim() || undefined;
       const industry = document.getElementById("industry").value;
       const trial_days = parseInt(document.getElementById("trialDays").value || "14", 10);
+      const webhook_url = document.getElementById("webhookUrl").value.trim() || undefined;
+      const allowed_domains = document.getElementById("allowedDomains").value.trim() || undefined;
+      const daily_quota_limit = parseInt(document.getElementById("dailyQuota").value || "300", 10);
 
       await fetch("/api/stores", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ store_name, mall_id, industry, trial_days })
+        body: JSON.stringify({ store_name, mall_id, industry, trial_days, webhook_url, allowed_domains, daily_quota_limit })
       });
       await loadStores();
     }
@@ -178,6 +207,44 @@
         body: JSON.stringify({ extend_days: days, plan_type: "active" })
       });
       await loadStores();
+    }
+
+    async function addKnowledge() {
+      const mallId = document.getElementById("targetMallId").value.trim() || "demo_mall";
+      const title = document.getElementById("prodTitle").value.trim() || "루미에르 로즈 세럼";
+      const price = parseInt(document.getElementById("prodPrice").value || "38000", 10);
+      const purchase_url = document.getElementById("prodUrl").value.trim() || "/products/rose-serum";
+      const tags = document.getElementById("prodTags").value.trim() || "건성,미백,진정";
+      const content = document.getElementById("prodContent").value.trim() || "다마스크 장미꽃수 70%와 나이아신아마이드 5%가 함유되어 건조하고 칙칙한 피부를 화사하게 가꾸어 줍니다.";
+
+      const res = await fetch(`/api/stores/${mallId}/knowledge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ doc_type: "product", title, content, price, purchase_url, tags })
+      });
+      const data = await res.json();
+      document.getElementById("knowledgeStatus").innerText = `✅ [${data.mall_id}] '${data.title}' 지식 및 상품 카드 학습 완료!`;
+    }
+
+    async function crawlUrl() {
+      const mallId = document.getElementById("targetMallId").value.trim() || "demo_mall";
+      const url = document.getElementById("prodUrl").value.trim();
+      const tags = document.getElementById("prodTags").value.trim();
+      if (!url) {
+        alert("크롤링할 상품 상세페이지 URL을 입력해 주세요.");
+        return;
+      }
+      const res = await fetch(`/api/stores/${mallId}/knowledge/crawl`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, tags })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        document.getElementById("knowledgeStatus").innerText = `🌐 URL 자동 학습 완료: '${data.title}' (${data.price || '가격미상'}원)`;
+      } else {
+        document.getElementById("knowledgeStatus").innerText = `⚠️ URL 크롤링 실패 (외부 접속 제한 등)`;
+      }
     }
 
     loadStores();

@@ -47,6 +47,11 @@ class StoreModel(Base):
     trial_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=14)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    webhook_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    allowed_domains: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)  # comma-separated domains or *
+    daily_quota_limit: Mapped[int] = mapped_column(Integer, default=300)
+    daily_quota_used: Mapped[int] = mapped_column(Integer, default=0)
+    quota_reset_date: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -54,6 +59,39 @@ class StoreModel(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class StoreKnowledgeModel(Base):
+    __tablename__ = "store_knowledge"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    mall_id: Mapped[str] = mapped_column(String(64), index=True)
+    doc_type: Mapped[str] = mapped_column(String(32), default="product")  # product, policy, faq, crawled_url
+    title: Mapped[str] = mapped_column(String(256))
+    content: Mapped[str] = mapped_column(Text)
+    source_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    price: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    purchase_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    tags: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class WebhookAlertLogModel(Base):
+    __tablename__ = "webhook_alert_logs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    mall_id: Mapped[str] = mapped_column(String(64), index=True)
+    claim_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    alert_type: Mapped[str] = mapped_column(String(64))  # ESCALATE_TO_HUMAN, HIGH_VALUE_CLAIM, TRIAL_EXPIRING
+    webhook_url: Mapped[str] = mapped_column(String(512))
+    payload_json: Mapped[str] = mapped_column(Text)
+    delivery_status: Mapped[str] = mapped_column(String(32))  # SENT, MOCK_LOGGED, FAILED
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
 
@@ -147,6 +185,7 @@ class ClaimModel(Base):
     __tablename__ = "claims"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    mall_id: Mapped[str] = mapped_column(String(64), default="demo_mall", index=True)
     order_id: Mapped[str] = mapped_column(String(64), index=True)
     customer_id: Mapped[str] = mapped_column(String(64), index=True)
     claim_type: Mapped[str] = mapped_column(String(32))

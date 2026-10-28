@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.store_service import store_service
 from app.infrastructure.database.session import get_db
@@ -8,11 +8,18 @@ router = APIRouter(prefix="/api/widget", tags=["Widget"])
 
 @router.get("/script")
 async def get_dynamic_widget_script(
+    request: Request,
     mall_id: str = Query("demo_mall", description="Store Mall ID"),
     session: AsyncSession = Depends(get_db),
 ):
-    """Serve a dynamically customized JavaScript widget tailored to the specific store's industry, brand, and trial status."""
+    """Serve a dynamically customized JavaScript widget tailored to the specific store's industry, brand, trial status, and domain whitelist."""
     store = await store_service.get_store_by_mall_id(session, mall_id)
+
+    # 4th Enhancement: Domain Whitelist Validation
+    origin_or_referer = request.headers.get("origin") or request.headers.get("referer")
+    if not store_service.is_domain_allowed(store, origin_or_referer):
+        blocked_js = f'console.warn("[ChatbotFactory] Unauthorized domain for mall_id={mall_id}. Allowed domains: {store.allowed_domains if store else ""}");'
+        return Response(content=blocked_js, media_type="application/javascript")
 
     title = store.store_name if store else "스마트 AI 고객센터"
     industry = store.industry if store else "general"
@@ -180,6 +187,38 @@ async def get_dynamic_widget_script(
       align-self: flex-end;
       border-bottom-right-radius: 4px;
     }}
+    .fresh-product-card {{
+      background: #FFFFFF;
+      border: 1px solid #E5E7EB;
+      border-left: 4px solid ${{config.primaryColor}};
+      border-radius: 10px;
+      padding: 12px;
+      max-width: 85%;
+      align-self: flex-start;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      font-size: 13px;
+    }}
+    .fresh-product-card h4 {{
+      margin: 0 0 4px 0;
+      font-size: 14px;
+      color: #111827;
+    }}
+    .fresh-product-card .price {{
+      font-weight: 700;
+      color: ${{config.primaryColor}};
+      margin-bottom: 6px;
+    }}
+    .fresh-product-card .buy-link {{
+      display: inline-block;
+      margin-top: 8px;
+      background: ${{config.primaryColor}};
+      color: #FFFFFF;
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }}
     .fresh-widget-footer {{
       padding: 12px;
       border-top: 1px solid #E5E7EB;
@@ -256,7 +295,7 @@ async def get_dynamic_widget_script(
     <div class="fresh-widget-header">
       <div>
         <h3>${{config.title}}</h3>
-        <p>A/S 및 스마트 CS 도우미</p>
+        <p>AI 카운슬러 & 스마트 A/S 도우미</p>
       </div>
       <div class="fresh-widget-close" id="dyn-close">&times;</div>
     </div>
@@ -299,6 +338,24 @@ async def get_dynamic_widget_script(
     return msg;
   }}
 
+  function appendProductCards(cards) {{
+    if (!cards || !cards.length) return;
+    cards.forEach(c => {{
+      const cardEl = document.createElement("div");
+      cardEl.className = "fresh-product-card";
+      const priceHtml = c.price ? `<div class="price">${{c.price.toLocaleString()}}원</div>` : "";
+      const linkHtml = c.purchase_url ? `<a class="buy-link" href="${{c.purchase_url}}" target="_blank">🛒 상품 상세 / 바로 구매하기</a>` : "";
+      cardEl.innerHTML = `
+        <h4>✨ [맞춤 추천] ${{c.title}}</h4>
+        ${{priceHtml}}
+        <div>${{c.summary}}</div>
+        ${{linkHtml}}
+      `;
+      messagesContainer.appendChild(cardEl);
+    }});
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }}
+
   async function sendMessage() {{
     if (config.isExpired) return;
     const text = userInput.value.trim();
@@ -313,7 +370,12 @@ async def get_dynamic_widget_script(
       const response = await fetch(config.apiBase + "/api/chat/stream", {{
         method: "POST",
         headers: {{ "Content-Type": "application/json" }},
-        body: JSON.stringify({{ session_id: sessionId, message: text, customer_id: "guest" }}),
+        body: JSON.stringify({{
+          session_id: sessionId,
+          mall_id: config.mallId,
+          message: text,
+          customer_id: "guest"
+        }}),
       }});
 
       const reader = response.body.getReader();
@@ -335,6 +397,9 @@ async def get_dynamic_widget_script(
                 fullText += data.token;
                 botMsg.innerHTML = fullText.replace(/\\n/g, "<br>");
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
+              }}
+              if (data.recommended_products) {{
+                appendProductCards(data.recommended_products);
               }}
             }} catch (e) {{}}
           }}
@@ -366,6 +431,7 @@ async def get_dynamic_widget_script(
         method: "POST",
         headers: {{ "Content-Type": "application/json" }},
         body: JSON.stringify({{
+          mall_id: config.mallId,
           order_id: "ORD-NORMAL",
           customer_id: "guest",
           claim_type: "as_diagnosis",

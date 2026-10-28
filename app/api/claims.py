@@ -26,9 +26,11 @@ async def create_claim_endpoint(
         customer_id=request.customer_id,
         claim_type=request.claim_type,
         description=request.description,
+        mall_id=request.mall_id,
     )
     return ClaimResponse(
         claim_id=claim.id,
+        mall_id=claim.mall_id,
         order_id=claim.order_id,
         customer_id=claim.customer_id,
         claim_type=claim.claim_type,
@@ -100,6 +102,7 @@ async def get_claim_endpoint(claim_id: str, session: AsyncSession = Depends(get_
 
     return ClaimResponse(
         claim_id=claim.id,
+        mall_id=claim.mall_id,
         order_id=claim.order_id,
         customer_id=claim.customer_id,
         claim_type=claim.claim_type,

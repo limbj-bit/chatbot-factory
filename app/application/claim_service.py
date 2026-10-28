@@ -17,6 +17,7 @@ from app.infrastructure.database.models import (
     ClaimImageModel,
     ClaimModel,
 )
+from app.application.notification_service import notification_service
 from app.application.order_service import OrderService
 from app.application.refund_service import RefundService
 
@@ -50,10 +51,12 @@ class ClaimService:
         customer_id: str,
         claim_type: str,
         description: str,
+        mall_id: str = "demo_mall",
     ) -> ClaimModel:
         claim_id = str(uuid.uuid4())
         claim = ClaimModel(
             id=claim_id,
+            mall_id=mall_id,
             order_id=order_id,
             customer_id=customer_id,
             claim_type=claim_type,
@@ -181,6 +184,23 @@ class ClaimService:
             claim.status = ClaimStatus.IMAGE_RETAKE_REQUIRED.value
         elif decision.decision == PolicyDecisionType.MANUAL_REVIEW:
             claim.status = ClaimStatus.MANUAL_REVIEW.value
+            await notification_service.notify_merchant_alert(
+                session=session,
+                mall_id=claim.mall_id or "demo_mall",
+                alert_type="ESCALATE_TO_HUMAN",
+                title="상담원 확인 필요 (긴급 클레임/진단서 확인 이관)",
+                message=(
+                    f"주문번호: {claim.order_id} / 고객: {claim.customer_id}\n"
+                    f"사유코드: {decision.reason_code.value} / AI 판독 결함: {observation.defect_type.value} ({observation.damage_ratio_estimate}%)\n"
+                    f"설명: {decision.explanation}"
+                ),
+                claim_id=claim.id,
+                extra_data={
+                    "order_id": claim.order_id,
+                    "reason_code": decision.reason_code.value,
+                    "defect_type": observation.defect_type.value,
+                },
+            )
         elif decision.decision == PolicyDecisionType.REJECT:
             claim.status = ClaimStatus.REJECTED.value
 

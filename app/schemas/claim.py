@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 
 class ClaimCreateRequest(BaseModel):
+    mall_id: str = Field("demo_mall", description="Store Mall ID")
     order_id: str = Field(..., description="E-commerce Order ID")
     customer_id: str = Field(..., description="Customer ID")
     claim_type: str = Field("fresh_defect", description="Type of claim (fresh_defect, wrong_delivery, etc.)")
@@ -11,6 +12,7 @@ class ClaimCreateRequest(BaseModel):
 
 class ClaimResponse(BaseModel):
     claim_id: str
+    mall_id: str = "demo_mall"
     order_id: str
     customer_id: str
     claim_type: str
