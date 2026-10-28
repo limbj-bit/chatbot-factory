@@ -1,21 +1,35 @@
+import json
 import re
 import time
 import uuid
-from typing import AsyncIterator, List, Optional, Tuple
+from typing import AsyncIterator, Dict, List, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.commerce_service import commerce_service
 from app.application.order_service import OrderService
 from app.application.store_service import store_service
+from app.core.logging import logger
 from app.domain.orders.models import Order, OrderStatus
 from app.domain.ports.ai_port import AIProviderPort
 from app.infrastructure.ai.router import AIProviderRouter
-from app.infrastructure.database.models import MessageModel, SessionModel
+from app.infrastructure.database.models import MessageModel, SessionModel, StoreModel
 from app.infrastructure.rag.engine import RAGEngine, RAGSearchResult, rag_engine
 from app.schemas.chat import ProductRecommendationCard
 
 # Real Cafe24 order no (e.g. 20261028-0000012) OR our test order id (ORD-...)
 _ORDER_ID_RE = re.compile(r"(\d{8}-\d{7}|ORD-[A-Za-z0-9-]+)")
+
+# How many recent turns to feed the LLM for multi-turn memory.
+_HISTORY_LIMIT = 10
+
+_INDUSTRY_KR = {
+    "fresh_food": "신선식품/식품",
+    "beauty": "뷰티/화장품",
+    "fashion": "패션/의류",
+    "electronics": "전자/가전",
+    "pet": "반려동물용품",
+    "general": "종합몰",
+}
 
 _STATUS_KOR = {
     OrderStatus.PAID: "결제 완료",
@@ -158,6 +172,111 @@ class ChatService:
             lines.append(f"🚚 {carrier} {tracking}")
         return "\n".join(lines)
 
+    @staticmethod
+    def _build_store_system_prompt(
+        store_obj: Optional[StoreModel],
+        rag_context: Optional[str] = None,
+    ) -> str:
+        """Build a store-grounded system prompt for general-CS answers.
+
+        This is the anti-hallucination core: instead of a bare LLM call, the bot
+        now knows WHO it represents (store name/industry), WHEN staff are online,
+        HOW customers can reach a human, and WHAT the actual refund/claim policy
+        says. When RAG hits, the learned knowledge is appended so product facts
+        stay authoritative.
+        """
+        if store_obj is None:
+            lines = [
+                "당신은 쇼핑몰 고객센터 AI 상담원입니다.",
+                "친절하고 정확하게 한국어로 답변하세요.",
+            ]
+            if rag_context:
+                lines.append(
+                    "아래는 학습된 스토어 공식 지식입니다. 이 내용에 근거해 답변하고, "
+                    "지식에 없는 내용은 추측하지 말고 고객센터 확인을 안내하세요."
+                )
+                lines.append(rag_context)
+            return "\n".join(lines)
+
+        industry_kr = _INDUSTRY_KR.get(store_obj.industry, store_obj.industry or "쇼핑몰")
+        lines = [
+            f"당신은 '{store_obj.store_name}'({industry_kr}) 고객센터 AI 상담원 '{store_obj.store_name}봇'입니다.",
+            "원칙: 학습된 지식과 스토어 정책에만 근거해 답변합니다. 없는 정보는 지어내지 않고 "
+            "'고객센터로 확인 후 안내드리겠습니다'라고 솔직히 답합니다.",
+            "",
+            "## 스토어 정보",
+            f"- 스토어명: {store_obj.store_name}",
+            f"- 업종: {industry_kr}",
+        ]
+        if store_obj.business_hours:
+            lines.append(f"- 운영시간: {store_obj.business_hours}")
+        if store_obj.contact_email:
+            lines.append(f"- 고객문의: {store_obj.contact_email}")
+        if store_obj.welcome_message:
+            lines.append(f"- 인사말: {store_obj.welcome_message}")
+
+        # Per-mall claim policy (already clamped by policy engine elsewhere)
+        try:
+            policy = json.loads(store_obj.policy_config_json or "{}")
+        except Exception:
+            policy = {}
+        max_days = policy.get("max_claim_days")
+        full_ratio = policy.get("full_refund_damage_ratio")
+        partial_ratio = policy.get("partial_refund_damage_ratio")
+        if any(v is not None for v in (max_days, full_ratio, partial_ratio)):
+            lines.append("")
+            lines.append("## 반품/교환 정책 (고객 질문 시 그대로 안내)")
+            if max_days is not None:
+                lines.append(
+                    f"- 접수 기한: 수령 후 {max_days}일 이내 (신선식품 특성상 기한 준수)"
+                )
+            if full_ratio is not None:
+                lines.append(f"- 파손 {full_ratio}% 이상 → 전액 환불")
+            if partial_ratio is not None:
+                lines.append(f"- 파손 {partial_ratio}% 이상 {full_ratio if full_ratio is not None else ''}% 미만 → 부분 환불")
+
+        if rag_context:
+            lines.append("")
+            lines.append(
+                "## 학습된 상품/스토어 지식 (상품 질문 시 근거로 사용, 지식에 없는 내용은 지어내지 말 것)"
+            )
+            lines.append(rag_context)
+
+        lines.append("")
+        lines.append(
+            "답변은 두세 문장 이내의 간결한 한국어 존댓말로 하고, 필요 시 다음 단계(주문번호 안내 등)를 제시하세요."
+        )
+        return "\n".join(lines)
+
+    async def _load_history(
+        self, session_db: AsyncSession, session_id: str, exclude_id: Optional[str] = None
+    ) -> List[Dict[str, str]]:
+        """Load recent conversation turns for multi-turn memory.
+
+        Returns oldest->newest [{"role": "user"|"assistant", "content": str}, ...].
+        `exclude_id` drops the current user message row (its text is the live prompt).
+        """
+        try:
+            res = await session_db.execute(
+                select(MessageModel)
+                .where(MessageModel.session_id == session_id)
+                .order_by(MessageModel.created_at.desc(), MessageModel.id.desc())
+                .limit(_HISTORY_LIMIT)
+            )
+            rows = list(res.scalars().all())
+        except Exception as e:
+            logger.warning(f"[Chat] Failed to load history for session {session_id}: {e}")
+            return []
+
+        history: List[Dict[str, str]] = []
+        for row in reversed(rows):  # oldest first
+            if exclude_id is not None and row.id == exclude_id:
+                continue
+            if row.role not in ("user", "assistant") or not (row.content or "").strip():
+                continue
+            history.append({"role": row.role, "content": row.content})
+        return history
+
     async def handle_message(
         self,
         session_db: AsyncSession,
@@ -183,6 +302,11 @@ class ChatService:
         )
         session_db.add(user_msg)
         await session_db.flush()
+
+        # 1.2 Load recent conversation turns for multi-turn memory (current msg excluded)
+        history = await self._load_history(
+            session_db, chat_session.id, exclude_id=user_msg.id
+        )
 
         # 1.5 Check if store subscription is expired
         store_obj = await store_service.get_store_by_mall_id(session_db, mall_id)
@@ -224,13 +348,9 @@ class ChatService:
                     recommended_products = self._build_product_cards(results)
                     context = self.rag.assemble_context(results)
                     top_doc = results[0].document
-                    system_prompt = (
-                        "당신은 스토어 전문 AI 카운슬러이자 CS 매니저입니다. "
-                        "주어진 공식 지식 베이스의 성분, 가격, 특징을 바탕으로 고객에게 친절하게 설명하고 맞춤 상품을 추천하세요.\n"
-                        f"{context}"
-                    )
+                    system_prompt = self._build_store_system_prompt(store_obj, rag_context=context)
                     llm_reply = await self.ai_router.generate_text(
-                        message_text, system_prompt=system_prompt
+                        message_text, system_prompt=system_prompt, history=history
                     )
                     # Ensure deterministic fact inclusion even when MockAIProvider is active
                     if top_doc.title not in llm_reply:
@@ -243,7 +363,10 @@ class ChatService:
                         response_text = llm_reply
                 else:
                     intent = "general_cs"
-                    response_text = await self.ai_router.generate_text(message_text)
+                    system_prompt = self._build_store_system_prompt(store_obj)
+                    response_text = await self.ai_router.generate_text(
+                        message_text, system_prompt=system_prompt, history=history
+                    )
 
         latency_ms = int((time.time() - start_time) * 1000)
 
@@ -280,6 +403,11 @@ class ChatService:
         )
         session_db.add(user_msg)
         await session_db.commit()
+
+        # Load recent turns for multi-turn memory (current msg excluded)
+        history = await self._load_history(
+            session_db, chat_session.id, exclude_id=user_msg.id
+        )
 
         # 0. Check if store subscription is expired
         store_obj = await store_service.get_store_by_mall_id(session_db, mall_id)
@@ -336,13 +464,14 @@ class ChatService:
         results = await self.rag.search_with_store_knowledge(
             session_db, mall_id, message_text, top_k=2
         )
-        system_prompt = None
-        if results:
-            context = self.rag.assemble_context(results)
-            system_prompt = f"당신은 스토어 전문 AI 카운슬러입니다. 사실에 기반하여 친절하게 답변하세요.\n{context}"
+        # Store-grounded system prompt; append learned RAG knowledge when we have it
+        context = self.rag.assemble_context(results) if results else None
+        system_prompt = self._build_store_system_prompt(store_obj, rag_context=context)
 
         collected = []
-        async for token in self.ai_router.stream_text(message_text, system_prompt=system_prompt):
+        async for token in self.ai_router.stream_text(
+            message_text, system_prompt=system_prompt, history=history
+        ):
             collected.append(token)
             yield token
 

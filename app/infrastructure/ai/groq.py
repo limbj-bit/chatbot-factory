@@ -1,7 +1,8 @@
 import httpx
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator, Dict, List, Optional
 from app.domain.claims.models import ClaimVisionObservation
 from app.domain.ports.ai_port import AIProviderPort
+from app.infrastructure.ai.messages import build_openai_messages
 
 
 class GroqProvider(AIProviderPort):
@@ -13,11 +14,13 @@ class GroqProvider(AIProviderPort):
         self.api_key = api_key
         self.default_model = default_model
 
-    async def generate_text(self, prompt: str, system_prompt: Optional[str] = None) -> str:
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+    async def generate_text(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        history: Optional[List[Dict[str, str]]] = None,
+    ) -> str:
+        messages = build_openai_messages(prompt, system_prompt, history)
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -38,11 +41,13 @@ class GroqProvider(AIProviderPort):
             data = resp.json()
             return data["choices"][0]["message"]["content"]
 
-    async def stream_text(self, prompt: str, system_prompt: Optional[str] = None) -> AsyncIterator[str]:
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+    async def stream_text(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        history: Optional[List[Dict[str, str]]] = None,
+    ) -> AsyncIterator[str]:
+        messages = build_openai_messages(prompt, system_prompt, history)
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",

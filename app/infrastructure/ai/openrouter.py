@@ -1,9 +1,10 @@
 import base64
 import httpx
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator, Dict, List, Optional
 from app.core.config import settings
 from app.domain.claims.models import ClaimVisionObservation
 from app.domain.ports.ai_port import AIProviderPort
+from app.infrastructure.ai.messages import build_openai_messages
 from app.infrastructure.ai.nvidia import _parse_vision_json
 from app.infrastructure.ai.vision_prompts import build_vision_instruction
 
@@ -37,11 +38,13 @@ class OpenRouterProvider(AIProviderPort):
             "X-Title": "Chatbot Factory Claim Vision",
         }
 
-    async def generate_text(self, prompt: str, system_prompt: Optional[str] = None) -> str:
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+    async def generate_text(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        history: Optional[List[Dict[str, str]]] = None,
+    ) -> str:
+        messages = build_openai_messages(prompt, system_prompt, history)
 
         payload = {
             "model": self.text_model,
@@ -58,8 +61,13 @@ class OpenRouterProvider(AIProviderPort):
             data = resp.json()
             return data["choices"][0]["message"]["content"]
 
-    async def stream_text(self, prompt: str, system_prompt: Optional[str] = None) -> AsyncIterator[str]:
-        full_text = await self.generate_text(prompt, system_prompt)
+    async def stream_text(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        history: Optional[List[Dict[str, str]]] = None,
+    ) -> AsyncIterator[str]:
+        full_text = await self.generate_text(prompt, system_prompt, history)
         words = full_text.split(" ")
         for i, word in enumerate(words):
             yield word + (" " if i < len(words) - 1 else "")

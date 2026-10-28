@@ -100,7 +100,12 @@ class AIProviderRouter(AIProviderPort):
                 chain.append(p)
         return chain
 
-    async def generate_text(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+    async def generate_text(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        history: Optional[List] = None,
+    ) -> str:
         chain = self.get_text_provider_chain()
         last_error = None
 
@@ -114,7 +119,7 @@ class AIProviderRouter(AIProviderPort):
             for attempt in range(2):
                 start_time = time.time()
                 try:
-                    result = await provider.generate_text(prompt, system_prompt)
+                    result = await provider.generate_text(prompt, system_prompt, history)
                     latency_ms = int((time.time() - start_time) * 1000)
                     logger.info(
                         f"AI generation succeeded via provider={provider_name} latency={latency_ms}ms"
@@ -135,14 +140,19 @@ class AIProviderRouter(AIProviderPort):
         logger.error(f"All AI providers failed. Last error: {last_error}")
         return "현재 AI 상담 서비스 접속이 지연되고 있습니다. 잠시 후 다시 시도해 주시거나 고객센터로 문의 바랍니다."
 
-    async def stream_text(self, prompt: str, system_prompt: Optional[str] = None) -> AsyncIterator[str]:
+    async def stream_text(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        history: Optional[List] = None,
+    ) -> AsyncIterator[str]:
         chain = self.get_text_provider_chain()
         for provider_name in chain:
             if not self.is_provider_available(provider_name):
                 continue
             provider = self.providers[provider_name]
             try:
-                async for token in provider.stream_text(prompt, system_prompt):
+                async for token in provider.stream_text(prompt, system_prompt, history):
                     yield token
                 return
             except Exception as exc:
