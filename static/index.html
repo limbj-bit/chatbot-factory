@@ -530,42 +530,73 @@
       <input type="hidden" id="widgetPos" value="bottom_right" />
       <input type="hidden" id="widgetBottomPx" value="24" />
       <input type="hidden" id="widgetSidePx" value="24" />
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#FFFFFF;border:1.5px solid var(--stone-border);border-radius:14px;padding:14px 16px;margin-bottom:18px;">
-        <span style="font-size:13px;font-weight:800;color:var(--obsidian);margin-right:4px;">↔️ 기본 방향:</span>
-        <button type="button" id="posBtnRight" class="pos-btn active" onclick="setWidgetSide('bottom_right')">↘️ 오른쪽 하단 (기본)</button>
-        <button type="button" id="posBtnLeft" class="pos-btn" onclick="setWidgetSide('bottom_left')">↙️ 왼쪽 하단</button>
-        <span style="color:#CBD5E1;margin:0 4px;">|</span>
-        <span style="font-size:13px;font-weight:800;color:var(--obsidian);margin-right:4px;">🕹️ 미세 위치 이동 (TOP 버튼 겹침 방지):</span>
-        <button type="button" class="pos-btn" onclick="nudgeWidget(0, 30)">⬆️ 위로 올리기</button>
-        <button type="button" class="pos-btn" onclick="nudgeWidget(0, -30)">⬇️ 아래로 내리기</button>
-        <button type="button" class="pos-btn" onclick="nudgeWidget(20, 0)">⬅️ 안쪽으로</button>
-        <button type="button" class="pos-btn" onclick="nudgeWidget(-20, 0)">➡️ 바깥쪽으로</button>
-        <button type="button" class="pos-btn" onclick="resetWidgetPos()" style="color:#64748B;">🔄 기본 위치 초기화</button>
-        <span id="posStatusText" style="font-size:12px;font-weight:700;color:#B45309;margin-left:auto;">현재: 오른쪽 하단 (아래 여백 24px · 옆 여백 24px)</span>
+      <div style="background:#FFFFFF;border:1.5px solid var(--stone-border);border-radius:14px;padding:14px 16px;margin-bottom:18px;">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <span style="font-size:13px;font-weight:800;color:var(--obsidian);margin-right:4px;">↔️ 기본 방향:</span>
+          <button type="button" id="posBtnRight" class="pos-btn active" onclick="setWidgetSide('bottom_right')">↘️ 오른쪽 하단 (기본)</button>
+          <button type="button" id="posBtnLeft" class="pos-btn" onclick="setWidgetSide('bottom_left')">↙️ 왼쪽 하단</button>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed #E8CA8C;">
+          <span style="font-size:13px;font-weight:800;color:var(--obsidian);margin-right:4px;">🕹️ 미세 위치 이동 (TOP 버튼 겹침 방지):</span>
+          <button type="button" class="pos-btn" onclick="nudgeWidget(0, 30)">⬆️ 위로 올리기</button>
+          <button type="button" class="pos-btn" onclick="nudgeWidget(0, -30)">⬇️ 아래로 내리기</button>
+          <button type="button" class="pos-btn" onclick="nudgeWidget(20, 0)">⬅️ 안쪽으로</button>
+          <button type="button" class="pos-btn" onclick="nudgeWidget(-20, 0)">➡️ 바깥쪽으로</button>
+          <button type="button" class="pos-btn" onclick="resetWidgetPos()" style="color:#64748B;">🔄 기본 위치 초기화</button>
+          <span id="posStatusText" style="font-size:12px;font-weight:700;color:#B45309;margin-left:auto;">현재: 오른쪽 하단 (아래 여백 24px · 옆 여백 24px)</span>
+        </div>
       </div>
 
-      <!-- 5단계 (선택 옵션): 실시간 주문·배송·A/S 자동 연동 (숨기지 않고 바로 보이게 배치!) -->
+      <!-- 4.5단계 (선택 옵션): 사진 판독 정밀도 & 반품 결정 고급 설정 (접혀 있음) -->
+      <details style="background:#FFFFFF;border:1.5px dashed var(--gold-accent);border-radius:14px;padding:0;margin-bottom:18px;">
+        <summary style="cursor:pointer;font-size:13px;font-weight:800;color:var(--obsidian);padding:14px 18px;list-style:none;outline:none;">
+          🎯 [선택] 사진 판독 정밀도 & 반품 자동 결정 고급 설정 <span style="font-weight:500;font-size:12px;color:var(--text-muted);">(기본값으로도 정상 작동 — 펼쳐서 직접 조절)</span>
+        </summary>
+        <div style="padding:0 18px 16px;">
+          <div style="font-size:12.5px;color:#92400E;font-weight:700;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px 12px;margin-bottom:12px;">
+            💡 AI가 사진을 얼마나 확신할 때 자동으로 환불을 결정할지의 <b>기준 문턱</b>입니다. 문턱보다 낮은 확신도는 항상 사장님 검토로 넘어갑니다.
+          </div>
+          <div class="form-grid" style="margin-bottom:0;">
+            <div class="field-card">
+              <div class="field-title"><span>사진 판독 정밀도 (자동 승인 문턱)</span><span class="field-tag opt">기본: 70%</span></div>
+              <div class="field-desc">낮을수록 자동 처리가 늘고, 높을수록 사장님 검토가 늘어납니다. <b id="visionConfVal" style="color:#B45309;">현재: 70%</b></div>
+              <input type="range" id="visionConfidence" min="50" max="95" step="5" value="70" oninput="document.getElementById('visionConfVal').innerText='현재: '+this.value+'%'" style="width:100%;" />
+            </div>
+            <div class="field-card">
+              <div class="field-title"><span>반품 접수 가능 기간 (배송 완료 후)</span><span class="field-tag opt">기본: 업종별</span></div>
+              <div class="field-desc">경과 후에는 자동으로 사장님 검토로 이관됩니다. (1~30일)</div>
+              <input type="number" id="claimMaxDays" min="1" max="30" placeholder="비워두면 업종 기본값 사용" />
+            </div>
+            <div class="field-card">
+              <div class="field-title"><span>전액 환불 자동 승인 기준 (파손 비율)</span><span class="field-tag opt">기본: 30%</span></div>
+              <div class="field-desc">AI 판독 파손 비율이 이 이상이면 전액 환불을 자동 승인합니다. (상품가 기준 %)</div>
+              <input type="number" id="fullRefundRatio" min="1" max="100" placeholder="예: 30" />
+            </div>
+            <div class="field-card">
+              <div class="field-title"><span>부분 환불 비율 (경미 손상)</span><span class="field-tag opt">기본: 10%</span></div>
+              <div class="field-desc">전액 기준 미만이면 이 비율만큼 부분 환불됩니다. (상품가 기준 %)</div>
+              <input type="number" id="partialRefundRatio" min="0" max="100" placeholder="예: 10" />
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- 5단계 (선택 옵션): 실시간 주문·배송·A/S 자동 연동 (접혀 있음 — 필요할 때 펼치기) -->
       <div class="section-label">🔌 5단계 [선택 옵션]: 실시간 주문조회 · 배송추적 · 자동 A/S 연동 (쿠팡 / 스마트스토어 / 카페24 / 아임웹 API)</div>
-      <div style="background:#FFFDF9;border:1.5px solid #F2DFB6;border-radius:16px;padding:18px 20px;margin-bottom:18px;">
+      <details style="background:#FFFDF9;border:1.5px solid #F2DFB6;border-radius:16px;padding:0;margin-bottom:18px;">
+        <summary style="cursor:pointer;font-size:13.5px;font-weight:800;color:#92400E;padding:15px 20px;list-style:none;outline:none;">
+          ⚙️ 쇼핑몰 실시간 연동 설정 펼치기 (선택 사항 — 안 하셔도 AI 상담·상품 추천·사진 판독은 100% 작동)
+        </summary>
+      <div style="padding:0 20px 18px;">
         <div style="font-size:13px;color:#92400E;font-weight:700;margin-bottom:12px;">
           💡 <b>안내:</b> 아래 API 키를 입력하지 않아도 <b>기본 AI 상담 · 맞춤 상품 추천 · 파손/불량 사진 판독은 100% 작동</b>합니다! 쇼핑몰의 <b>실시간 주문조회·배송추적·자동 반품/A/S 접수</b>까지 연동하고 싶을 때만 아래에서 플랫폼을 선택해 입력해 주세요.
         </div>
 
         <div style="background:#FFFFFF;border:1px solid #E8CA8C;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
           <div style="font-size:13px;font-weight:800;color:#1E293B;margin-bottom:6px;">
-            📌 STEP A. 먼저 아래 [우리 챗봇 서버 영구 고정 IP]와 [연동 콜백 URL]을 복사해서 쇼핑몰 관리자 센터에 등록해 주세요!
+            📌 STEP A. 아래 [연동 콜백 URL]을 복사해서 쇼핑몰 관리자 센터(카페24 Redirect URI 등)에 등록해 주세요!
           </div>
           <div class="form-grid" style="margin-bottom:0;">
-            <div class="field-card" style="background:#FAF9F6;">
-              <div class="field-title"><span>🌐 우리 챗봇 서버 영구 고정 IP (쿠팡 Wing 허용 IP 등록용)</span><span class="field-tag">영구고정 · 복사용</span></div>
-              <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
-                <input type="text" id="serverOutboundIp" readonly value="74.220.49.0/24, 74.220.57.0/24" style="background:#FFFFFF;font-family:monospace;" />
-                <button type="button" class="btn" style="padding:9px 14px;font-size:12px;white-space:nowrap;" onclick="copyTextValue('serverOutboundIp', this)">📋 IP 복사</button>
-              </div>
-              <div style="font-size:11.5px;color:#B45309;font-weight:700;margin-top:4px;">
-                ⏱️ <b>[쿠팡 Wing 필수 안내]</b> 쿠팡은 IP 최초 등록 후 실제 쿠팡 시스템 반영까지 <b>약 30분</b>이 소요됩니다. (1회 등록 후에는 서버 업그레이드 시에도 바뀌지 않으며, 챗봇 디자인·사진 판독은 대기 없이 즉시 작동합니다!)
-              </div>
-            </div>
             <div class="field-card" style="background:#FAF9F6;">
               <div class="field-title"><span>🔗 우리 챗봇 연동 URL (Redirect URI / Webhook URL)</span><span class="field-tag">복사용</span></div>
               <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
@@ -609,7 +640,22 @@
             </div>
           </div>
         </div>
+
+        <!-- 쿠팡 전용 마지막 단계: 서버 고정 IP 등록 (쿠팡을 선택했을 때만 표시) -->
+        <div id="coupangIpStep" style="display:none;background:#FFFFFF;border:1.5px solid #F59E0B;border-radius:12px;padding:14px 16px;margin-top:14px;">
+          <div style="font-size:13px;font-weight:800;color:#92400E;margin-bottom:6px;">
+            🌐 STEP C (마지막 · 쿠팡 전용). 아래 [우리 챗봇 서버 영구 고정 IP]를 <b>쿠팡 판매자센터 ➔ 판매자정보 ➔ 추가정보(Open API)</b>에 등록해 주세요!
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="serverOutboundIp" readonly value="74.220.49.0/24, 74.220.57.0/24" style="background:#FFFFFF;font-family:monospace;" />
+            <button type="button" class="btn" style="padding:9px 14px;font-size:12px;white-space:nowrap;" onclick="copyTextValue('serverOutboundIp', this)">📋 IP 복사</button>
+          </div>
+          <div style="font-size:11.5px;color:#B45309;font-weight:700;margin-top:6px;">
+            ⏱️ <b>[쿠팡 Wing 필수 안내]</b> 쿠팡은 IP 최초 등록 후 실제 쿠팡 시스템 반영까지 <b>약 30분</b>이 소요됩니다. (1회 등록 후에는 서버 업그레이드 시에도 바뀌지 않으며, 챗봇 디자인·사진 판독은 대기 없이 즉시 작동합니다!)
+          </div>
+        </div>
       </div>
+      </details>
 
       <!-- 6단계: 즉시 행동 버튼 (코드 발급 & 내 사진 업로드) -->
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:18px;padding:16px;background:#FFFFFF;border:1.5px solid var(--gold-border);border-radius:14px;">
@@ -1036,9 +1082,13 @@
       const lSec = document.getElementById("labelSecretKey");
       const dSec = document.getElementById("descSecretKey");
       const guide = document.getElementById("commPlatformGuide");
+      const coupangStep = document.getElementById("coupangIpStep");
+      // 쿠팡 전용 STEP C (서버 고정 IP)는 쿠팡을 선택했을 때만 표시
+      coupangStep.style.display = (pf === "coupang_wing") ? "block" : "none";
 
       if (pf === "coupang_wing") {
-        guide.innerHTML = "<b>[쿠팡 Wing]</b> 판매자센터 ➔ 판매자정보 ➔ 추가정보(Open API)에서 위 <b>[우리 서버 공인 IP]</b>를 먼저 등록한 뒤 아래 3가지를 복사해 넣으세요.";
+        guide.innerHTML = "<b>[쿠팡 Wing]</b> 3종 키를 입력한 뒤, 맨 아래 <b>[STEP C]</b>의 우리 서버 고정 IP를 쿠팡 판매자센터에 먼저 등록해 주세요.";
+        coupangStep.style.display = "block";
         lUid.innerText = "② 쿠팡 업체코드 (Vendor ID)";
         dUid.innerText = "쿠팡 Wing 상단에 표시되는 A로 시작하는 업체코드 (예: A00123456)";
         lKey.innerText = "③ 쿠팡 Access Key (액세스 키)";
@@ -1105,11 +1155,26 @@
           side_px: widgetSidePx
         }
       };
+
+      // [선택] 사진 판독 정밀도 & 반품 자동 결정 (고급 설정 — 입력한 것만 전송)
+      const claim_policy = {};
+      const vConf = parseInt(document.getElementById("visionConfidence").value || "70", 10);
+      if (vConf !== 70) claim_policy.min_vision_confidence = vConf / 100.0;
+      const cMaxDays = parseInt(document.getElementById("claimMaxDays").value || "", 10);
+      if (cMaxDays >= 1) claim_policy.max_claim_days = cMaxDays;
+      const fRatio = parseInt(document.getElementById("fullRefundRatio").value || "", 10);
+      if (fRatio >= 1) claim_policy.full_refund_damage_ratio = fRatio;
+      const pRatio = parseInt(document.getElementById("partialRefundRatio").value || "", 10);
+      if (pRatio >= 0 && document.getElementById("partialRefundRatio").value !== "") claim_policy.partial_refund_damage_ratio = pRatio;
+      if (Object.keys(claim_policy).length > 0) {
+        policy_config.claim_policy = claim_policy;
+      }
       if (commPlatform && commPlatform !== "none") {
         policy_config.commerce_api = {
           platform: commPlatform,
           store_uid: apiStoreUid,
           client_key: apiClientKey,
+          client_secret: apiSecretKey,
           secret_masked: apiSecretKey ? ("****" + apiSecretKey.slice(-4)) : ""
         };
       }
@@ -1158,6 +1223,20 @@
         ? `<span style="background:#D1FAE5;color:#065F46;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:800;">⚡ 실시간 주문·배송·A/S API 연동 활성 (${createdStore.commerce_platform})</span>`
         : `<span style="background:#FEF3C7;color:#92400E;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:700;">💡 기본 AI 상담·상품추천·사진판독 모드</span>`;
 
+      // Cafe24: after keys are saved, the owner must click "허용" once (OAuth).
+      const isCafe24 = createdStore.commerce_platform === "cafe24";
+      const cafe24AuthorizeBtn = isCafe24
+        ? `<div style="margin-top:12px;padding:12px 14px;background:#FFF7ED;border:1.5px solid #FDBA74;border-radius:12px;">
+             <div style="font-size:12.5px;color:#9A3412;font-weight:700;margin-bottom:8px;">🛍️ 카페24 실시간 주문조회를 켜려면 1번만 '허용'을 눌러 주세요.</div>
+             <a href="/api/orders/oauth/cafe24/start?mall_id=${encodeURIComponent(createdStore.mall_id)}"
+                target="_blank"
+                style="display:inline-block;background:#EA580C;color:#FFFFFF;font-weight:800;font-size:13px;padding:9px 16px;border-radius:9px;text-decoration:none;">
+               🔗 카페24 권한 허용하기
+             </a>
+             <div style="font-size:11.5px;color:#7C2D12;margin-top:7px;">허용 전까지는 '연동 대기'로 표시되며, 기본 AI 상담·사진판독은 정상 작동합니다.</div>
+           </div>`
+        : "";
+
       const box = document.getElementById("issuedResultBox");
       box.style.display = "block";
       box.innerHTML = `
@@ -1172,6 +1251,7 @@
           <button class="btn" style="padding:10px 18px;font-size:13px;" onclick="copyIssuedSnippet(this)">📋 ① 자사몰/워드프레스 설치코드 복사</button>
         </div>
         <code class="snippet-block">${fullEmbedTag.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
+        ${cafe24AuthorizeBtn}
 
         <div style="margin-top:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:#FFFFFF;padding:14px 16px;border-radius:12px;border:1.5px solid #F2DFB6;">
           <img src="${qrImgUrl}" alt="QR" style="width:84px;height:84px;border-radius:10px;border:1px solid #EAE5DC;padding:4px;background:#fff;" />

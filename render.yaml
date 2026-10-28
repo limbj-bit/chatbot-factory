@@ -12,6 +12,8 @@ services:
         value: sqlite+aiosqlite:///./chatbot_factory.db
       - key: ADMIN_API_KEY
         generateValue: true
+      - key: ENCRYPTION_KEY
+        sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: NVIDIA_NIM_API_KEY

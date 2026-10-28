@@ -4,13 +4,27 @@ import uuid
 from typing import AsyncIterator, List, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.application.commerce_service import commerce_service
 from app.application.order_service import OrderService
 from app.application.store_service import store_service
+from app.domain.orders.models import Order, OrderStatus
 from app.domain.ports.ai_port import AIProviderPort
 from app.infrastructure.ai.router import AIProviderRouter
 from app.infrastructure.database.models import MessageModel, SessionModel
 from app.infrastructure.rag.engine import RAGEngine, RAGSearchResult, rag_engine
 from app.schemas.chat import ProductRecommendationCard
+
+# Real Cafe24 order no (e.g. 20261028-0000012) OR our test order id (ORD-...)
+_ORDER_ID_RE = re.compile(r"(\d{8}-\d{7}|ORD-[A-Za-z0-9-]+)")
+
+_STATUS_KOR = {
+    OrderStatus.PAID: "결제 완료",
+    OrderStatus.PREPARING: "상품 준비 중",
+    OrderStatus.SHIPPING: "배송 중",
+    OrderStatus.DELIVERED: "배송 완료",
+    OrderStatus.CANCELLED: "주문 취소",
+    OrderStatus.REFUNDED: "반품/환불",
+}
 
 
 RECOMMENDATION_KEYWORDS = [
@@ -89,6 +103,61 @@ class ChatService:
                 )
         return cards
 
+    async def _lookup_order_reply(
+        self,
+        session_db: AsyncSession,
+        mall_id: str,
+        rate_key: str,
+        message_text: str,
+    ) -> str:
+        """Resolve an order/shipping inquiry to a customer-facing reply.
+
+        - Real Cafe24 order no (YYYYMMDD-0000000): live lookup via the mall's own
+          token (auto-refresh). Only connected malls can see real data.
+        - Test order id (ORD-...): served only when the mall has NO live connection
+          (i.e. showroom preview). Connected malls never receive mock orders.
+        - PII (name/address/phone) is never included.
+        """
+        m = _ORDER_ID_RE.search(message_text)
+        if not m:
+            return "주문 및 배송 조회를 원하시면 주문번호(예: 20261028-0000012 또는 ORD-NORMAL)를 함께 입력해 주세요."
+
+        order_no = m.group(1)
+        is_real_format = bool(re.fullmatch(r"\d{8}-\d{7}", order_no))
+
+        # Per-conversation rate limit (brute-force protection)
+        if not commerce_service._rate_allow(rate_key):
+            return "조회 요청이 너무 잦습니다. 잠시 후(1분 뒤) 다시 시도해 주세요."
+
+        conn = await commerce_service.get_connection(session_db, mall_id)
+        has_live_conn = conn is not None and conn.status in ("connected", "refresh_expired")
+
+        if is_real_format:
+            order, err = await commerce_service.lookup_order(session_db, mall_id, order_no)
+            if order:
+                return self._format_order_reply(order)
+            return err or "주문 조회가 일시 점검 중입니다. 잠시 후 다시 시도해 주세요."
+
+        # Test order id (ORD-...): block for any mall with a live connection
+        if has_live_conn:
+            return "주문번호를 다시 확인해 주세요."
+
+        order = await self.order_service.get_order_details(order_no)
+        if order:
+            return self._format_order_reply(order)
+        return "주문번호를 다시 확인해 주세요."
+
+    @staticmethod
+    def _format_order_reply(order: Order) -> str:
+        status_kor = _STATUS_KOR.get(order.status, "배송 진행 중")
+        product = order.items[0].product_name if order.items else "상품"
+        lines = [f"📦 주문 {order.order_id} · [{status_kor}] · 상품: {product}"]
+        if order.carrier_name or order.shipping_code:
+            carrier = order.carrier_name or "택배사"
+            tracking = order.shipping_code or "-"
+            lines.append(f"🚚 {carrier} {tracking}")
+        return "\n".join(lines)
+
     async def handle_message(
         self,
         session_db: AsyncSession,
@@ -127,19 +196,11 @@ class ChatService:
         if faq_answer:
             intent = "faq_deterministic"
             response_text = faq_answer
-        elif "주문" in message_text or "배송" in message_text or "ORD-" in message_text:
+        elif "주문" in message_text or "배송" in message_text or _ORDER_ID_RE.search(message_text):
             intent = "shipping_inquiry"
-            order_match = re.search(r"ORD-[A-Za-z0-9-]+", message_text)
-            if order_match:
-                order_id = order_match.group(0)
-                order = await self.order_service.get_order_details(order_id)
-                if order:
-                    status_kor = "배송 완료" if order.is_delivered() else "배송 진행 중"
-                    response_text = f"주문번호 [{order.order_id}]는 현재 [{status_kor}] 상태입니다. 상품: {order.items[0].product_name}"
-                else:
-                    response_text = f"주문번호 [{order_id}]를 조회할 수 없습니다. 번호를 다시 확인해 주세요."
-            else:
-                response_text = "주문 및 배송 조회를 원하시면 'ORD-'로 시작하는 주문번호를 함께 입력해 주세요."
+            response_text = await self._lookup_order_reply(
+                session_db, mall_id, chat_session.id, message_text
+            )
         else:
             # 3. Check store daily AI quota before invoking RAG/LLM
             allowed, used, limit = await store_service.check_and_consume_daily_quota(
@@ -245,19 +306,11 @@ class ChatService:
             await session_db.commit()
             return
 
-        # Check Order / Shipping inquiry (ORD-...)
-        if "주문" in message_text or "배송" in message_text or "ORD-" in message_text:
-            order_match = re.search(r"ORD-[A-Za-z0-9-]+", message_text)
-            if order_match:
-                order_id = order_match.group(0)
-                order = await self.order_service.get_order_details(order_id)
-                if order:
-                    status_kor = "배송 완료" if order.is_delivered() else "배송 진행 중"
-                    order_reply = f"📦 주문번호 **[{order.order_id}]**는 현재 **[{status_kor}]** 상태입니다.\n• 주문 상품: {order.items[0].product_name}\n• 상품 상태 사진 판독이 필요하시면 아래 **[📷 사진 업로드]** 버튼을 눌러 사진을 올려주세요!"
-                else:
-                    order_reply = f"주문번호 [{order_id}]를 조회할 수 없습니다. 번호를 다시 확인해 주세요."
-            else:
-                order_reply = "주문 및 배송 조회를 원하시면 'ORD-'로 시작하는 주문번호(예: ORD-NORMAL)를 함께 입력해 주세요."
+        # Check Order / Shipping inquiry (real Cafe24 order no or ORD-... test id)
+        if "주문" in message_text or "배송" in message_text or _ORDER_ID_RE.search(message_text):
+            order_reply = await self._lookup_order_reply(
+                session_db, mall_id, chat_session.id, message_text
+            )
             yield order_reply
             assistant_msg = MessageModel(
                 id=str(uuid.uuid4()),

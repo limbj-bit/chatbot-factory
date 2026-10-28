@@ -17,4 +17,6 @@ class OrderResponse(BaseModel):
     total_amount: int
     channel: str
     delivered_at: Optional[str]
+    carrier_name: Optional[str] = None
+    shipping_code: Optional[str] = None
     items: List[OrderItemSchema]

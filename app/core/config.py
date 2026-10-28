@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     ADMIN_API_KEY: str = "admin-dev-secret-key-change-in-prod"
     UPLOAD_DIR: str = "./uploads"
 
+    # Commerce OAuth secret/token encryption key (Render 환경변수 ENCRYPTION_KEY).
+    # 32-byte url-safe base64 값. 없으면 카페24 연동(저장/사용) 자체를 차단합니다.
+    ENCRYPTION_KEY: Optional[str] = None
+
     # Static Outbound IPs for Coupang Wing / Cafe24 / SmartStore IP Whitelist
     # Render dashboard > Connect > Outbound (shared by Render services in the same region)
     STATIC_OUTBOUND_IPS: str = "74.220.49.0/24, 74.220.57.0/24"

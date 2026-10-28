@@ -2,6 +2,7 @@ import json
 from typing import Dict, List
 from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.application.commerce_service import commerce_service
 from app.application.store_service import INDUSTRY_DEFAULTS, store_service
 from app.infrastructure.database.session import get_db
 
@@ -324,6 +325,13 @@ async def get_dynamic_widget_script(
     }
     commerce_badge = commerce_badge_map.get(commerce_platform, "📦 스토어 API 실시간 연동" if commerce_platform != "none" else "")
 
+    # Cafe24: only show "실시간 연동" when the owner actually finished OAuth.
+    # Keys saved but not yet authorized -> "연동 대기" badge.
+    if commerce_platform == "cafe24" and store and not preview_commerce:
+        conn = await commerce_service.get_connection(session, store.mall_id)
+        if conn is None or conn.status != "connected":
+            commerce_badge = "⏳ 카페24 연동 대기"
+
     widget_pos = preview_pos or saved_layout.get("pos", "bottom_right")
     bottom_px = preview_bottom if preview_bottom > 0 else int(saved_layout.get("bottom_px", 24))
     side_px = preview_side if preview_side > 0 else int(saved_layout.get("side_px", 24))
@@ -453,7 +461,7 @@ async def get_dynamic_widget_script(
 
     /* Base Chat Window */
     .fresh-widget-window {{
-      position: fixed; bottom: {win_bottom_px}px; {horiz_css} width: 400px; height: 660px;
+      position: fixed; bottom: {win_bottom_px}px; {horiz_css} width: 460px; height: 660px;
       max-width: calc(100vw - 32px); max-height: calc(100vh - {win_bottom_px + 20}px);
       background: #ffffff; border-radius: 22px;
       border: 1px solid rgba(197, 160, 89, 0.28);
@@ -572,7 +580,8 @@ async def get_dynamic_widget_script(
     .fresh-bot-meta-name {{ font-size: 12.5px; font-weight: 700; color: #1E293B; }}
     .fresh-bot-meta-time {{ font-size: 11.5px; color: #94A3B8; }}
     .fresh-msg {{
-      max-width: 88%; padding: 13px 16px; border-radius: 14px; font-size: 14px; line-height: 1.55; word-break: break-word;
+      max-width: 88%; padding: 13px 16px; border-radius: 14px; font-size: 14px; line-height: 1.55;
+      word-break: keep-all; overflow-wrap: break-word; white-space: pre-wrap;
     }}
     .fresh-msg.bot {{
       background: #FFFFFF; color: #1E293B; border: 1px solid #E2E8F0;
@@ -591,6 +600,7 @@ async def get_dynamic_widget_script(
     .fresh-chip {{
       background: #EFF6FF; border: 1px solid #BFDBFE; color: #1D4ED8;
       border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+      word-break: keep-all; overflow-wrap: break-word; text-align: left;
     }}
     .fresh-showcase-banner {{
       background: linear-gradient(90deg, #FDF2F8 0%, #FCE7F3 100%);

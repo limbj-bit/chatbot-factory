@@ -295,3 +295,40 @@ class ProviderEventModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+
+
+class CommerceConnectionModel(Base):
+    """Per-mall live commerce (e.g. Cafe24) OAuth connection & token storage.
+
+    Secrets and tokens are stored Fernet-encrypted. status:
+      - pending:       keys saved but owner has not clicked "허용" (OAuth not completed)
+      - connected:     OAuth completed, access+refresh tokens stored
+      - refresh_expired: refresh token expired, owner must re-authorize
+    """
+
+    __tablename__ = "commerce_connections"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    mall_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    platform: Mapped[str] = mapped_column(String(32), default="cafe24")
+    cafe24_mall_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    client_id: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    client_secret_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    client_secret_masked: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    access_token_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    refresh_token_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    access_token_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    refresh_token_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(32), default="pending")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )

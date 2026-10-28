@@ -1,7 +1,14 @@
+import base64
 import hashlib
 from typing import Optional, Tuple
 from fastapi import Header, HTTPException, status
 from app.core.config import settings
+
+try:
+    from cryptography.fernet import Fernet, InvalidToken
+except ImportError:  # pragma: no cover - runtime guard
+    Fernet = None  # type: ignore
+    InvalidToken = Exception  # type: ignore
 
 
 # Magic numbers for image file validation
@@ -55,3 +62,42 @@ async def verify_admin_key(x_admin_key: Optional[str] = Header(None, alias="X-Ad
             detail="Invalid or missing X-Admin-Key",
         )
     return x_admin_key
+
+
+def encryption_available() -> bool:
+    """True if ENCRYPTION_KEY is configured and cryptography is importable."""
+    return bool(settings.ENCRYPTION_KEY) and Fernet is not None
+
+
+def _get_fernet() -> "Fernet":
+    if Fernet is None:
+        raise RuntimeError("cryptography is not installed. Install 'cryptography' to enable commerce encryption.")
+    if not settings.ENCRYPTION_KEY:
+        raise RuntimeError("ENCRYPTION_KEY is not configured. Commerce secret/token storage is blocked.")
+    return Fernet(settings.ENCRYPTION_KEY.encode("utf-8"))
+
+
+def encrypt_secret(plain: str) -> str:
+    """Encrypt a secret (Client Secret / access & refresh token) with Fernet."""
+    if not plain:
+        return ""
+    return _get_fernet().encrypt(plain.encode("utf-8")).decode("utf-8")
+
+
+def decrypt_secret(cipher: Optional[str]) -> Optional[str]:
+    """Decrypt a Fernet ciphertext back to plaintext. Returns None on failure."""
+    if not cipher:
+        return None
+    if not encryption_available():
+        return None
+    try:
+        return _get_fernet().decrypt(cipher.encode("utf-8")).decode("utf-8")
+    except (InvalidToken, ValueError):
+        return None
+
+
+def mask_secret(plain: Optional[str]) -> str:
+    """Return a display-safe masked form (****last4). Never expose the full secret."""
+    if not plain:
+        return ""
+    return "****" + plain[-4:] if len(plain) >= 4 else "****"

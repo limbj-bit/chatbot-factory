@@ -16,6 +16,7 @@ from app.infrastructure.database.models import (
     ClaimEventModel,
     ClaimImageModel,
     ClaimModel,
+    StoreModel,
 )
 from app.application.notification_service import notification_service
 from app.application.order_service import OrderService
@@ -81,6 +82,48 @@ class ClaimService:
         await session.commit()
         await session.refresh(claim)
         return claim
+
+    async def _policy_engine_for_mall(
+        self, session: AsyncSession, mall_id: Optional[str]
+    ) -> RefundPolicyEngine:
+        """Build a RefundPolicyEngine using the store's own claim policy settings.
+
+        Reads policy_config_json.claim_policy written by the showroom "고급 설정"
+        (min_vision_confidence / max_claim_days / full_refund_damage_ratio /
+        partial_refund_damage_ratio). Falls back to global settings when the
+        store has no override. Values are clamped to sane ranges.
+        """
+        cfg = PolicyConfig(
+            full_refund_damage_ratio=settings.POLICY_FULL_REFUND_DAMAGE_RATIO,
+            partial_refund_damage_ratio=settings.POLICY_PARTIAL_REFUND_DAMAGE_RATIO,
+            max_claim_days=settings.POLICY_MAX_CLAIM_DAYS,
+            min_vision_confidence=settings.POLICY_MIN_VISION_CONFIDENCE,
+        )
+        if mall_id:
+            try:
+                q = await session.execute(select(StoreModel).where(StoreModel.mall_id == mall_id))
+                store = q.scalar_one_or_none()
+                if store and store.policy_config_json:
+                    policy = json.loads(store.policy_config_json)
+                    claim_policy = policy.get("claim_policy") if isinstance(policy, dict) else None
+                    if isinstance(claim_policy, dict):
+                        cfg = PolicyConfig(
+                            min_vision_confidence=min(
+                                0.95, max(0.50, float(claim_policy.get("min_vision_confidence", cfg.min_vision_confidence)))
+                            ),
+                            max_claim_days=min(
+                                30, max(1, int(claim_policy.get("max_claim_days", cfg.max_claim_days)))
+                            ),
+                            full_refund_damage_ratio=min(
+                                100, max(1, int(claim_policy.get("full_refund_damage_ratio", cfg.full_refund_damage_ratio)))
+                            ),
+                            partial_refund_damage_ratio=min(
+                                100, max(0, int(claim_policy.get("partial_refund_damage_ratio", cfg.partial_refund_damage_ratio)))
+                            ),
+                        )
+            except Exception as e:
+                logger.warning(f"[Claim] Failed to load per-mall claim policy for {mall_id}: {e}")
+        return RefundPolicyEngine(cfg)
 
     async def process_image_and_evaluate(
         self,
@@ -159,9 +202,10 @@ class ClaimService:
         )
         customer_claim_count = prior_claims_q.scalar_one() or 0
 
-        # 6. Deterministic Policy Evaluation (Rule Engine)
+        # 6. Deterministic Policy Evaluation (Rule Engine — per-mall policy)
         claim.status = ClaimStatus.POLICY_EVALUATING.value
-        decision = self.policy_engine.evaluate(
+        policy_engine = await self._policy_engine_for_mall(session, claim.mall_id)
+        decision = policy_engine.evaluate(
             order=order,
             observation=observation,
             customer_claim_count_30d=customer_claim_count,

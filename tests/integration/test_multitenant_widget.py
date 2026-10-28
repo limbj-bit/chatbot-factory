@@ -90,15 +90,16 @@ async def test_intelligent_as_troubleshooting_faq():
         assert "리셋" in data["message"]
         assert "A/S 사진 접수" in data["message"]
 
-        # Beauty skin trouble guarantee FAQ
+        # Beauty skin trouble guidance FAQ (neutral, no guaranteed refund promise)
         beauty_resp = await client.post(
             "/api/chat",
             json={"message": "화장품 쓰고 피부트러블 났는데 환불 되나요?", "customer_id": "guest_beauty_user"},
         )
         assert beauty_resp.status_code == 200
         bdata = beauty_resp.json()
-        assert "피부과 진단서" in bdata["message"]
-        assert "전액 환불" in bdata["message"]
+        assert "사용을 중단" in bdata["message"]
+        assert "피부과 전문의" in bdata["message"]
+        assert "100% 전액 환불" not in bdata["message"]
 
 
 @pytest.mark.asyncio

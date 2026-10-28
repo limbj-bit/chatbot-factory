@@ -8,6 +8,9 @@ from urllib.parse import urlparse
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.application.commerce_service import commerce_service
+from app.core.logging import logger
+from app.core.security import encryption_available
 from app.infrastructure.database.models import StoreKnowledgeModel, StoreModel
 from app.schemas.store import (
     StoreCreateRequest,
@@ -43,19 +46,18 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "preset_beauty_model",
         "bot_label": "뷰티봇 상담",
         "bot_name": "루나봇",
-        "welcome_message": "안녕하세요! 뷰티&코스메틱 스킨케어 도우미입니다. 💄✨\n피부타입별 전성분 상담, 용기 누유/파손 사진 진단, 피부 트러블 안심 보장 접수를 도와드립니다.",
+        "welcome_message": "안녕하세요! 뷰티&코스메틱 스킨케어 도우미입니다. 💄✨\n피부타입별 전성분 상담, 용기 누유/파손 사진 진단, 사용 중 트러블 접수 안내를 도와드립니다.",
         "quick_buttons": [
             "💄 피부고민별 맞춤 제품 추천",
             "🧪 전성분 & 임산부 안전 확인",
             "📸 용기 누유/파손 사진 판독",
-            "🛡️ 14일 피부트러블 환불보장",
+            "🛡️ 트러블 접수 & 반품 문의",
             "💬 그 외 다른 질문하기",
         ],
         "contact_email": "beauty@cosmetic-mall.co.kr",
         "input_placeholder": "궁금한 성분명(예: 시카, 나이아신)이나 피부고민을 입력하세요...",
         "upload_guide": "💄 용기 누유/파손 및 트러블 사진 진단 접수",
         "default_policy": {
-            "skin_trouble_warranty_days": 14,
             "require_doctor_note_for_trouble": True,
             "unopened_seal_required_for_return": True,
             "leakage_auto_replacement": True,
@@ -577,7 +579,36 @@ class StoreService:
         await session.commit()
         await session.refresh(store)
 
+        # Persist Cafe24 API keys (encrypted) for live order lookup.
+        # Only stores the keys -> status stays "pending" until the owner clicks
+        # the Cafe24 "허용" button (OAuth). Blocked if ENCRYPTION_KEY is missing.
+        await self._persist_commerce_keys(session, mall_id, merged_policy)
+
         return self._to_response(store)
+
+    async def _persist_commerce_keys(
+        self, session: AsyncSession, mall_id: str, policy: Dict[str, Any]
+    ) -> None:
+        """Encrypt & store Cafe24 client credentials from the showroom 5-step form."""
+        comm = policy.get("commerce_api") if isinstance(policy, dict) else None
+        if not isinstance(comm, dict) or comm.get("platform") != "cafe24":
+            return
+        cafe24_mall_id = (comm.get("store_uid") or "").strip()
+        client_id = (comm.get("client_key") or "").strip()
+        client_secret = (comm.get("client_secret") or "").strip()
+        if not (cafe24_mall_id and client_id and client_secret):
+            return
+        if not encryption_available():
+            logger.warning(
+                f"[Commerce] ENCRYPTION_KEY missing; Cafe24 keys NOT saved for mall={mall_id}."
+            )
+            return
+        try:
+            await commerce_service.save_keys(
+                session, mall_id, cafe24_mall_id, client_id, client_secret
+            )
+        except Exception as e:
+            logger.error(f"[Commerce] Failed to save Cafe24 keys for mall={mall_id}: {e}")
 
     async def update_subscription(
         self,
