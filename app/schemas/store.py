@@ -3,11 +3,11 @@ from pydantic import BaseModel, Field
 
 
 class StoreCreateRequest(BaseModel):
-    store_name: str = Field(..., min_length=2, max_length=128, description="스토어 명칭 (예: 한빛디지털 AS센터)")
-    industry: str = Field("electronics", description="업종 템플릿 (electronics, fresh_food, fashion, beauty, general)")
+    store_name: str = Field(..., min_length=2, max_length=128, description="스토어 명칭 (예: 코스라프리, 루미에르 뷰티)")
+    industry: str = Field("electronics", description="업종 템플릿 (electronics, fresh_food, fashion, beauty, raw_materials, general)")
     mall_id: Optional[str] = Field(None, description="스토어 고유 ID (생략 시 자동 생성)")
     theme_color: Optional[str] = Field(None, description="위젯 테마 색상 HEX 코드 (생략 시 업종 기본 테마 적용)")
-    welcome_message: Optional[str] = Field(None, description="고객 첫 접속 웰컴 인사말")
+    welcome_message: Optional[str] = Field(None, description="고객 첫 접속 웰컴 인사말 (생략 시 스토어명+봇이름으로 자동 생성)")
     policy_config: Optional[Dict[str, Any]] = Field(None, description="스토어별 AS/환불 정책 임계값")
     trial_days: Optional[int] = Field(
         14,
@@ -15,8 +15,8 @@ class StoreCreateRequest(BaseModel):
         le=3650,
         description="무료 사용기한 일수 (예: 14일, 0이면 즉시 만료 테스트, None이면 무제한)",
     )
-    webhook_url: Optional[str] = Field(None, description="인간 상담원 이관/긴급 클레임 발생 시 알림을 받을 웹훅 URL (슬랙/텔레그램/디스코드 등)")
-    allowed_domains: Optional[str] = Field(None, description="위젯 설치 허용 도메인 목록 (콤마 구분, 예: lumiere.co.kr,localhost)")
+    webhook_url: Optional[str] = Field(None, description="인간 상담원 이관/긴급 클레임 발생 시 알림을 받을 웹훅 URL")
+    allowed_domains: Optional[str] = Field(None, description="위젯 설치 허용 도메인 목록 (콤마 구분)")
     daily_quota_limit: int = Field(300, ge=1, le=100000, description="스토어 일일 무료 AI 상담 호출 한도")
     bot_icon_style: Optional[str] = Field(
         None,
@@ -29,7 +29,32 @@ class StoreCreateRequest(BaseModel):
     bot_label: Optional[str] = Field(
         None,
         max_length=24,
-        description="버튼 하단 캡슐 배지 문구 (예: 코스봇 상담, 뷰티봇 상담, A/S봇 상담)",
+        description="버튼 하단 캡슐 배지 문구 (예: 코스봇 상담, 뷰티봇 상담)",
+    )
+    bot_name: Optional[str] = Field(
+        None,
+        max_length=32,
+        description="챗봇 캐릭터 고유 이름 (예: 코스봇, 루나봇, 한빛봇)",
+    )
+    brand_badge: Optional[str] = Field(
+        None,
+        max_length=24,
+        description="채팅창 상단 헤더 좌측 파란 배지 텍스트 (생략 시 스토어명 자동 적용, 예: 코스라프리)",
+    )
+    header_title: str = Field("고객상담센터", max_length=40, description="채팅창 헤더 메인 타이틀 (예: 고객상담센터)")
+    chat_template: str = Field(
+        "cosraw_grid",
+        description="채팅창 레이아웃 템플릿 (cosraw_grid: 코스라프리 2x2+1 버튼 그리드형, commerce_Red: 쇼핑 쇼케이스형, glass_dark: 다크 글래스형, minimal_clean: 심플 대화형)",
+    )
+    quick_buttons: Optional[List[str]] = Field(
+        None,
+        description="채팅창 첫 화면 2x2+1 빠른 질문 버튼 리스트 (생략 시 업종별 5개 버튼 자동 세팅)",
+    )
+    contact_email: Optional[str] = Field(None, description="하단 안내바 고객문의 이메일 (예: contact@cosrawfree.com)")
+    business_hours: Optional[str] = Field(None, description="하단 안내바 운영시간 (예: 평일 09:00~18:00)")
+    input_placeholder: Optional[str] = Field(
+        None,
+        description="하단 입력창 안내 문구 (예: 궁금한 성분명(예: 레티놀)이나 질문을 입력하세요...)",
     )
     bot_avatar_url: Optional[str] = Field(
         None,
@@ -47,6 +72,14 @@ class StoreSubscriptionUpdateRequest(BaseModel):
     bot_icon_style: Optional[str] = Field(None, description="봇 아이콘 프리셋 변경")
     launcher_shape: Optional[str] = Field(None, description="런처 버튼 모양 변경")
     bot_label: Optional[str] = Field(None, max_length=24, description="하단 캡슐 라벨 문구 변경")
+    bot_name: Optional[str] = Field(None, max_length=32, description="챗봇 이름 변경 (예: 코스봇)")
+    brand_badge: Optional[str] = Field(None, max_length=24, description="헤더 좌측 브랜드 배지 변경")
+    header_title: Optional[str] = Field(None, max_length=40, description="헤더 타이틀 변경")
+    chat_template: Optional[str] = Field(None, description="채팅창 레이아웃 템플릿 변경")
+    quick_buttons: Optional[List[str]] = Field(None, description="2x2+1 빠른 메뉴 버튼 목록 변경")
+    contact_email: Optional[str] = Field(None, description="하단 고객문의 이메일 변경")
+    business_hours: Optional[str] = Field(None, description="하단 운영시간 변경")
+    input_placeholder: Optional[str] = Field(None, description="하단 입력창 placeholder 변경")
     bot_avatar_url: Optional[str] = Field(None, description="커스텀 아바타 이미지 URL 또는 Data URI 변경")
 
 
@@ -104,6 +137,14 @@ class StoreResponse(BaseModel):
     daily_quota_used: int = 0
     bot_icon_style: str = "flaticon_cute_robot"
     launcher_shape: str = "cosbot_badge"
-    bot_label: str = "AI봇 상담"
+    bot_label: str = "코스봇 상담"
+    bot_name: str = "코스봇"
+    brand_badge: str = "스토어"
+    header_title: str = "고객상담센터"
+    chat_template: str = "cosraw_grid"
+    quick_buttons: List[str] = Field(default_factory=list)
+    contact_email: str = "help@store.co.kr"
+    business_hours: str = "평일 09:00~18:00"
+    input_placeholder: str = "궁금한 상품명이나 질문을 입력하세요..."
     bot_avatar_url: Optional[str] = None
     created_at: str

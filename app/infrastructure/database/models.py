@@ -54,7 +54,17 @@ class StoreModel(Base):
     quota_reset_date: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     bot_icon_style: Mapped[str] = mapped_column(String(64), default="flaticon_cute_robot")
     launcher_shape: Mapped[str] = mapped_column(String(32), default="cosbot_badge")
-    bot_label: Mapped[str] = mapped_column(String(32), default="AI봇 상담")
+    bot_label: Mapped[str] = mapped_column(String(32), default="코스봇 상담")
+    bot_name: Mapped[str] = mapped_column(String(64), default="코스봇")
+    brand_badge: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    header_title: Mapped[str] = mapped_column(String(64), default="고객상담센터")
+    chat_template: Mapped[str] = mapped_column(String(32), default="cosraw_grid")
+    quick_buttons_json: Mapped[str] = mapped_column(Text, default="[]")
+    contact_email: Mapped[str] = mapped_column(String(128), default="help@store.co.kr")
+    business_hours: Mapped[str] = mapped_column(String(64), default="평일 09:00~18:00")
+    input_placeholder: Mapped[str] = mapped_column(
+        String(128), default="궁금한 상품명이나 질문(또는 주문번호)을 입력하세요..."
+    )
     bot_avatar_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

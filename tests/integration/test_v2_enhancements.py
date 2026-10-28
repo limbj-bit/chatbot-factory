@@ -262,3 +262,46 @@ async def test_phase5_cosbot_badge_flaticon_presets_and_custom_avatar_upload():
         script_res2 = await client.get("/api/widget/script?mall_id=cosrawfree_mall")
         assert "fresh-bot-avatar-img" in script_res2.text
         assert "data:image/svg+xml;base64," in script_res2.text
+
+
+@pytest.mark.asyncio
+async def test_phase6_bot_name_and_5_chat_window_templates():
+    """
+    Verify custom bot_name, brand_badge, 2x2+1 quick buttons, contact bar, and 5 chat window templates.
+    """
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        templates = [
+            "cosraw_grid",
+            "channel_card",
+            "commerce_showcase",
+            "glass_dark",
+            "minimal_clean",
+        ]
+        for idx, tpl in enumerate(templates):
+            mall_id = f"tpl_mall_{idx}"
+            res = await client.post(
+                "/api/stores",
+                json={
+                    "store_name": "코스라프리",
+                    "industry": "raw_materials",
+                    "mall_id": mall_id,
+                    "bot_name": "코스봇",
+                    "brand_badge": "코스라프리",
+                    "header_title": "고객상담센터",
+                    "chat_template": tpl,
+                    "contact_email": "contact@cosrawfree.com",
+                    "business_hours": "평일 09:00~18:00",
+                },
+            )
+            assert res.status_code == 201
+            data = res.json()
+            assert data["bot_name"] == "코스봇"
+            assert data["chat_template"] == tpl
+            assert len(data["quick_buttons"]) == 5
+            assert "🧪 성분 규격 & 공급사" in data["quick_buttons"]
+
+            script_text = (await client.get(f"/api/widget/script?mall_id={mall_id}")).text
+            assert f'chatTemplate: "{tpl}"' in script_text
+            assert 'botName: "코스봇"' in script_text
+            assert "contact@cosrawfree.com" in script_text
+            assert "고객상담센터" in script_text

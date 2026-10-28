@@ -20,11 +20,38 @@ from app.schemas.store import (
 
 
 INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
+    "raw_materials": {
+        "theme_color": "#0284C7",
+        "bot_icon_style": "flaticon_cute_robot",
+        "bot_label": "코스봇 상담",
+        "bot_name": "코스봇",
+        "welcome_message": "안녕하세요. 코스라프리의 AI 상담사 '코스봇' 입니다. 🧪\n어떤 원료나 서비스가 궁금하신가요?",
+        "quick_buttons": [
+            "🧪 성분 규격 & 공급사",
+            "🥕 원료 장터 이용 문의",
+            "🏢 협회 COA/MSDS 조회",
+            "🏭 제조사 등록 / 입점",
+            "💬 그 외 다른 질문하기",
+        ],
+        "contact_email": "contact@cosrawfree.com",
+        "input_placeholder": "궁금한 성분명(예: 레티놀)이나 질문을 입력하세요...",
+        "default_policy": {"max_claim_days": 7},
+    },
     "fresh_food": {
         "theme_color": "#2E7D32",
         "bot_icon_style": "flaticon_bubble_bot",
         "bot_label": "신선봇 상담",
+        "bot_name": "신선봇",
         "welcome_message": "안녕하세요! 신선식품 AI 고객센터입니다. 🍎\n배송 조회, 보관법 및 과일 변질/파손 사진 접수를 도와드립니다.",
+        "quick_buttons": [
+            "🍎 과일 보관법 & 후숙 안내",
+            "📸 변질/파손 사진 환불 접수",
+            "📦 주문 / 실시간 배송 조회",
+            "🛡️ 48시간 100% 품질보상제",
+            "💬 그 외 다른 질문하기",
+        ],
+        "contact_email": "fresh@market.co.kr",
+        "input_placeholder": "궁금한 과일명(예: 설향 딸기)이나 주문번호를 입력하세요...",
         "default_policy": {
             "full_refund_damage_ratio": 30,
             "partial_refund_damage_ratio": 10,
@@ -35,7 +62,17 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "theme_color": "#1E40AF",
         "bot_icon_style": "flaticon_cute_robot",
         "bot_label": "코스봇 상담",
+        "bot_name": "코스봇",
         "welcome_message": "안녕하세요! 디지털/가전 지능형 A/S 고객센터입니다. ⚡\n기기 작동 불량 자가진단, 고장 부위 사진 판독, 무상 A/S 수리 및 교환 접수를 도와드립니다.",
+        "quick_buttons": [
+            "⚡ 전원/작동 불량 자가진단",
+            "🔧 고장/파손 사진 A/S 판독",
+            "📦 주문 / 배송 현황 조회",
+            "🛡️ 1년 무상 보증 규정 안내",
+            "💬 그 외 다른 질문하기",
+        ],
+        "contact_email": "as@digital-center.co.kr",
+        "input_placeholder": "증상(예: 전원불량)이나 모델명/주문번호를 입력하세요...",
         "default_policy": {
             "warranty_months": 12,
             "require_serial": True,
@@ -46,7 +83,17 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "theme_color": "#7C3AED",
         "bot_icon_style": "flaticon_cs_agent",
         "bot_label": "패션봇 상담",
+        "bot_name": "스타일봇",
         "welcome_message": "안녕하세요! 패션&의류 CS 고객센터입니다. 👗\n사이즈 추천, 맞교환 신청, 원단 오염/봉제 불량 사진 판독을 도와드립니다.",
+        "quick_buttons": [
+            "📐 체형별 사이즈 추천받기",
+            "🔄 무료 사이즈 맞교환 신청",
+            "📸 불량/오염 사진 판독 접수",
+            "📦 주문 / 배송 현황 조회",
+            "💬 그 외 다른 질문하기",
+        ],
+        "contact_email": "style@fashion-mall.co.kr",
+        "input_placeholder": "상품명이나 사이즈 문의(또는 주문번호)를 입력하세요...",
         "default_policy": {
             "max_exchange_days": 7,
             "free_exchange_for_defects": True,
@@ -56,7 +103,17 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "theme_color": "#EC4899",
         "bot_icon_style": "flaticon_beauty_fairy",
         "bot_label": "뷰티봇 상담",
+        "bot_name": "루나봇",
         "welcome_message": "안녕하세요! 뷰티&코스메틱 스킨케어 도우미입니다. 💄✨\n피부타입별 전성분 상담, 용기 누유/파손 사진 진단, 피부 트러블 안심 보장 접수를 도와드립니다.",
+        "quick_buttons": [
+            "💄 피부고민별 맞춤 제품 추천",
+            "🧪 전성분 & 임산부 안전 확인",
+            "📸 용기 누유/파손 사진 판독",
+            "🛡️ 14일 피부트러블 환불보장",
+            "💬 그 외 다른 질문하기",
+        ],
+        "contact_email": "beauty@cosmetic-mall.co.kr",
+        "input_placeholder": "궁금한 성분명(예: 시카, 나이아신)이나 피부고민을 입력하세요...",
         "default_policy": {
             "skin_trouble_warranty_days": 14,
             "require_doctor_note_for_trouble": True,
@@ -68,7 +125,17 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "theme_color": "#0D9488",
         "bot_icon_style": "flaticon_cute_robot",
         "bot_label": "코스봇 상담",
+        "bot_name": "코스봇",
         "welcome_message": "안녕하세요! 고객센터 AI 도우미입니다. 💬\n배송 조회, 상품 문의 및 불량 접수를 도와드립니다.",
+        "quick_buttons": [
+            "🧪 성분 규격 & 공급사",
+            "🥕 원료 장터 이용 문의",
+            "🏢 협회 COA/MSDS 조회",
+            "🏭 제조사 등록 / 입점",
+            "💬 그 외 다른 질문하기",
+        ],
+        "contact_email": "contact@cosrawfree.com",
+        "input_placeholder": "궁금한 성분명(예: 레티놀)이나 질문을 입력하세요...",
         "default_policy": {
             "max_claim_days": 7,
         },
@@ -173,6 +240,14 @@ class StoreService:
             self.evaluate_subscription_status(store)
         )
         embed_tag = f'<script src="/api/widget/script?mall_id={store.mall_id}" async></script>'
+        try:
+            q_buttons = json.loads(store.quick_buttons_json or "[]")
+        except Exception:
+            q_buttons = []
+        if not q_buttons:
+            ind_info = INDUSTRY_DEFAULTS.get(store.industry, INDUSTRY_DEFAULTS["general"])
+            q_buttons = ind_info.get("quick_buttons", [])
+
         return StoreResponse(
             store_id=store.id,
             mall_id=store.mall_id,
@@ -195,6 +270,14 @@ class StoreService:
             bot_icon_style=store.bot_icon_style or "flaticon_cute_robot",
             launcher_shape=store.launcher_shape or "cosbot_badge",
             bot_label=store.bot_label or "코스봇 상담",
+            bot_name=store.bot_name or "코스봇",
+            brand_badge=store.brand_badge or store.store_name[:8],
+            header_title=store.header_title or "고객상담센터",
+            chat_template=store.chat_template or "cosraw_grid",
+            quick_buttons=q_buttons,
+            contact_email=store.contact_email or "contact@cosrawfree.com",
+            business_hours=store.business_hours or "평일 09:00~18:00",
+            input_placeholder=store.input_placeholder or "궁금한 성분명이나 질문을 입력하세요...",
             bot_avatar_url=store.bot_avatar_url,
             created_at=store.created_at.isoformat(),
         )
@@ -209,9 +292,17 @@ class StoreService:
             request.industry, INDUSTRY_DEFAULTS["general"]
         )
         theme_color = request.theme_color or industry_info["theme_color"]
+        bot_name = request.bot_name or industry_info.get("bot_name", "코스봇")
         welcome_message = request.welcome_message or industry_info["welcome_message"]
         bot_icon_style = request.bot_icon_style or industry_info.get("bot_icon_style", "flaticon_cute_robot")
-        bot_label = request.bot_label or industry_info.get("bot_label", "코스봇 상담")
+        bot_label = request.bot_label or industry_info.get("bot_label", f"{bot_name} 상담")
+        brand_badge = request.brand_badge or request.store_name[:10]
+        quick_buttons = request.quick_buttons or industry_info.get("quick_buttons", [])
+        contact_email = request.contact_email or industry_info.get("contact_email", "contact@cosrawfree.com")
+        business_hours = request.business_hours or "평일 09:00~18:00"
+        input_placeholder = request.input_placeholder or industry_info.get(
+            "input_placeholder", "궁금한 성분명(예: 레티놀)이나 질문을 입력하세요..."
+        )
         if request.bot_avatar_url:
             bot_icon_style = "custom_upload"
 
@@ -250,6 +341,14 @@ class StoreService:
             bot_icon_style=bot_icon_style,
             launcher_shape=request.launcher_shape or "cosbot_badge",
             bot_label=bot_label,
+            bot_name=bot_name,
+            brand_badge=brand_badge,
+            header_title=request.header_title or "고객상담센터",
+            chat_template=request.chat_template or "cosraw_grid",
+            quick_buttons_json=json.dumps(quick_buttons, ensure_ascii=False),
+            contact_email=contact_email,
+            business_hours=business_hours,
+            input_placeholder=input_placeholder,
             bot_avatar_url=request.bot_avatar_url,
         )
         session.add(store)
@@ -295,6 +394,30 @@ class StoreService:
 
         if update_req.bot_label is not None:
             store.bot_label = update_req.bot_label
+
+        if update_req.bot_name is not None:
+            store.bot_name = update_req.bot_name
+
+        if update_req.brand_badge is not None:
+            store.brand_badge = update_req.brand_badge
+
+        if update_req.header_title is not None:
+            store.header_title = update_req.header_title
+
+        if update_req.chat_template is not None:
+            store.chat_template = update_req.chat_template
+
+        if update_req.quick_buttons is not None:
+            store.quick_buttons_json = json.dumps(update_req.quick_buttons, ensure_ascii=False)
+
+        if update_req.contact_email is not None:
+            store.contact_email = update_req.contact_email
+
+        if update_req.business_hours is not None:
+            store.business_hours = update_req.business_hours
+
+        if update_req.input_placeholder is not None:
+            store.input_placeholder = update_req.input_placeholder
 
         if update_req.bot_avatar_url is not None:
             store.bot_avatar_url = update_req.bot_avatar_url

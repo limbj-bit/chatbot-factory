@@ -13,7 +13,7 @@
       color: #1F2937;
     }
     .container {
-      max-width: 980px;
+      max-width: 1000px;
       margin: 0 auto;
       background: #FFFFFF;
       padding: 32px;
@@ -41,7 +41,7 @@
     .order-box h4, .factory-box h3 { margin-top: 0; margin-bottom: 12px; }
     .form-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
       gap: 10px;
       margin-bottom: 12px;
     }
@@ -139,15 +139,25 @@
     <p>우측 하단의 <strong>원형 위젯 버튼</strong>을 클릭하여 AI 상담 및 사진 클레임 접수를 테스트해 보세요.</p>
     
     <div class="factory-box">
-      <h3>🏭 1. 스토어별 챗봇 분양 + COSRAWFREE '코스봇' 배지 & Flaticon 아이콘 선택</h3>
+      <h3>🏭 1. 스토어별 챗봇 분양 (봇 이름 + 5대 채팅창 템플릿 + 코스봇 배지 + 무료 체험)</h3>
       <div class="form-grid">
-        <input type="text" id="storeName" placeholder="스토어명 (예: 루미에르 뷰티)" />
-        <input type="text" id="mallId" placeholder="몰 ID (예: lumiere_beauty)" />
+        <input type="text" id="storeName" placeholder="스토어명 (예: 코스라프리, 루미에르)" />
+        <input type="text" id="mallId" placeholder="몰 ID (예: cosrawfree)" />
         <select id="industry">
-          <option value="beauty">뷰티 & 코스메틱 (핑크)</option>
-          <option value="electronics">디지털 & 가전 (블루)</option>
-          <option value="fashion">패션 & 의류 (퍼플)</option>
-          <option value="fresh_food">신선식품 (그린)</option>
+          <option value="raw_materials">🧪 원료/B2B 플랫폼 (코스라프리 기본)</option>
+          <option value="beauty">💄 뷰티 & 코스메틱 (핑크)</option>
+          <option value="electronics">⚡ 디지털 & 가전 (블루)</option>
+          <option value="fashion">👗 패션 & 의류 (퍼플)</option>
+          <option value="fresh_food">🍎 신선식품 (그린)</option>
+        </select>
+        <input type="text" id="botName" value="코스봇" placeholder="봇 이름 (예: 코스봇, 루나봇)" />
+        <input type="text" id="brandBadge" placeholder="헤더 좌측 배지 (예: 코스라프리)" />
+        <select id="chatTemplate">
+          <option value="cosraw_grid">1. 코스라프리 시그니처 (2x2+1 버튼 그리드 ⭐️기본)</option>
+          <option value="channel_card">2. 채널톡 ALF 워크플로우 칩 스타일</option>
+          <option value="commerce_showcase">3. AI 뷰티/쇼핑 쇼케이스 배너형</option>
+          <option value="glass_dark">4. 2026 모던 다크 글래스모피즘</option>
+          <option value="minimal_clean">5. 애플/카카오 심플 미니멀형</option>
         </select>
         <select id="launcherShape">
           <option value="cosbot_badge">👑 코스봇 배지형 (원형+하단캡슐 ⭐️추천)</option>
@@ -155,11 +165,13 @@
           <option value="pill">💊 가로 캡슐 버튼형</option>
           <option value="circle">🔵 심플 원형</option>
         </select>
-        <input type="text" id="botLabel" value="코스봇 상담" placeholder="하단 배지 문구 (예: 코스봇 상담, 뷰티봇 상담)" />
+        <input type="text" id="botLabel" value="코스봇 상담" placeholder="하단 배지 문구 (예: 코스봇 상담)" />
+        <input type="text" id="contactEmail" value="contact@cosrawfree.com" placeholder="하단 문의 이메일" />
+        <input type="text" id="businessHours" value="평일 09:00~18:00" placeholder="운영시간 안내" />
         <input type="number" id="trialDays" value="14" min="0" placeholder="무료 체험 일수 (14)" />
-        <input type="text" id="webhookUrl" placeholder="사장님 슬랙/텔레그램 웹훅 URL" />
-        <input type="text" id="allowedDomains" placeholder="허용 도메인 (예: lumiere.co.kr)" />
+        <input type="text" id="allowedDomains" placeholder="허용 도메인 (예: cosrawfree.com)" />
       </div>
+      <input type="text" id="quickButtonsInput" style="width:100%;padding:8px;margin-bottom:8px;border:1px solid #D1D5DB;border-radius:6px;box-sizing:border-box;font-size:13px;" placeholder="커스텀 5개 빠른 메뉴 버튼 (콤마 구분, 비워두면 업종별 5개 버튼 자동 세팅)" />
 
       <div style="font-size:13px;font-weight:600;margin-top:6px;">🎨 Flaticon 스타일 봇 캐릭터 선택 (클릭):</div>
       <input type="hidden" id="botIconStyle" value="flaticon_cute_robot" />
@@ -246,12 +258,12 @@
         return `
           <div class="store-card">
             <div>
-              <strong>${s.store_name}</strong> (${s.mall_id} / ${s.industry})
+              <strong>[${s.brand_badge}] ${s.store_name}</strong> — 봇이름: <b>${s.bot_name}</b> (${s.mall_id})
               <span class="status-pill ${pillClass}">${s.status_message}</span>
               <div style="font-size:12px;color:#4B5563;margin-top:4px;">
-                🤖 모양: <b>${s.launcher_shape}</b> (${s.bot_icon_style} / 라벨: "${s.bot_label}") |
-                📊 쿼터: ${s.daily_quota_used}/${s.daily_quota_limit}건 |
-                🔒 도메인: ${s.allowed_domains || "전체(*)"}
+                🪟 채팅창 템플릿: <b>${s.chat_template}</b> |
+                🤖 버튼 모양: <b>${s.launcher_shape}</b> (${s.bot_icon_style} / "${s.bot_label}") |
+                📧 ${s.contact_email} (${s.business_hours})
               </div>
               <code>${s.embed_script_tag.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
             </div>
@@ -264,15 +276,21 @@
     }
 
     async function createStore() {
-      const store_name = document.getElementById("storeName").value.trim() || "루미에르 뷰티";
+      const store_name = document.getElementById("storeName").value.trim() || "코스라프리";
       const mall_id = document.getElementById("mallId").value.trim() || undefined;
       const industry = document.getElementById("industry").value;
+      const bot_name = document.getElementById("botName").value.trim() || "코스봇";
+      const brand_badge = document.getElementById("brandBadge").value.trim() || undefined;
+      const chat_template = document.getElementById("chatTemplate").value;
       const launcher_shape = document.getElementById("launcherShape").value;
-      const bot_label = document.getElementById("botLabel").value.trim() || "코스봇 상담";
+      const bot_label = document.getElementById("botLabel").value.trim() || `${bot_name} 상담`;
       const bot_icon_style = document.getElementById("botIconStyle").value;
+      const contact_email = document.getElementById("contactEmail").value.trim() || "contact@cosrawfree.com";
+      const business_hours = document.getElementById("businessHours").value.trim() || "평일 09:00~18:00";
       const trial_days = parseInt(document.getElementById("trialDays").value || "14", 10);
-      const webhook_url = document.getElementById("webhookUrl").value.trim() || undefined;
       const allowed_domains = document.getElementById("allowedDomains").value.trim() || undefined;
+      const qbRaw = document.getElementById("quickButtonsInput").value.trim();
+      const quick_buttons = qbRaw ? qbRaw.split(",").map(x => x.trim()).filter(Boolean) : undefined;
 
       const createRes = await fetch("/api/stores", {
         method: "POST",
@@ -281,17 +299,21 @@
           store_name,
           mall_id,
           industry,
+          bot_name,
+          brand_badge,
+          chat_template,
           launcher_shape,
           bot_label,
           bot_icon_style,
+          contact_email,
+          business_hours,
+          quick_buttons,
           trial_days,
-          webhook_url,
           allowed_domains
         })
       });
       const createdStore = await createRes.json();
 
-      // If custom avatar file selected, upload immediately
       const avatarInput = document.getElementById("customAvatarFile");
       if (avatarInput.files && avatarInput.files[0]) {
         const fd = new FormData();
