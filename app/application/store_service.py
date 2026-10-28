@@ -22,6 +22,8 @@ from app.schemas.store import (
 INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
     "fresh_food": {
         "theme_color": "#2E7D32",
+        "bot_icon_style": "flaticon_bubble_bot",
+        "bot_label": "신선봇 상담",
         "welcome_message": "안녕하세요! 신선식품 AI 고객센터입니다. 🍎\n배송 조회, 보관법 및 과일 변질/파손 사진 접수를 도와드립니다.",
         "default_policy": {
             "full_refund_damage_ratio": 30,
@@ -31,6 +33,8 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
     },
     "electronics": {
         "theme_color": "#1E40AF",
+        "bot_icon_style": "flaticon_cute_robot",
+        "bot_label": "코스봇 상담",
         "welcome_message": "안녕하세요! 디지털/가전 지능형 A/S 고객센터입니다. ⚡\n기기 작동 불량 자가진단, 고장 부위 사진 판독, 무상 A/S 수리 및 교환 접수를 도와드립니다.",
         "default_policy": {
             "warranty_months": 12,
@@ -40,6 +44,8 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
     },
     "fashion": {
         "theme_color": "#7C3AED",
+        "bot_icon_style": "flaticon_cs_agent",
+        "bot_label": "패션봇 상담",
         "welcome_message": "안녕하세요! 패션&의류 CS 고객센터입니다. 👗\n사이즈 추천, 맞교환 신청, 원단 오염/봉제 불량 사진 판독을 도와드립니다.",
         "default_policy": {
             "max_exchange_days": 7,
@@ -48,6 +54,8 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
     },
     "beauty": {
         "theme_color": "#EC4899",
+        "bot_icon_style": "flaticon_beauty_fairy",
+        "bot_label": "뷰티봇 상담",
         "welcome_message": "안녕하세요! 뷰티&코스메틱 스킨케어 도우미입니다. 💄✨\n피부타입별 전성분 상담, 용기 누유/파손 사진 진단, 피부 트러블 안심 보장 접수를 도와드립니다.",
         "default_policy": {
             "skin_trouble_warranty_days": 14,
@@ -58,6 +66,8 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
     },
     "general": {
         "theme_color": "#0D9488",
+        "bot_icon_style": "flaticon_cute_robot",
+        "bot_label": "코스봇 상담",
         "welcome_message": "안녕하세요! 고객센터 AI 도우미입니다. 💬\n배송 조회, 상품 문의 및 불량 접수를 도와드립니다.",
         "default_policy": {
             "max_claim_days": 7,
@@ -182,6 +192,10 @@ class StoreService:
             allowed_domains=store.allowed_domains,
             daily_quota_limit=store.daily_quota_limit,
             daily_quota_used=store.daily_quota_used,
+            bot_icon_style=store.bot_icon_style or "flaticon_cute_robot",
+            launcher_shape=store.launcher_shape or "cosbot_badge",
+            bot_label=store.bot_label or "코스봇 상담",
+            bot_avatar_url=store.bot_avatar_url,
             created_at=store.created_at.isoformat(),
         )
 
@@ -196,6 +210,10 @@ class StoreService:
         )
         theme_color = request.theme_color or industry_info["theme_color"]
         welcome_message = request.welcome_message or industry_info["welcome_message"]
+        bot_icon_style = request.bot_icon_style or industry_info.get("bot_icon_style", "flaticon_cute_robot")
+        bot_label = request.bot_label or industry_info.get("bot_label", "코스봇 상담")
+        if request.bot_avatar_url:
+            bot_icon_style = "custom_upload"
 
         merged_policy = industry_info["default_policy"].copy()
         if request.policy_config:
@@ -229,6 +247,10 @@ class StoreService:
             daily_quota_limit=request.daily_quota_limit,
             daily_quota_used=0,
             quota_reset_date=now.strftime("%Y-%m-%d"),
+            bot_icon_style=bot_icon_style,
+            launcher_shape=request.launcher_shape or "cosbot_badge",
+            bot_label=bot_label,
+            bot_avatar_url=request.bot_avatar_url,
         )
         session.add(store)
         await session.commit()
@@ -264,6 +286,20 @@ class StoreService:
 
         if update_req.daily_quota_limit is not None:
             store.daily_quota_limit = update_req.daily_quota_limit
+
+        if update_req.bot_icon_style is not None:
+            store.bot_icon_style = update_req.bot_icon_style
+
+        if update_req.launcher_shape is not None:
+            store.launcher_shape = update_req.launcher_shape
+
+        if update_req.bot_label is not None:
+            store.bot_label = update_req.bot_label
+
+        if update_req.bot_avatar_url is not None:
+            store.bot_avatar_url = update_req.bot_avatar_url
+            if update_req.bot_avatar_url and not update_req.bot_icon_style:
+                store.bot_icon_style = "custom_upload"
 
         if update_req.extend_days is not None and update_req.extend_days > 0:
             base_time = now

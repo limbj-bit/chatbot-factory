@@ -212,3 +212,53 @@ async def test_phase4_domain_whitelist_and_daily_ai_quota_enforcement():
         )
         assert faq_call.status_code == 200
         assert faq_call.json()["intent"] == "faq_deterministic"
+
+
+@pytest.mark.asyncio
+async def test_phase5_cosbot_badge_flaticon_presets_and_custom_avatar_upload():
+    """
+    Verify COSRAWFREE '코스봇 상담' double-ring badge, Flaticon presets, and custom PNG/SVG avatar file upload.
+    """
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        # 1. Create store with COSRAWFREE '코스봇 상담' badge and Flaticon cute robot preset
+        res = await client.post(
+            "/api/stores",
+            json={
+                "store_name": "코스로우프리 원료몰",
+                "industry": "beauty",
+                "mall_id": "cosrawfree_mall",
+                "bot_icon_style": "flaticon_cute_robot",
+                "launcher_shape": "cosbot_badge",
+                "bot_label": "코스봇 상담",
+            },
+        )
+        assert res.status_code == 201
+        store_data = res.json()
+        assert store_data["launcher_shape"] == "cosbot_badge"
+        assert store_data["bot_label"] == "코스봇 상담"
+        assert store_data["bot_icon_style"] == "flaticon_cute_robot"
+
+        # 2. Verify dynamic widget script renders the cosbot_badge double ring and label
+        script_res = await client.get("/api/widget/script?mall_id=cosrawfree_mall")
+        assert script_res.status_code == 200
+        js_text = script_res.text
+        assert "fresh-cosbot-ring" in js_text
+        assert "fresh-cosbot-label" in js_text
+        assert "코스봇 상담" in js_text
+        assert "<svg" in js_text
+
+        # 3. Upload custom Flaticon PNG/SVG file via POST /api/stores/{mall_id}/avatar
+        custom_svg_bytes = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="pink"/></svg>'
+        avatar_res = await client.post(
+            "/api/stores/cosrawfree_mall/avatar",
+            files={"file": ("my_flaticon.svg", io.BytesIO(custom_svg_bytes), "image/svg+xml")},
+        )
+        assert avatar_res.status_code == 200
+        avatar_data = avatar_res.json()
+        assert avatar_data["bot_icon_style"] == "custom_upload"
+        assert avatar_data["bot_avatar_url"].startswith("data:image/svg+xml;base64,")
+
+        # 4. Verify widget script now renders the uploaded custom image inside the cosbot ring & chat avatar
+        script_res2 = await client.get("/api/widget/script?mall_id=cosrawfree_mall")
+        assert "fresh-bot-avatar-img" in script_res2.text
+        assert "data:image/svg+xml;base64," in script_res2.text

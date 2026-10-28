@@ -13,7 +13,7 @@
       color: #1F2937;
     }
     .container {
-      max-width: 960px;
+      max-width: 980px;
       margin: 0 auto;
       background: #FFFFFF;
       padding: 32px;
@@ -50,6 +50,42 @@
       border: 1px solid #D1D5DB;
       border-radius: 6px;
       font-size: 13px;
+    }
+    .icon-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+      gap: 10px;
+      margin: 12px 0;
+    }
+    .icon-option {
+      border: 2px solid #E5E7EB;
+      background: #FFFFFF;
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .icon-option.selected {
+      border-color: #0284C7;
+      background: #F0F9FF;
+      box-shadow: 0 2px 8px rgba(2,132,199,0.2);
+    }
+    .icon-option .preview-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #0F172A;
+      border: 2px solid #38BDF8;
+      margin: 0 auto 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-option span {
+      font-size: 12px;
+      font-weight: 600;
+      display: block;
     }
     .btn {
       background: #2E7D32;
@@ -100,10 +136,10 @@
   <div class="container">
     <div class="badge">SaaS v2.0 Enterprise Chatbot Factory</div>
     <h1>신선식품 이커머스 쇼핑몰 & 지능형 챗봇 분양 공장</h1>
-    <p>우측 하단의 <strong>초록색 원형 위젯 버튼</strong>을 클릭하여 AI 상담 및 사진 클레임 접수를 테스트해 보세요.</p>
+    <p>우측 하단의 <strong>원형 위젯 버튼</strong>을 클릭하여 AI 상담 및 사진 클레임 접수를 테스트해 보세요.</p>
     
     <div class="factory-box">
-      <h3>🏭 1. 스토어별 챗봇 분양 + 무료 체험(Trial) + 웹훅/도메인/쿼터 설정</h3>
+      <h3>🏭 1. 스토어별 챗봇 분양 + COSRAWFREE '코스봇' 배지 & Flaticon 아이콘 선택</h3>
       <div class="form-grid">
         <input type="text" id="storeName" placeholder="스토어명 (예: 루미에르 뷰티)" />
         <input type="text" id="mallId" placeholder="몰 ID (예: lumiere_beauty)" />
@@ -113,12 +149,50 @@
           <option value="fashion">패션 & 의류 (퍼플)</option>
           <option value="fresh_food">신선식품 (그린)</option>
         </select>
+        <select id="launcherShape">
+          <option value="cosbot_badge">👑 코스봇 배지형 (원형+하단캡슐 ⭐️추천)</option>
+          <option value="sticker">✨ Flaticon 투명 스티커형 (둥둥 떠다님)</option>
+          <option value="pill">💊 가로 캡슐 버튼형</option>
+          <option value="circle">🔵 심플 원형</option>
+        </select>
+        <input type="text" id="botLabel" value="코스봇 상담" placeholder="하단 배지 문구 (예: 코스봇 상담, 뷰티봇 상담)" />
         <input type="number" id="trialDays" value="14" min="0" placeholder="무료 체험 일수 (14)" />
         <input type="text" id="webhookUrl" placeholder="사장님 슬랙/텔레그램 웹훅 URL" />
         <input type="text" id="allowedDomains" placeholder="허용 도메인 (예: lumiere.co.kr)" />
-        <input type="number" id="dailyQuota" value="300" min="1" placeholder="일일 AI 한도 (300)" />
       </div>
-      <button class="btn" onclick="createStore()">✨ 새 스토어 챗봇 분양하기</button>
+
+      <div style="font-size:13px;font-weight:600;margin-top:6px;">🎨 Flaticon 스타일 봇 캐릭터 선택 (클릭):</div>
+      <input type="hidden" id="botIconStyle" value="flaticon_cute_robot" />
+      <div class="icon-picker-grid">
+        <div class="icon-option selected" onclick="selectIcon('flaticon_cute_robot', this)">
+          <div class="preview-circle">🤖</div>
+          <span>코스봇 안테나 로봇</span>
+        </div>
+        <div class="icon-option" onclick="selectIcon('flaticon_beauty_fairy', this)">
+          <div class="preview-circle" style="border-color:#F472B6;">💄</div>
+          <span>뷰티 스파클 요정봇</span>
+        </div>
+        <div class="icon-option" onclick="selectIcon('flaticon_cs_agent', this)">
+          <div class="preview-circle" style="border-color:#38BDF8;">👩‍💼</div>
+          <span>헤드셋 CS 상담원</span>
+        </div>
+        <div class="icon-option" onclick="selectIcon('flaticon_bubble_bot', this)">
+          <div class="preview-circle" style="border-color:#34D399;">💬</div>
+          <span>말풍선 윙크봇</span>
+        </div>
+        <div class="icon-option" onclick="selectIcon('flaticon_smart_ai', this)">
+          <div class="preview-circle" style="border-color:#FBBF24;">✨</div>
+          <span>스마트 AI 스파클</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;">
+        <button class="btn" onclick="createStore()">✨ 새 스토어 챗봇 분양하기</button>
+        <label style="font-size:12px;color:#4B5563;">
+          📁 또는 Flaticon에서 다운받은 내 아이콘(PNG/GIF/SVG) 직접 업로드:
+          <input type="file" id="customAvatarFile" accept="image/*" style="font-size:12px;" />
+        </label>
+      </div>
       <div id="storeList" style="margin-top: 16px;"></div>
     </div>
 
@@ -151,6 +225,12 @@
   </div>
 
   <script>
+    function selectIcon(styleName, el) {
+      document.getElementById("botIconStyle").value = styleName;
+      document.querySelectorAll(".icon-option").forEach(item => item.classList.remove("selected"));
+      el.classList.add("selected");
+    }
+
     async function loadStores() {
       const res = await fetch("/api/stores");
       const stores = await res.json();
@@ -169,9 +249,9 @@
               <strong>${s.store_name}</strong> (${s.mall_id} / ${s.industry})
               <span class="status-pill ${pillClass}">${s.status_message}</span>
               <div style="font-size:12px;color:#4B5563;margin-top:4px;">
-                📊 일일 쿼터: ${s.daily_quota_used} / ${s.daily_quota_limit}건 |
-                🔒 허용 도메인: ${s.allowed_domains || "전체(*)"} |
-                🔔 웹훅: ${s.webhook_url || "미설정"}
+                🤖 모양: <b>${s.launcher_shape}</b> (${s.bot_icon_style} / 라벨: "${s.bot_label}") |
+                📊 쿼터: ${s.daily_quota_used}/${s.daily_quota_limit}건 |
+                🔒 도메인: ${s.allowed_domains || "전체(*)"}
               </div>
               <code>${s.embed_script_tag.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
             </div>
@@ -187,16 +267,42 @@
       const store_name = document.getElementById("storeName").value.trim() || "루미에르 뷰티";
       const mall_id = document.getElementById("mallId").value.trim() || undefined;
       const industry = document.getElementById("industry").value;
+      const launcher_shape = document.getElementById("launcherShape").value;
+      const bot_label = document.getElementById("botLabel").value.trim() || "코스봇 상담";
+      const bot_icon_style = document.getElementById("botIconStyle").value;
       const trial_days = parseInt(document.getElementById("trialDays").value || "14", 10);
       const webhook_url = document.getElementById("webhookUrl").value.trim() || undefined;
       const allowed_domains = document.getElementById("allowedDomains").value.trim() || undefined;
-      const daily_quota_limit = parseInt(document.getElementById("dailyQuota").value || "300", 10);
 
-      await fetch("/api/stores", {
+      const createRes = await fetch("/api/stores", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ store_name, mall_id, industry, trial_days, webhook_url, allowed_domains, daily_quota_limit })
+        body: JSON.stringify({
+          store_name,
+          mall_id,
+          industry,
+          launcher_shape,
+          bot_label,
+          bot_icon_style,
+          trial_days,
+          webhook_url,
+          allowed_domains
+        })
       });
+      const createdStore = await createRes.json();
+
+      // If custom avatar file selected, upload immediately
+      const avatarInput = document.getElementById("customAvatarFile");
+      if (avatarInput.files && avatarInput.files[0]) {
+        const fd = new FormData();
+        fd.append("file", avatarInput.files[0]);
+        await fetch(`/api/stores/${createdStore.mall_id}/avatar`, {
+          method: "POST",
+          body: fd
+        });
+        avatarInput.value = "";
+      }
+
       await loadStores();
     }
 

@@ -1,3 +1,4 @@
+from typing import Dict
 from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.store_service import store_service
@@ -6,13 +7,71 @@ from app.infrastructure.database.session import get_db
 router = APIRouter(prefix="/api/widget", tags=["Widget"])
 
 
+# High-craft Flaticon-inspired multi-color vector illustrations (Zero copyright issues, crisp at any size)
+FLATICON_PRESET_SVGS: Dict[str, str] = {
+    # 1. COSRAWFREE '코스봇' 스타일: 안테나 로봇 + 우측 상단 하늘색 말풍선 점(...)
+    "flaticon_cute_robot": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="30" y1="9" x2="30" y2="17" stroke="#60A5FA" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="30" cy="8" r="4" fill="#38BDF8"/>
+      <rect x="13" y="25" width="4" height="12" rx="2" fill="#38BDF8"/>
+      <rect x="43" y="25" width="4" height="12" rx="2" fill="#38BDF8"/>
+      <rect x="16" y="17" width="28" height="26" rx="10" fill="#FFFFFF" stroke="#60A5FA" stroke-width="2.5"/>
+      <rect x="20" y="22" width="20" height="14" rx="6" fill="#0F172A"/>
+      <circle cx="25.5" cy="28.5" r="2.5" fill="#38BDF8"/>
+      <circle cx="34.5" cy="28.5" r="2.5" fill="#38BDF8"/>
+      <path d="M26.5 33C27.5 34.2 32.5 34.2 33.5 33" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/>
+      <rect x="40" y="11" width="16" height="11" rx="5.5" fill="#0284C7"/>
+      <circle cx="44.5" cy="16.5" r="1.3" fill="#FFFFFF"/>
+      <circle cx="48" cy="16.5" r="1.3" fill="#FFFFFF"/>
+      <circle cx="51.5" cy="16.5" r="1.3" fill="#FFFFFF"/>
+    </svg>""",
+    # 2. 뷰티 스파클 요정 로봇 (파스텔 핑크 + 반짝이 왕관/하트)
+    "flaticon_beauty_fairy": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M23 17L26 11L30 15L34 11L37 17H23Z" fill="#FBBF24"/>
+      <rect x="16" y="17" width="28" height="26" rx="12" fill="#FFF1F2" stroke="#F472B6" stroke-width="2.5"/>
+      <rect x="20" y="22" width="20" height="14" rx="6" fill="#831843"/>
+      <circle cx="25.5" cy="28.5" r="2.4" fill="#F9A8D4"/>
+      <circle cx="34.5" cy="28.5" r="2.4" fill="#F9A8D4"/>
+      <circle cx="22.5" cy="31.5" r="1.6" fill="#FB7185"/>
+      <circle cx="37.5" cy="31.5" r="1.6" fill="#FB7185"/>
+      <path d="M27 32.5C28 33.8 32 33.8 33 32.5" stroke="#F9A8D4" stroke-width="2" stroke-linecap="round"/>
+      <path d="M48 11L49.5 14.5L53 16L49.5 17.5L48 21L46.5 17.5L43 16L46.5 14.5L48 11Z" fill="#FDE047"/>
+    </svg>""",
+    # 3. 헤드셋 쓴 친절한 고객센터 상담원 (Flaticon 베스트셀러 CS 에이전트)
+    "flaticon_cs_agent": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 28C16 19.1634 23.1634 12 32 12C40.8366 12 48 19.1634 48 28" stroke="#38BDF8" stroke-width="3.5" stroke-linecap="round"/>
+      <rect x="13" y="25" width="5" height="11" rx="2.5" fill="#0284C7"/>
+      <rect x="46" y="25" width="5" height="11" rx="2.5" fill="#0284C7"/>
+      <circle cx="32" cy="29" r="12" fill="#FDE68A"/>
+      <path d="M20 26C20 19.5 25.5 16 32 16C38.5 16 44 19.5 44 26C41 23 36 22 32 22C28 22 23 23 20 26Z" fill="#475569"/>
+      <circle cx="28" cy="29" r="1.8" fill="#1E293B"/>
+      <circle cx="36" cy="29" r="1.8" fill="#1E293B"/>
+      <path d="M28.5 34C30 35.5 34 35.5 35.5 34" stroke="#E11D48" stroke-width="2" stroke-linecap="round"/>
+      <path d="M47 34C47 38 41 40 35 40" stroke="#0284C7" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="34" cy="40" r="2" fill="#0284C7"/>
+    </svg>""",
+    # 4. 말풍선 속 윙크하는 챗봇 (Flaticon Chat Bubble Bot)
+    "flaticon_bubble_bot": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14 26C14 17.7157 21.1634 11 30 11H34C42.8366 11 50 17.7157 50 26C50 34.2843 42.8366 41 34 41H24L16 46V38.5C14.7 36.2 14 31.2 14 26Z" fill="#FFFFFF" stroke="#34D399" stroke-width="2.5"/>
+      <circle cx="26" cy="25" r="2.6" fill="#059669"/>
+      <path d="M35 25L39 23.5M35 25L39 26.5" stroke="#059669" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M27 31C28.8 33 35.2 33 37 31" stroke="#10B981" stroke-width="2.2" stroke-linecap="round"/>
+    </svg>""",
+    # 5. 스마트 AI 브레인 스파클 아이콘
+    "flaticon_smart_ai": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M32 10L36.5 23.5L50 28L36.5 32.5L32 46L27.5 32.5L14 28L27.5 23.5L32 10Z" fill="#60A5FA" stroke="#EFF6FF" stroke-width="2"/>
+      <path d="M46 11L47.5 15.5L52 17L47.5 18.5L46 23L44.5 18.5L40 17L44.5 15.5L46 11Z" fill="#FBBF24"/>
+    </svg>""",
+}
+
+
 @router.get("/script")
 async def get_dynamic_widget_script(
     request: Request,
     mall_id: str = Query("demo_mall", description="Store Mall ID"),
     session: AsyncSession = Depends(get_db),
 ):
-    """Serve a dynamically customized JavaScript widget tailored to the specific store's industry, brand, trial status, and domain whitelist."""
+    """Serve a dynamically customized JavaScript widget tailored to the specific store's industry, brand, trial status, Flaticon bot avatar, and domain whitelist."""
     store = await store_service.get_store_by_mall_id(session, mall_id)
 
     # 4th Enhancement: Domain Whitelist Validation
@@ -23,12 +82,25 @@ async def get_dynamic_widget_script(
 
     title = store.store_name if store else "스마트 AI 고객센터"
     industry = store.industry if store else "general"
-    theme_color = store.theme_color if store else "#2E7D32"
+    theme_color = store.theme_color if store else "#0284C7"
     welcome_msg = (
         store.welcome_message.replace("\n", "\\n")
         if store and store.welcome_message
         else "안녕하세요! AI 고객센터입니다. 무엇을 도와드릴까요?"
     )
+
+    bot_icon_style = (store.bot_icon_style if store and store.bot_icon_style else "flaticon_cute_robot")
+    launcher_shape = (store.launcher_shape if store and store.launcher_shape else "cosbot_badge")
+    bot_label = (store.bot_label if store and store.bot_label else "코스봇 상담")
+    bot_avatar_url = (store.bot_avatar_url if store and store.bot_avatar_url else "")
+
+    if bot_avatar_url:
+        safe_url = bot_avatar_url.replace('"', '\\"')
+        icon_graphic_html = f'<img src="{safe_url}" alt="bot" class="fresh-bot-avatar-img" />'
+    else:
+        svg_raw = FLATICON_PRESET_SVGS.get(bot_icon_style, FLATICON_PRESET_SVGS["flaticon_cute_robot"])
+        svg_single_line = " ".join(line.strip() for line in svg_raw.splitlines())
+        icon_graphic_html = svg_single_line
 
     remaining_days = None
     is_expired = False
@@ -51,6 +123,7 @@ async def get_dynamic_widget_script(
     expiry_warning_js = "true" if expiry_warning else "false"
     remaining_days_js = str(remaining_days) if remaining_days is not None else "null"
     safe_status_msg = status_message.replace('"', '\\"').replace("\n", "\\n")
+    safe_label = bot_label.replace('"', '\\"')
 
     js_content = f"""
 (function () {{
@@ -61,6 +134,9 @@ async def get_dynamic_widget_script(
     title: "{title}",
     industry: "{industry}",
     primaryColor: "{theme_color}",
+    botIconStyle: "{bot_icon_style}",
+    launcherShape: "{launcher_shape}",
+    botLabel: "{safe_label}",
     welcomeMessage: "{welcome_msg}",
     uploadGuide: "{upload_guide}",
     isExpired: {is_expired_js},
@@ -70,47 +146,135 @@ async def get_dynamic_widget_script(
     apiBase: window.location.origin
   }};
 
+  const iconGraphicHtml = `{icon_graphic_html}`;
   let sessionId = localStorage.getItem("claim_chat_session_" + config.mallId) || "";
 
-  // Inject Styles
+  // Inject Styles (Including COSRAWFREE '코스봇 상담' double-ring badge & Flaticon floating animation)
   const style = document.createElement("style");
   style.innerHTML = `
+    @keyframes cosbotFloat {{
+      0%, 100% {{ transform: translateY(0px); }}
+      50% {{ transform: translateY(-5px); }}
+    }}
     .fresh-widget-launcher {{
       position: fixed;
       bottom: 24px;
       right: 24px;
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      background: ${{config.primaryColor}};
-      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
       cursor: pointer;
+      z-index: 999999;
+      user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+      animation: cosbotFloat 3.2s ease-in-out infinite;
+      transition: filter 0.2s ease, transform 0.2s ease;
+    }}
+    .fresh-widget-launcher:hover {{
+      filter: brightness(1.06);
+      transform: scale(1.05);
+    }}
+    /* Shape 1: COSRAWFREE '코스봇 상담' 스타일 (이중 네이비 원형 링 + 하단 캡슐 라벨) */
+    .fresh-widget-launcher.shape-cosbot_badge {{
+      width: 78px;
+      height: 84px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }}
+    .fresh-cosbot-ring {{
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      padding: 3.5px;
+      background: linear-gradient(145deg, #E0F2FE 0%, #38BDF8 50%, ${{config.primaryColor}} 100%);
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.28), inset 0 1px 2px rgba(255,255,255,0.8);
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 999999;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-sizing: border-box;
     }}
-    .fresh-widget-launcher:hover {{
-      transform: scale(1.06);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    .fresh-cosbot-inner {{
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 25%, #1E293B 0%, #0F172A 85%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
     }}
-    .fresh-widget-launcher svg {{
-      width: 32px;
-      height: 32px;
-      fill: #ffffff;
+    .fresh-cosbot-inner svg {{
+      width: 50px;
+      height: 50px;
+    }}
+    .fresh-cosbot-label {{
+      margin-top: -13px;
+      background: linear-gradient(90deg, #0284C7 0%, ${{config.primaryColor}} 100%);
+      color: #FFFFFF;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1.5px solid #E0F2FE;
+      box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35);
+      white-space: nowrap;
+      z-index: 2;
+    }}
+    /* Shape 2: Flaticon 투명 스티커형 (배경 없이 캐릭터만 둥둥) */
+    .fresh-widget-launcher.shape-sticker {{
+      width: 72px;
+      height: 72px;
+      background: transparent;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      filter: drop-shadow(0 6px 14px rgba(0,0,0,0.22));
+    }}
+    .fresh-widget-launcher.shape-sticker svg {{ width: 64px; height: 64px; }}
+    /* Shape 3: 심플 원형 */
+    .fresh-widget-launcher.shape-circle {{
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: ${{config.primaryColor}};
+      box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }}
+    .fresh-widget-launcher.shape-circle svg {{ width: 44px; height: 44px; }}
+    /* Shape 4: 가로 캡슐형 (캐릭터 + 텍스트 옆으로 나란히) */
+    .fresh-widget-launcher.shape-pill {{
+      background: #0F172A;
+      border: 2px solid ${{config.primaryColor}};
+      border-radius: 999px;
+      padding: 6px 16px 6px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+      color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 700;
+    }}
+    .fresh-widget-launcher.shape-pill svg {{ width: 38px; height: 38px; }}
+    .fresh-bot-avatar-img {{
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
     }}
     .fresh-widget-window {{
       position: fixed;
-      bottom: 96px;
+      bottom: 116px;
       right: 24px;
       width: 390px;
       height: 620px;
       max-width: calc(100vw - 32px);
-      max-height: calc(100vh - 120px);
+      max-height: calc(100vh - 140px);
       background: #ffffff;
       border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
       display: none;
       flex-direction: column;
       z-index: 999999;
@@ -118,29 +282,46 @@ async def get_dynamic_widget_script(
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }}
     .fresh-widget-header {{
-      background: ${{config.primaryColor}};
+      background: linear-gradient(135deg, #0F172A 0%, ${{config.primaryColor}} 100%);
       color: #ffffff;
-      padding: 16px 20px;
+      padding: 14px 18px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }}
+    .fresh-header-left {{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }}
+    .fresh-header-avatar {{
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #0F172A;
+      border: 1.5px solid #38BDF8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }}
+    .fresh-header-avatar svg {{ width: 32px; height: 32px; }}
     .fresh-widget-header h3 {{
       margin: 0;
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 15px;
+      font-weight: 700;
     }}
     .fresh-widget-header p {{
       margin: 2px 0 0;
-      font-size: 12px;
-      opacity: 0.85;
+      font-size: 11.5px;
+      opacity: 0.88;
     }}
     .fresh-widget-close {{
       cursor: pointer;
-      font-size: 20px;
+      font-size: 22px;
       line-height: 1;
-      opacity: 0.8;
-      transition: opacity 0.2s;
+      opacity: 0.85;
     }}
     .fresh-widget-close:hover {{ opacity: 1; }}
     .fresh-widget-banner {{
@@ -164,8 +345,28 @@ async def get_dynamic_widget_script(
       display: flex;
       flex-direction: column;
       gap: 12px;
-      background: #F9FAFB;
+      background: #F8FAFC;
     }}
+    .fresh-bot-row {{
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      max-width: 90%;
+    }}
+    .fresh-bot-mini-avatar {{
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #0F172A;
+      border: 1px solid #CBD5E1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }}
+    .fresh-bot-mini-avatar svg {{ width: 25px; height: 25px; }}
     .fresh-msg {{
       max-width: 82%;
       padding: 10px 14px;
@@ -177,9 +378,10 @@ async def get_dynamic_widget_script(
     .fresh-msg.bot {{
       background: #FFFFFF;
       color: #1F2937;
-      border: 1px solid #E5E7EB;
+      border: 1px solid #E2E8F0;
       align-self: flex-start;
-      border-bottom-left-radius: 4px;
+      border-top-left-radius: 4px;
+      max-width: 100%;
     }}
     .fresh-msg.user {{
       background: ${{config.primaryColor}};
@@ -195,6 +397,7 @@ async def get_dynamic_widget_script(
       padding: 12px;
       max-width: 85%;
       align-self: flex-start;
+      margin-left: 38px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.05);
       font-size: 13px;
     }}
@@ -270,10 +473,30 @@ async def get_dynamic_widget_script(
   `;
   document.head.appendChild(style);
 
-  // Build Elements
+  // Build Launcher according to launcherShape
   const launcher = document.createElement("div");
-  launcher.className = "fresh-widget-launcher";
-  launcher.innerHTML = `<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>`;
+  launcher.className = "fresh-widget-launcher shape-" + config.launcherShape;
+
+  if (config.launcherShape === "cosbot_badge") {{
+    launcher.innerHTML = `
+      <div class="fresh-cosbot-ring">
+        <div class="fresh-cosbot-inner">${{iconGraphicHtml}}</div>
+      </div>
+      <div class="fresh-cosbot-label">${{config.botLabel}}</div>
+    `;
+  }} else if (config.launcherShape === "pill") {{
+    launcher.innerHTML = `
+      <div class="fresh-header-avatar">${{iconGraphicHtml}}</div>
+      <span>${{config.botLabel}}</span>
+    `;
+  }} else if (config.launcherShape === "sticker") {{
+    launcher.innerHTML = `
+      ${{iconGraphicHtml}}
+      <div class="fresh-cosbot-label" style="margin-top:-6px;">${{config.botLabel}}</div>
+    `;
+  }} else {{
+    launcher.innerHTML = iconGraphicHtml;
+  }}
 
   let bannerHtml = "";
   if (config.isExpired) {{
@@ -293,15 +516,21 @@ async def get_dynamic_widget_script(
   chatWindow.className = "fresh-widget-window";
   chatWindow.innerHTML = `
     <div class="fresh-widget-header">
-      <div>
-        <h3>${{config.title}}</h3>
-        <p>AI 카운슬러 & 스마트 A/S 도우미</p>
+      <div class="fresh-header-left">
+        <div class="fresh-header-avatar">${{iconGraphicHtml}}</div>
+        <div>
+          <h3>${{config.title}}</h3>
+          <p>${{config.botLabel}} · AI 카운슬러 & 스마트 A/S</p>
+        </div>
       </div>
       <div class="fresh-widget-close" id="dyn-close">&times;</div>
     </div>
     ${{bannerHtml}}
     <div class="fresh-widget-body" id="dyn-messages">
-      <div class="fresh-msg bot">${{initialBodyMessage}}</div>
+      <div class="fresh-bot-row">
+        <div class="fresh-bot-mini-avatar">${{iconGraphicHtml}}</div>
+        <div class="fresh-msg bot">${{initialBodyMessage}}</div>
+      </div>
     </div>
     <div class="fresh-widget-footer">
       <input type="file" id="dyn-file" accept="image/*" style="display:none;" ${{disabledAttr}} />
@@ -330,12 +559,28 @@ async def get_dynamic_widget_script(
   closeBtn.addEventListener("click", () => {{ chatWindow.style.display = "none"; }});
 
   function appendMessage(text, sender) {{
-    const msg = document.createElement("div");
-    msg.className = "fresh-msg " + sender;
-    msg.innerHTML = text.replace(/\\n/g, "<br>");
-    messagesContainer.appendChild(msg);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    return msg;
+    if (sender === "bot") {{
+      const row = document.createElement("div");
+      row.className = "fresh-bot-row";
+      const avatar = document.createElement("div");
+      avatar.className = "fresh-bot-mini-avatar";
+      avatar.innerHTML = iconGraphicHtml;
+      const msg = document.createElement("div");
+      msg.className = "fresh-msg bot";
+      msg.innerHTML = text.replace(/\\n/g, "<br>");
+      row.appendChild(avatar);
+      row.appendChild(msg);
+      messagesContainer.appendChild(row);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      return msg;
+    }} else {{
+      const msg = document.createElement("div");
+      msg.className = "fresh-msg user";
+      msg.innerHTML = text.replace(/\\n/g, "<br>");
+      messagesContainer.appendChild(msg);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      return msg;
+    }}
   }}
 
   function appendProductCards(cards) {{
@@ -447,7 +692,7 @@ async def get_dynamic_widget_script(
         body: formData,
       }});
       const result = await uploadResp.json();
-      analyzingMsg.remove();
+      analyzingMsg.parentElement.remove();
 
       appendMessage("<b>[진단 결과: " + result.decision + "]</b><br>" + result.customer_message, "bot");
     }} catch (err) {{

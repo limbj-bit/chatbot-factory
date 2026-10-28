@@ -52,6 +52,10 @@ class StoreModel(Base):
     daily_quota_limit: Mapped[int] = mapped_column(Integer, default=300)
     daily_quota_used: Mapped[int] = mapped_column(Integer, default=0)
     quota_reset_date: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    bot_icon_style: Mapped[str] = mapped_column(String(64), default="flaticon_cute_robot")
+    launcher_shape: Mapped[str] = mapped_column(String(32), default="cosbot_badge")
+    bot_label: Mapped[str] = mapped_column(String(32), default="AI봇 상담")
+    bot_avatar_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

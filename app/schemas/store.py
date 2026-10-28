@@ -18,6 +18,23 @@ class StoreCreateRequest(BaseModel):
     webhook_url: Optional[str] = Field(None, description="인간 상담원 이관/긴급 클레임 발생 시 알림을 받을 웹훅 URL (슬랙/텔레그램/디스코드 등)")
     allowed_domains: Optional[str] = Field(None, description="위젯 설치 허용 도메인 목록 (콤마 구분, 예: lumiere.co.kr,localhost)")
     daily_quota_limit: int = Field(300, ge=1, le=100000, description="스토어 일일 무료 AI 상담 호출 한도")
+    bot_icon_style: Optional[str] = Field(
+        None,
+        description="봇 아이콘 프리셋 (flaticon_cute_robot, flaticon_beauty_fairy, flaticon_cs_agent, flaticon_bubble_bot, flaticon_smart_ai, custom_upload)",
+    )
+    launcher_shape: str = Field(
+        "cosbot_badge",
+        description="런처 버튼 모양 (cosbot_badge: 원형+하단캡슐라벨, sticker: 투명스티커형, circle: 심플원형, pill: 가로캡슐형)",
+    )
+    bot_label: Optional[str] = Field(
+        None,
+        max_length=24,
+        description="버튼 하단 캡슐 배지 문구 (예: 코스봇 상담, 뷰티봇 상담, A/S봇 상담)",
+    )
+    bot_avatar_url: Optional[str] = Field(
+        None,
+        description="직접 업로드한 Flaticon PNG/GIF/SVG 데이터 URI 또는 외부 이미지 URL",
+    )
 
 
 class StoreSubscriptionUpdateRequest(BaseModel):
@@ -27,6 +44,10 @@ class StoreSubscriptionUpdateRequest(BaseModel):
     webhook_url: Optional[str] = Field(None, description="알림 웹훅 URL 변경")
     allowed_domains: Optional[str] = Field(None, description="허용 도메인 변경")
     daily_quota_limit: Optional[int] = Field(None, ge=1, le=100000, description="일일 AI 호출 쿼터 한도 변경")
+    bot_icon_style: Optional[str] = Field(None, description="봇 아이콘 프리셋 변경")
+    launcher_shape: Optional[str] = Field(None, description="런처 버튼 모양 변경")
+    bot_label: Optional[str] = Field(None, max_length=24, description="하단 캡슐 라벨 문구 변경")
+    bot_avatar_url: Optional[str] = Field(None, description="커스텀 아바타 이미지 URL 또는 Data URI 변경")
 
 
 class StoreKnowledgeCreateRequest(BaseModel):
@@ -81,4 +102,8 @@ class StoreResponse(BaseModel):
     allowed_domains: Optional[str] = None
     daily_quota_limit: int = 300
     daily_quota_used: int = 0
+    bot_icon_style: str = "flaticon_cute_robot"
+    launcher_shape: str = "cosbot_badge"
+    bot_label: str = "AI봇 상담"
+    bot_avatar_url: Optional[str] = None
     created_at: str

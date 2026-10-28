@@ -1,5 +1,6 @@
+import base64
 from typing import Any, Dict, List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.notification_service import notification_service
 from app.application.store_service import store_service
@@ -94,3 +95,36 @@ async def list_store_webhook_alerts_endpoint(
 ):
     """List all real-time webhook alerts sent to the store merchant."""
     return await notification_service.list_alerts(session, mall_id)
+
+
+@router.post("/{mall_id}/avatar", response_model=StoreResponse)
+async def upload_store_bot_avatar_endpoint(
+    mall_id: str,
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_db),
+):
+    """Upload a custom Flaticon PNG/GIF/SVG/WebP icon file to use as the store's bot launcher and chat avatar."""
+    raw_bytes = await file.read()
+    if len(raw_bytes) > 2 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Avatar image file must be under 2MB.",
+        )
+    mime = file.content_type or "image/png"
+    b64_str = base64.b64encode(raw_bytes).decode("ascii")
+    data_uri = f"data:{mime};base64,{b64_str}"
+
+    updated = await store_service.update_subscription(
+        session,
+        mall_id,
+        StoreSubscriptionUpdateRequest(
+            bot_icon_style="custom_upload",
+            bot_avatar_url=data_uri,
+        ),
+    )
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Store with mall_id '{mall_id}' not found.",
+        )
+    return updated
