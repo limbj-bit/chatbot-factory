@@ -18,3 +18,7 @@ services:
         sync: false
       - key: NVIDIA_NIM_API_KEY
         sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_VISION_MODEL
+        sync: false

@@ -19,6 +19,12 @@ class AIProviderPort(ABC):
         pass
 
     @abstractmethod
-    async def analyze_claim_image(self, image_bytes: bytes, mime_type: str) -> ClaimVisionObservation:
-        """Analyze image and return structured observation only."""
+    async def analyze_claim_image(
+        self, image_bytes: bytes, mime_type: str, industry: Optional[str] = None
+    ) -> ClaimVisionObservation:
+        """Analyze image and return structured observation only.
+
+        `industry` (optional) selects industry-specific vision guidance so the
+        model focuses on the right defect vocabulary for that store category.
+        """
         pass

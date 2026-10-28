@@ -72,5 +72,7 @@ class GroqProvider(AIProviderPort):
                         except Exception:
                             continue
 
-    async def analyze_claim_image(self, image_bytes: bytes, mime_type: str) -> ClaimVisionObservation:
-        raise NotImplementedError("GroqProvider is used for fast text CS; vision routed to Gemini/NVIDIA.")
+    async def analyze_claim_image(
+        self, image_bytes: bytes, mime_type: str, industry: Optional[str] = None
+    ) -> ClaimVisionObservation:
+        raise NotImplementedError("GroqProvider is used for fast text CS; vision routed to Gemini/NVIDIA/OpenRouter.")

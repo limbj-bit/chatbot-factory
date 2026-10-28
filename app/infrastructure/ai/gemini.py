@@ -4,6 +4,8 @@ import httpx
 from typing import AsyncIterator, Optional
 from app.domain.claims.models import ClaimVisionObservation, DefectType, ImageQuality
 from app.domain.ports.ai_port import AIProviderPort
+from app.infrastructure.ai.nvidia import _parse_vision_json
+from app.infrastructure.ai.vision_prompts import build_vision_instruction
 
 
 class GeminiProvider(AIProviderPort):
@@ -36,23 +38,13 @@ class GeminiProvider(AIProviderPort):
         for i, word in enumerate(words):
             yield word + (" " if i < len(words) - 1 else "")
 
-    async def analyze_claim_image(self, image_bytes: bytes, mime_type: str) -> ClaimVisionObservation:
+    async def analyze_claim_image(
+        self, image_bytes: bytes, mime_type: str, industry: Optional[str] = None
+    ) -> ClaimVisionObservation:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.default_model}:generateContent?key={self.api_key}"
 
         b64_img = base64.b64encode(image_bytes).decode("utf-8")
-        vision_instruction = (
-            "Analyze this fresh food product image for physical damage or defects.\n"
-            "Respond ONLY with a valid JSON object matching this schema:\n"
-            "{\n"
-            '  "defect_type": "mold" | "rot" | "bruise" | "crush_damage" | "cosmetic_defect" | "normal" | "unclear",\n'
-            '  "affected_items": <integer>,\n'
-            '  "damage_ratio_estimate": <integer 0-100>,\n'
-            '  "confidence": <float 0.0-1.0>,\n'
-            '  "visible_evidence": [<string>, ...],\n'
-            '  "image_quality": "acceptable" | "blurry" | "too_dark" | "occluded" | "invalid"\n'
-            "}\n"
-            "Do NOT make refund or business decisions. Only report physical observations."
-        )
+        vision_instruction = build_vision_instruction(industry)
 
         payload = {
             "contents": [
@@ -81,13 +73,4 @@ class GeminiProvider(AIProviderPort):
             resp.raise_for_status()
             data = resp.json()
             raw_json = data["candidates"][0]["content"]["parts"][0]["text"]
-            parsed = json.loads(raw_json)
-
-            return ClaimVisionObservation(
-                defect_type=DefectType(parsed.get("defect_type", "unclear")),
-                affected_items=int(parsed.get("affected_items", 1)),
-                damage_ratio_estimate=int(parsed.get("damage_ratio_estimate", 0)),
-                confidence=float(parsed.get("confidence", 0.5)),
-                visible_evidence=parsed.get("visible_evidence", []),
-                image_quality=ImageQuality(parsed.get("image_quality", "acceptable")),
-            )
+            return _parse_vision_json(raw_json)

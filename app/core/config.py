@@ -36,10 +36,13 @@ class Settings(BaseSettings):
     NVIDIA_NIM_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
     MISTRAL_API_KEY: Optional[str] = None
+    OPENROUTER_API_KEY: Optional[str] = None
 
     AI_DEFAULT_PROVIDER: str = "groq"
     AI_FALLBACK_PROVIDER: str = "nvidia"
     AI_VISION_PROVIDER: str = "gemini"
+    # OpenRouter vision model used for claim image diagnosis (multi-model backup).
+    OPENROUTER_VISION_MODEL: str = "openai/gpt-4o-mini"
 
     # Cafe24 Integration
     CAFE24_MALL_ID: str = "demo_mall"

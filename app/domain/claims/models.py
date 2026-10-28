@@ -28,10 +28,26 @@ class ClaimType(str, Enum):
 
 
 class DefectType(str, Enum):
+    # Food / agricultural
     MOLD = "mold"
     ROT = "rot"
     BRUISE = "bruise"
     CRUSH_DAMAGE = "crush_damage"
+    # Physical damage / structure (electronics, interior, goods)
+    CRACK = "crack"
+    SHATTERED = "shattered"
+    SCRATCH = "scratch"
+    # Surface / appearance (fashion, interior)
+    STAIN = "stain"
+    # Containment / leakage (beauty, appliances)
+    LEAK = "leak"
+    # Completeness / function
+    MISSING_PARTS = "missing_parts"
+    MALFUNCTION = "malfunction"
+    # Fulfillment / spec
+    WRONG_ITEM = "wrong_item"
+    SIZE_MISMATCH = "size_mismatch"
+    # Shared / fallback
     COSMETIC_DEFECT = "cosmetic_defect"
     NORMAL = "normal"
     UNCLEAR = "unclear"

@@ -35,7 +35,9 @@ class MockAIProvider(AIProviderPort):
             yield word + (" " if i < len(words) - 1 else "")
             await asyncio.sleep(0.01)
 
-    async def analyze_claim_image(self, image_bytes: bytes, mime_type: str) -> ClaimVisionObservation:
+    async def analyze_claim_image(
+        self, image_bytes: bytes, mime_type: str, industry: str = None
+    ) -> ClaimVisionObservation:
         if self.simulate_429:
             raise RuntimeError("429 Too Many Requests: Rate limit exceeded")
         if self.simulate_timeout:

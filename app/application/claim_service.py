@@ -83,6 +83,18 @@ class ClaimService:
         await session.refresh(claim)
         return claim
 
+    async def _industry_for_mall(self, session: AsyncSession, mall_id: Optional[str]) -> Optional[str]:
+        """Return the store's industry so vision diagnosis can use industry-specific prompts."""
+        if not mall_id:
+            return None
+        try:
+            q = await session.execute(select(StoreModel).where(StoreModel.mall_id == mall_id))
+            store = q.scalar_one_or_none()
+            return store.industry if store else None
+        except Exception as e:
+            logger.warning(f"[Claim] Failed to load industry for {mall_id}: {e}")
+            return None
+
     async def _policy_engine_for_mall(
         self, session: AsyncSession, mall_id: Optional[str]
     ) -> RefundPolicyEngine:
@@ -175,7 +187,8 @@ class ClaimService:
         claim.status = ClaimStatus.IMAGE_ANALYZING.value
         await session.commit()
 
-        observation = await self.ai_router.analyze_claim_image(file_bytes, detected_mime)
+        industry = await self._industry_for_mall(session, claim.mall_id)
+        observation = await self.ai_router.analyze_claim_image(file_bytes, detected_mime, industry)
 
         image_record = ClaimImageModel(
             id=str(uuid.uuid4()),

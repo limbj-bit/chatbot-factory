@@ -44,5 +44,7 @@ class MistralProvider(AIProviderPort):
         for i, word in enumerate(words):
             yield word + (" " if i < len(words) - 1 else "")
 
-    async def analyze_claim_image(self, image_bytes: bytes, mime_type: str) -> ClaimVisionObservation:
+    async def analyze_claim_image(
+        self, image_bytes: bytes, mime_type: str, industry: Optional[str] = None
+    ) -> ClaimVisionObservation:
         raise NotImplementedError("Mistral text models delegated; vision handled by multimodal models.")

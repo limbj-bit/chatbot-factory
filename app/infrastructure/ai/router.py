@@ -10,6 +10,7 @@ from app.infrastructure.ai.groq import GroqProvider
 from app.infrastructure.ai.mistral import MistralProvider
 from app.infrastructure.ai.mock import MockAIProvider
 from app.infrastructure.ai.nvidia import NvidiaProvider
+from app.infrastructure.ai.openrouter import OpenRouterProvider
 
 
 class AIProviderRouter(AIProviderPort):
@@ -22,6 +23,7 @@ class AIProviderRouter(AIProviderPort):
             or settings.NVIDIA_NIM_API_KEY
             or settings.GEMINI_API_KEY
             or settings.MISTRAL_API_KEY
+            or settings.OPENROUTER_API_KEY
         )
         if mock_mode is not None:
             self.mock_mode = mock_mode
@@ -52,6 +54,8 @@ class AIProviderRouter(AIProviderPort):
             self.providers["gemini"] = GeminiProvider(api_key=settings.GEMINI_API_KEY)
         if settings.MISTRAL_API_KEY:
             self.providers["mistral"] = MistralProvider(api_key=settings.MISTRAL_API_KEY)
+        if settings.OPENROUTER_API_KEY:
+            self.providers["openrouter"] = OpenRouterProvider(api_key=settings.OPENROUTER_API_KEY)
         logger.info(f"AIProviderRouter initialized with live providers: {list(self.providers.keys())}")
 
         # Fallback to mock if no keys are provided
@@ -86,9 +90,12 @@ class AIProviderRouter(AIProviderPort):
         if self.mock_mode or "mock" in self.providers:
             return ["mock"]
         chain = []
+        # Configured primary vision provider first
         if settings.AI_VISION_PROVIDER in self.providers:
             chain.append(settings.AI_VISION_PROVIDER)
-        for p in ["gemini", "nvidia", "mock"]:
+        # Then remaining vision-capable providers as backups (openrouter is a
+        # multi-model vision backup; groq/mistral are text-only and excluded).
+        for p in ["gemini", "nvidia", "openrouter", "mock"]:
             if p in self.providers and p not in chain:
                 chain.append(p)
         return chain
@@ -145,7 +152,9 @@ class AIProviderRouter(AIProviderPort):
 
         yield "현재 일시적인 시스템 지연으로 상담원 연결을 도와드리겠습니다."
 
-    async def analyze_claim_image(self, image_bytes: bytes, mime_type: str) -> ClaimVisionObservation:
+    async def analyze_claim_image(
+        self, image_bytes: bytes, mime_type: str, industry: Optional[str] = None
+    ) -> ClaimVisionObservation:
         chain = self.get_vision_provider_chain()
         last_error = None
 
@@ -154,7 +163,7 @@ class AIProviderRouter(AIProviderPort):
                 continue
             provider = self.providers[provider_name]
             try:
-                observation = await provider.analyze_claim_image(image_bytes, mime_type)
+                observation = await provider.analyze_claim_image(image_bytes, mime_type, industry)
                 logger.info(
                     f"Vision analysis completed via {provider_name}: defect={observation.defect_type.value}, damage={observation.damage_ratio_estimate}%"
                 )
