@@ -1,6 +1,15 @@
 from typing import List, Optional
-from pydantic import Field
+from pathlib import Path
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Render stores "Secret Files" as real files (not env vars) under /etc/secrets/
+# (or the app root). If ENCRYPTION_KEY isn't set as an env var, fall back to
+# reading it from a secret file so Fernet encryption still works on Render.
+_SECRET_FILE_CANDIDATES = [
+    Path("/etc/secrets/ENCRYPTION_KEY"),
+    Path(__file__).resolve().parents[2] / "ENCRYPTION_KEY",
+]
 
 
 class Settings(BaseSettings):
@@ -65,6 +74,22 @@ class Settings(BaseSettings):
     # Commerce OAuth secret/token encryption key (Render 환경변수 ENCRYPTION_KEY).
     # 32-byte url-safe base64 값. 없으면 카페24 연동(저장/사용) 자체를 차단합니다.
     ENCRYPTION_KEY: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _load_encryption_key_from_secret_file(self):
+        """Fallback: if ENCRYPTION_KEY env var is unset, read it from a Render
+        Secret File so Fernet encryption works without duplicating the value."""
+        if not self.ENCRYPTION_KEY:
+            for path in _SECRET_FILE_CANDIDATES:
+                try:
+                    if path.is_file():
+                        value = path.read_text(encoding="utf-8").strip()
+                        if value:
+                            self.ENCRYPTION_KEY = value
+                            break
+                except Exception:
+                    continue
+        return self
 
     # Static Outbound IPs for Coupang Wing / Cafe24 / SmartStore IP Whitelist
     # Render dashboard > Connect > Outbound (shared by Render services in the same region)
