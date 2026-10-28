@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     # AI Provider Keys
     GROQ_API_KEY: Optional[str] = None
     NVIDIA_API_KEY: Optional[str] = None
+    NVIDIA_NIM_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
     MISTRAL_API_KEY: Optional[str] = None
 

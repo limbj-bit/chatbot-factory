@@ -34,11 +34,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS Middleware
+# CORS Middleware (Allow all origins for multi-tenant embeddable widget in production)
+cors_origins = ["*"] if settings.APP_ENV == "production" else settings.CORS_ORIGINS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=cors_origins != ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -66,9 +67,16 @@ app.include_router(stores_router)
 app.include_router(widget_router)
 
 # Mount static files for embeddable widget and demo page
-static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
+static_dir = os.path.abspath("static")
+if not os.path.exists(static_dir):
+    static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static"))
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+async def serve_root_showroom():
+    return FileResponse(os.path.join(static_dir, "index.html"))
 
 
 @app.get("/showroom", include_in_schema=False)

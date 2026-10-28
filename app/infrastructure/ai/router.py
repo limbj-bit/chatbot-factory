@@ -16,7 +16,19 @@ class AIProviderRouter(AIProviderPort):
     """Resilient Multi-Provider Router with 429 Fallback, Circuit Breaker Cooldown, and Retries."""
 
     def __init__(self, mock_mode: Optional[bool] = None):
-        self.mock_mode = mock_mode if mock_mode is not None else settings.MOCK_AI
+        has_real_key = bool(
+            settings.GROQ_API_KEY
+            or settings.NVIDIA_API_KEY
+            or settings.NVIDIA_NIM_API_KEY
+            or settings.GEMINI_API_KEY
+            or settings.MISTRAL_API_KEY
+        )
+        if mock_mode is not None:
+            self.mock_mode = mock_mode
+        elif settings.APP_ENV == "production" and has_real_key:
+            self.mock_mode = False
+        else:
+            self.mock_mode = settings.MOCK_AI
         self.providers: Dict[str, AIProviderPort] = {}
         self.provider_cooldowns: Dict[str, float] = {}  # provider_name -> cooldown_expiry_timestamp
         self.cooldown_duration_sec: float = 30.0
@@ -33,12 +45,14 @@ class AIProviderRouter(AIProviderPort):
         # Real Providers if keys present
         if settings.GROQ_API_KEY:
             self.providers["groq"] = GroqProvider(api_key=settings.GROQ_API_KEY)
-        if settings.NVIDIA_API_KEY:
-            self.providers["nvidia"] = NvidiaProvider(api_key=settings.NVIDIA_API_KEY)
+        nvidia_key = settings.NVIDIA_API_KEY or settings.NVIDIA_NIM_API_KEY
+        if nvidia_key:
+            self.providers["nvidia"] = NvidiaProvider(api_key=nvidia_key)
         if settings.GEMINI_API_KEY:
             self.providers["gemini"] = GeminiProvider(api_key=settings.GEMINI_API_KEY)
         if settings.MISTRAL_API_KEY:
             self.providers["mistral"] = MistralProvider(api_key=settings.MISTRAL_API_KEY)
+        logger.info(f"AIProviderRouter initialized with live providers: {list(self.providers.keys())}")
 
         # Fallback to mock if no keys are provided
         if not self.providers:
