@@ -209,6 +209,9 @@ async def get_dynamic_widget_script(
     preview_email: str = Query("", description="Instant preview contact email override"),
     preview_hours: str = Query("", description="Instant preview business hours override"),
     preview_quick_buttons: str = Query("", description="Instant preview comma-separated quick buttons override"),
+    preview_pos: str = Query("", description="Instant preview horizontal position (bottom_right or bottom_left)"),
+    preview_bottom: int = Query(0, description="Instant preview bottom offset in px"),
+    preview_side: int = Query(0, description="Instant preview side offset in px"),
     session: AsyncSession = Depends(get_db),
 ):
     """Serve a dynamically customized JavaScript widget with 10 Commercial Chat Window Templates & 16 Flaticon Avatars."""
@@ -296,6 +299,23 @@ async def get_dynamic_widget_script(
 
     upload_guide = ind_defaults.get("upload_guide", "📷 손상 상품 / 참고 사진 업로드 접수")
 
+    saved_layout = {}
+    if store and store.policy_config_json:
+        try:
+            p_dict = json.loads(store.policy_config_json)
+            if isinstance(p_dict, dict):
+                saved_layout = p_dict.get("widget_layout", {}) or {}
+        except Exception:
+            saved_layout = {}
+
+    widget_pos = preview_pos or saved_layout.get("pos", "bottom_right")
+    bottom_px = preview_bottom if preview_bottom > 0 else int(saved_layout.get("bottom_px", 24))
+    side_px = preview_side if preview_side > 0 else int(saved_layout.get("side_px", 24))
+    bottom_px = max(10, min(260, bottom_px))
+    side_px = max(10, min(220, side_px))
+    win_bottom_px = bottom_px + 92
+    horiz_css = f"left: {side_px}px; right: auto;" if widget_pos == "bottom_left" else f"right: {side_px}px; left: auto;"
+
     is_expired_js = "true" if is_expired else "false"
     expiry_warning_js = "true" if expiry_warning else "false"
     remaining_days_js = str(remaining_days) if remaining_days is not None else "null"
@@ -361,14 +381,14 @@ async def get_dynamic_widget_script(
     }}
     .fresh-widget-launcher {{
       position: fixed;
-      bottom: 24px;
-      right: 24px;
+      bottom: {bottom_px}px;
+      {horiz_css}
       cursor: pointer;
       z-index: 999999;
       user-select: none;
       font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
       animation: cosbotFloat 3.2s ease-in-out infinite;
-      transition: filter 0.2s ease, transform 0.2s ease;
+      transition: all 0.22s ease;
     }}
     .fresh-widget-launcher:hover {{ filter: brightness(1.06); transform: scale(1.05); }}
     .fresh-widget-launcher.shape-cosbot_badge {{
@@ -413,13 +433,14 @@ async def get_dynamic_widget_script(
 
     /* Base Chat Window */
     .fresh-widget-window {{
-      position: fixed; bottom: 116px; right: 24px; width: 400px; height: 660px;
-      max-width: calc(100vw - 32px); max-height: calc(100vh - 140px);
+      position: fixed; bottom: {win_bottom_px}px; {horiz_css} width: 400px; height: 660px;
+      max-width: calc(100vw - 32px); max-height: calc(100vh - {win_bottom_px + 20}px);
       background: #ffffff; border-radius: 22px;
       border: 1px solid rgba(197, 160, 89, 0.28);
       box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
       display: none; flex-direction: column; z-index: 999999; overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+      transition: bottom 0.22s ease, left 0.22s ease, right 0.22s ease;
     }}
     .fresh-widget-header {{
       background: linear-gradient(135deg, ${{config.primaryColor}} 0%, #2563EB 100%); color: #ffffff; padding: 15px 18px;

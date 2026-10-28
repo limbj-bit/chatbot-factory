@@ -17,4 +17,4 @@ async def test_static_index_html_served():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/static/index.html")
         assert resp.status_code == 200
-        assert "30일 무료체험" in resp.text
+        assert "챗봇 아틀리에 쇼룸" in resp.text

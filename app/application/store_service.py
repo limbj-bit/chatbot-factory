@@ -362,7 +362,7 @@ class StoreService:
                 0,
                 True,
                 False,
-                "무료 체험(이용) 기간이 만료되었습니다. 서비스 연장 문의는 관리자에게 연락해 주세요.",
+                "서비스 이용 기간이 만료되었습니다. 연장 문의는 관리자에게 연락해 주세요.",
             )
 
         import math
@@ -501,7 +501,9 @@ class StoreService:
                 f"궁금하신 서비스, 예약/견적 문의 또는 상담 내용을 편하게 말씀해 주세요!"
             )
         else:
-            welcome_message = industry_info["welcome_message"]
+            base_msg = industry_info["welcome_message"]
+            second_line = base_msg.split("\n", 1)[1] if "\n" in base_msg else base_msg
+            welcome_message = f"안녕하세요! {request.store_name} AI 상담사 '{bot_name}'입니다. ✨\n{second_line}"
         bot_icon_style = request.bot_icon_style or industry_info.get("bot_icon_style", "flaticon_cute_robot")
         bot_label = request.bot_label or industry_info.get("bot_label", f"{bot_name} 상담")
         brand_badge = request.brand_badge or request.store_name[:10]

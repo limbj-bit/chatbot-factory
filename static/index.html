@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI 챗봇 아틀리에 쇼룸 · 30일 무료체험 디자인 스튜디오</title>
+  <title>AI 쇼핑몰 · 홈페이지 맞춤형 챗봇 아틀리에 쇼룸</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Pretendard:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -158,6 +158,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 6px;
+      white-space: nowrap;
     }
     .field-tag {
       font-size: 10.5px;
@@ -167,6 +169,8 @@
       color: #856221;
       font-weight: 700;
       border: 1px solid var(--gold-border);
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .field-tag.opt {
       background: #F4F3F0;
@@ -177,10 +181,12 @@
       font-size: 11.5px;
       color: var(--text-muted);
       line-height: 1.4;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
     .form-grid input, .form-grid select, .field-card input, .field-card select {
-      padding: 10px 12px;
+      padding: 0 12px;
+      height: 42px;
+      margin-top: auto;
       border: 1px solid #DCD7CD;
       border-radius: 9px;
       font-size: 13.5px;
@@ -329,6 +335,16 @@
       box-shadow: 0 12px 30px rgba(197, 160, 89, 0.15);
     }
     code {
+      display: inline-block;
+      background: #FFF9EB;
+      color: #92400E;
+      border: 1px solid #F2DFB6;
+      padding: 1px 7px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    code.snippet-block {
       display: block;
       background: #FFF9EB;
       color: #92400E;
@@ -340,6 +356,26 @@
       margin-top: 10px;
       word-break: break-all;
     }
+    .pos-btn {
+      background: #FFFFFF;
+      border: 1.5px solid #DCD7CD;
+      color: #1E293B;
+      padding: 8px 14px;
+      border-radius: 9px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+    .pos-btn:hover {
+      border-color: var(--gold-accent);
+      background: #FFF9EB;
+    }
+    .pos-btn.active {
+      background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+      color: #FFFFFF;
+      border-color: #B45309;
+    }
   </style>
 </head>
 <body>
@@ -349,12 +385,12 @@
         <div>
           <span class="editorial-eyebrow">BESPOKE AI CONCIERGE STUDIO</span>
           <div class="badge">SELF-SERVICE DESIGN SHOWROOM · 17개 전 업종 · 쇼핑몰 & 워드프레스 완벽 호환</div>
-          <h1>✨ AI 쇼핑몰 · 홈페이지 챗봇 아틀리에 쇼룸 & 30일 무료체험</h1>
+          <h1>✨ AI 쇼핑몰 · 홈페이지 맞춤형 챗봇 아틀리에 쇼룸</h1>
         </div>
         <a href="/admin" class="admin-link">🔐 마스터 관리실 (Admin Only)</a>
       </div>
       <p class="hero-sub">
-        아래에서 <strong>내 쇼핑몰 또는 홈페이지/워드프레스 정보</strong>를 입력하고 <strong>18가지 밝은 프리미엄 아바타·실사 모델</strong>과 <strong>10가지 상용 채팅창 템플릿</strong>을 클릭해 보세요. 클릭하는 즉시 <strong>우측 하단 챗봇이 실시간으로 변신</strong>하며, 마음에 드는 조합으로 <strong>[🎁 30일 무료 체험 코드]</strong>를 즉시 발급받으실 수 있습니다.
+        아래에서 <strong>내 쇼핑몰 또는 홈페이지/워드프레스 정보</strong>를 입력하고 <strong>18가지 밝은 프리미엄 아바타·실사 모델</strong>과 <strong>10가지 상용 채팅창 템플릿</strong>, 그리고 <strong>화면 위치(좌/우/상/하)</strong>를 클릭해 보세요. 클릭하는 즉시 <strong>화면의 챗봇이 실시간으로 변신</strong>하며, 마음에 드는 조합으로 <strong>[✨ 전용 챗봇 설치 코드 & 직통 링크]</strong>를 즉시 발급받으실 수 있습니다.
       </p>
     </div>
     <div class="studio-body">
@@ -372,7 +408,7 @@
         </div>
 
         <div class="field-card">
-          <div class="field-title"><span>② 업종 선택 (쇼핑몰 · 워드프레스 · 일반 홈페이지)</span><span class="field-tag">17종 지원</span></div>
+          <div class="field-title"><span>② 내 업종 선택 (쇼핑몰 · 홈페이지)</span><span class="field-tag">17종 지원</span></div>
           <div class="field-desc">업종을 고르면 맞춤 테마 색상과 업종별 단골 질문 버튼 5개가 자동으로 세팅됩니다.</div>
           <select id="industry" onchange="onIndustryChange()">
             <optgroup label="🛍️ 쇼핑몰 · 이커머스 업종 (8종)">
@@ -489,9 +525,95 @@
         </div>
       </div>
 
-      <!-- 4순위: 즉시 행동 버튼 (코드 발급 & 내 사진 업로드) -->
+      <!-- 4단계: 챗봇 화면 위치 조절 (좌/우/위/아래 버튼으로 실시간 이동!) -->
+      <div class="section-label">📍 4단계: 내 쇼핑몰에 챗봇이 뜰 화면 위치 조절 (버튼 클릭 시 챗봇이 실시간으로 이동합니다!):</div>
+      <input type="hidden" id="widgetPos" value="bottom_right" />
+      <input type="hidden" id="widgetBottomPx" value="24" />
+      <input type="hidden" id="widgetSidePx" value="24" />
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#FFFFFF;border:1.5px solid var(--stone-border);border-radius:14px;padding:14px 16px;margin-bottom:18px;">
+        <span style="font-size:13px;font-weight:800;color:var(--obsidian);margin-right:4px;">↔️ 기본 방향:</span>
+        <button type="button" id="posBtnRight" class="pos-btn active" onclick="setWidgetSide('bottom_right')">↘️ 오른쪽 하단 (기본)</button>
+        <button type="button" id="posBtnLeft" class="pos-btn" onclick="setWidgetSide('bottom_left')">↙️ 왼쪽 하단</button>
+        <span style="color:#CBD5E1;margin:0 4px;">|</span>
+        <span style="font-size:13px;font-weight:800;color:var(--obsidian);margin-right:4px;">🕹️ 미세 위치 이동 (TOP 버튼 겹침 방지):</span>
+        <button type="button" class="pos-btn" onclick="nudgeWidget(0, 30)">⬆️ 위로 올리기</button>
+        <button type="button" class="pos-btn" onclick="nudgeWidget(0, -30)">⬇️ 아래로 내리기</button>
+        <button type="button" class="pos-btn" onclick="nudgeWidget(20, 0)">⬅️ 안쪽으로</button>
+        <button type="button" class="pos-btn" onclick="nudgeWidget(-20, 0)">➡️ 바깥쪽으로</button>
+        <button type="button" class="pos-btn" onclick="resetWidgetPos()" style="color:#64748B;">🔄 기본 위치 초기화</button>
+        <span id="posStatusText" style="font-size:12px;font-weight:700;color:#B45309;margin-left:auto;">현재: 오른쪽 하단 (아래 여백 24px · 옆 여백 24px)</span>
+      </div>
+
+      <!-- 5단계 (선택 옵션): 실시간 주문·배송·A/S 자동 연동 (숨기지 않고 바로 보이게 배치!) -->
+      <div class="section-label">🔌 5단계 [선택 옵션]: 실시간 주문조회 · 배송추적 · 자동 A/S 연동 (쿠팡 / 스마트스토어 / 카페24 / 아임웹 API)</div>
+      <div style="background:#FFFDF9;border:1.5px solid #F2DFB6;border-radius:16px;padding:18px 20px;margin-bottom:18px;">
+        <div style="font-size:13px;color:#92400E;font-weight:700;margin-bottom:12px;">
+          💡 <b>안내:</b> 아래 API 키를 입력하지 않아도 <b>기본 AI 상담 · 맞춤 상품 추천 · 파손/불량 사진 판독은 100% 작동</b>합니다! 쇼핑몰의 <b>실시간 주문조회·배송추적·자동 반품/A/S 접수</b>까지 연동하고 싶을 때만 아래에서 플랫폼을 선택해 입력해 주세요.
+        </div>
+
+        <div style="background:#FFFFFF;border:1px solid #E8CA8C;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+          <div style="font-size:13px;font-weight:800;color:#1E293B;margin-bottom:6px;">
+            📌 STEP A. 먼저 아래 [우리 챗봇 서버 영구 고정 IP]와 [연동 콜백 URL]을 복사해서 쇼핑몰 관리자 센터에 등록해 주세요!
+          </div>
+          <div class="form-grid" style="margin-bottom:0;">
+            <div class="field-card" style="background:#FAF9F6;">
+              <div class="field-title"><span>🌐 우리 챗봇 서버 영구 고정 IP (쿠팡 Wing 허용 IP 등록용)</span><span class="field-tag">영구고정 · 복사용</span></div>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+                <input type="text" id="serverOutboundIp" readonly value="44.229.227.142, 54.188.71.94, 52.13.128.108" style="background:#FFFFFF;font-family:monospace;" />
+                <button type="button" class="btn" style="padding:9px 14px;font-size:12px;white-space:nowrap;" onclick="copyTextValue('serverOutboundIp', this)">📋 IP 복사</button>
+              </div>
+              <div style="font-size:11.5px;color:#B45309;font-weight:700;margin-top:4px;">
+                ⏱️ <b>[쿠팡 Wing 필수 안내]</b> 쿠팡은 IP 최초 등록 후 실제 쿠팡 시스템 반영까지 <b>약 30분</b>이 소요됩니다. (1회 등록 후에는 서버 업그레이드 시에도 바뀌지 않으며, 챗봇 디자인·사진 판독은 대기 없이 즉시 작동합니다!)
+              </div>
+            </div>
+            <div class="field-card" style="background:#FAF9F6;">
+              <div class="field-title"><span>🔗 우리 챗봇 연동 URL (Redirect URI / Webhook URL)</span><span class="field-tag">복사용</span></div>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+                <input type="text" id="serverWebhookUrl" readonly value="https://chatbot-factory-yqa0.onrender.com/api/orders/webhook" style="background:#FFFFFF;font-family:monospace;" />
+                <button type="button" class="btn" style="padding:9px 14px;font-size:12px;white-space:nowrap;" onclick="copyTextValue('serverWebhookUrl', this)">📋 URL 복사</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#FFFFFF;border:1px solid var(--stone-border);border-radius:12px;padding:14px 16px;">
+          <div style="font-size:13px;font-weight:800;color:#1E293B;margin-bottom:6px;">
+            🔑 STEP B. 연동할 쇼핑몰 플랫폼을 고르고 발급받은 3종 키(아이디 · API Key · Secret Key)를 입력해 주세요
+          </div>
+          <div class="form-grid" style="margin-top:10px;margin-bottom:0;">
+            <div class="field-card">
+              <div class="field-title"><span>① 연동할 커머스 플랫폼 선택</span><span class="field-tag opt">선택사항</span></div>
+              <div class="field-desc" id="commPlatformGuide">연동할 플랫폼을 선택하면 오른쪽 입력칸 3개의 이름이 해당 플랫폼 규격으로 자동 전환됩니다.</div>
+              <select id="commercePlatform" onchange="onCommercePlatformChange()">
+                <option value="none" selected>선택 안 함 (API 없이 기본 상담 + 사진 판독만 사용)</option>
+                <option value="coupang_wing">🚀 쿠팡 (Coupang Wing 오픈 API — 주문/배송/반품/AS 연동)</option>
+                <option value="naver_smartstore">🟢 네이버 스마트스토어 (커머스 API — 주문/배송/반품/AS 연동)</option>
+                <option value="cafe24">🛍️ 카페24 (Cafe24 자사몰 API — 주문/배송/반품/AS 연동)</option>
+                <option value="imweb">🎨 아임웹 (Imweb 자사몰 API — 주문/배송/반품/AS 연동)</option>
+              </select>
+            </div>
+            <div class="field-card">
+              <div class="field-title"><span id="labelStoreUid">② 업체코드 / 스토어 아이디</span><span class="field-tag opt">ID</span></div>
+              <div class="field-desc" id="descStoreUid">쿠팡 Vendor ID(예: A00123456) 또는 스마트스토어/카페24 몰 ID</div>
+              <input type="text" id="apiStoreUid" placeholder="예: A00123456 또는 myshop_id" />
+            </div>
+            <div class="field-card">
+              <div class="field-title"><span id="labelClientKey">③ Access Key / Client ID (API 키)</span><span class="field-tag opt">API Key</span></div>
+              <div class="field-desc" id="descClientKey">판매자 센터에서 발급받은 Access Key 또는 애플리케이션 ID</div>
+              <input type="text" id="apiClientKey" placeholder="Access Key 또는 Client ID 입력" />
+            </div>
+            <div class="field-card">
+              <div class="field-title"><span id="labelSecretKey">④ Secret Key / Client Secret (시크릿 키)</span><span class="field-tag opt">암호화 저장</span></div>
+              <div class="field-desc" id="descSecretKey">외부에 노출되지 않도록 암호화 처리되어 안전하게 보관됩니다.</div>
+              <input type="password" id="apiSecretKey" placeholder="Secret Key 또는 Client Secret 입력" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6단계: 즉시 행동 버튼 (코드 발급 & 내 사진 업로드) -->
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:18px;padding:16px;background:#FFFFFF;border:1.5px solid var(--gold-border);border-radius:14px;">
-        <button class="btn" onclick="createMyTrialStore()">🎁 선택한 디자인으로 30일 무료 체험 코드 발급받기</button>
+        <button class="btn" onclick="createMyTrialStore()">✨ 선택한 디자인으로 내 전용 챗봇 설치 코드 발급받기</button>
         <label style="font-size:13px;color:var(--obsidian);font-weight:700;background:#FAF8F5;padding:11px 16px;border:1.5px dashed var(--gold-accent);border-radius:10px;cursor:pointer;">
           📸 내 사진/모델/로고 파일(JPG·PNG·GIF) 직접 올려서 적용하기:
           <input type="file" id="customAvatarFile" accept="image/*" onchange="previewCustomFile(this)" style="font-size:12px;" />
@@ -504,7 +626,7 @@
       <!-- 맨 아래쪽: 자동으로 처리되는 세부 항목들 (원할 때만 펼쳐서 수정) -->
       <details style="margin-top:18px;background:#FFFFFF;border:1px solid var(--stone-border);border-radius:12px;padding:12px 16px;">
         <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--text-muted);outline:none;">
-          ⚙️ <b>[자동 완성 항목]</b> 버튼 모양 · 상단 배지 · 운영시간 · 빠른 질문 5개 · 몰 ID 직접 바꾸기 <span style="font-weight:500;font-size:12px;">(안 건드려도 위 ①~③번에 맞춰 자동으로 완성됩니다 · 직접 바꾸시려면 클릭!)</span>
+          ⚙️ <b>[자동 완성 항목]</b> 버튼 모양 · 상단 배지 · 빠른 질문 5개 · 몰 ID 직접 바꾸기 <span style="font-weight:500;font-size:12px;">(안 건드려도 위 ①~③번에 맞춰 자동으로 완성됩니다 · 직접 바꾸시려면 클릭!)</span>
         </summary>
         <div class="form-grid" style="margin-top:14px;">
           <div class="field-card">
@@ -542,77 +664,6 @@
           <div class="field-title"><span>채팅창 첫 화면 '빠른 질문 버튼 5개' 직접 지정</span><span class="field-tag opt">자동: 업종별 5개 버튼 자동 세팅됨</span></div>
           <div class="field-desc">비워두시면 선택한 업종에 맞는 5개 버튼이 자동 생성됩니다. 직접 바꾸시려면 쉼표(<code>,</code>)로 구분해 적어주세요.</div>
           <input type="text" id="quickButtonsInput" oninput="triggerInstantPreview();" placeholder="비워두면 자동 생성! (직접 입력 예: 🚚 배송조회, 💄 피부맞춤 추천, 🌿 전성분 문의, 🎁 이벤트, 🔄 교환/환불)" />
-        </div>
-      </details>
-
-      <!-- 선택 옵션: 실시간 주문·배송·A/S 자동 연동 (쿠팡/스마트스토어/카페24/아임웹 3종 키 + 서버 IP/URL 제공) -->
-      <details style="margin-top:12px;background:#FFFDF9;border:1.5px solid #F2DFB6;border-radius:12px;padding:12px 16px;" ontoggle="if(this.open) loadServerIntegrationInfo();">
-        <summary style="cursor:pointer;font-size:13.5px;font-weight:800;color:#92400E;outline:none;">
-          🔌 <b>[선택 옵션]</b> 실시간 주문조회 · 배송추적 · 자동 A/S 연동 (쿠팡 / 스마트스토어 / 카페24 / 아임웹 API 키 입력)
-          <span style="font-weight:500;font-size:12px;color:var(--text-muted);">— 입력 안 해도 기본 상담·상품 추천·사진 판독은 100% 작동합니다!</span>
-        </summary>
-        <div style="margin-top:14px;">
-          <div style="background:#FFFFFF;border:1px solid #E8CA8C;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
-            <div style="font-size:13px;font-weight:800;color:#1E293B;margin-bottom:6px;">
-              📌 STEP A. 먼저 아래 [우리 챗봇 서버 IP 주소]와 [연동 콜백 URL]을 복사해서 쇼핑몰 관리자 센터에 등록해 주세요!
-            </div>
-            <div style="font-size:12px;color:#64748B;margin-bottom:10px;">
-              • <b>쿠팡(Coupang Wing)</b> 등에서 API 키를 발급받을 때 외부 허용 IP 주소와 연동 URL을 요구합니다. 아래 복사 버튼을 눌러 그대로 붙여넣으세요.
-            </div>
-            <div class="form-grid" style="margin-bottom:0;">
-              <div class="field-card" style="background:#FAF9F6;">
-                <div class="field-title"><span>🌐 우리 챗봇 서버 영구 고정 IP (쿠팡 Wing 허용 IP 등록용)</span><span class="field-tag">영구고정 · 복사용</span></div>
-                <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
-                  <input type="text" id="serverOutboundIp" readonly value="44.229.227.142, 54.188.71.94, 52.13.128.108" style="background:#FFFFFF;font-family:monospace;" />
-                  <button type="button" class="btn" style="padding:9px 14px;font-size:12px;white-space:nowrap;" onclick="copyTextValue('serverOutboundIp', this)">📋 IP 복사</button>
-                </div>
-                <div style="font-size:11.5px;color:#B45309;font-weight:700;margin-top:4px;">
-                  ⏱️ <b>[쿠팡 Wing 필수 안내]</b> 쿠팡은 IP 최초 등록 후 실제 쿠팡 시스템 반영까지 <b>약 30분</b>이 소요됩니다. (1회 등록 후에는 서버 업그레이드 시에도 바뀌지 않으며, 챗봇 디자인·사진 판독은 대기 없이 즉시 작동합니다!)
-                </div>
-              </div>
-              <div class="field-card" style="background:#FAF9F6;">
-                <div class="field-title"><span>🔗 우리 챗봇 연동 URL (Redirect URI / Webhook URL)</span><span class="field-tag">복사용</span></div>
-                <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
-                  <input type="text" id="serverWebhookUrl" readonly value="https://chatbot-factory-yqa0.onrender.com/api/orders/webhook" style="background:#FFFFFF;font-family:monospace;" />
-                  <button type="button" class="btn" style="padding:9px 14px;font-size:12px;white-space:nowrap;" onclick="copyTextValue('serverWebhookUrl', this)">📋 URL 복사</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div style="background:#FFFFFF;border:1px solid var(--stone-border);border-radius:12px;padding:14px 16px;">
-            <div style="font-size:13px;font-weight:800;color:#1E293B;margin-bottom:6px;">
-              🔑 STEP B. 연동할 쇼핑몰 플랫폼을 고르고 발급받은 3종 키(아이디 · API Key · Secret Key)를 입력해 주세요
-            </div>
-            <div class="form-grid" style="margin-top:10px;margin-bottom:0;">
-              <div class="field-card">
-                <div class="field-title"><span>① 연동할 커머스 플랫폼 선택</span><span class="field-tag opt">선택사항</span></div>
-                <div class="field-desc" id="commPlatformGuide">연동할 플랫폼을 선택하면 아래 입력칸 이름이 해당 플랫폼 규격으로 자동 전환됩니다.</div>
-                <select id="commercePlatform" onchange="onCommercePlatformChange()">
-                  <option value="none" selected>선택 안 함 (API 없이 기본 상담 + 사진 판독만 사용)</option>
-                  <option value="coupang_wing">🚀 쿠팡 (Coupang Wing 오픈 API 연동)</option>
-                  <option value="naver_smartstore">🟢 네이버 스마트스토어 (커머스 API 연동)</option>
-                  <option value="cafe24">🛍️ 카페24 (Cafe24 자사몰 API 연동)</option>
-                  <option value="imweb">🎨 아임웹 (Imweb 자사몰 API 연동)</option>
-                </select>
-              </div>
-              <div class="field-card">
-                <div class="field-title"><span id="labelStoreUid">② 업체코드 / 스토어 아이디</span><span class="field-tag opt">ID</span></div>
-                <div class="field-desc" id="descStoreUid">쿠팡 Vendor ID(예: A00123456) 또는 스마트스토어/카페24 몰 ID</div>
-                <input type="text" id="apiStoreUid" placeholder="예: A00123456 또는 myshop_id" />
-              </div>
-              <div class="field-card">
-                <div class="field-title"><span id="labelClientKey">③ Access Key / Client ID (API 키)</span><span class="field-tag opt">API Key</span></div>
-                <div class="field-desc" id="descClientKey">판매자 센터에서 발급받은 Access Key 또는 애플리케이션 ID</div>
-                <input type="text" id="apiClientKey" placeholder="Access Key 또는 Client ID 입력" />
-              </div>
-              <div class="field-card">
-                <div class="field-title"><span id="labelSecretKey">④ Secret Key / Client Secret (시크릿 키)</span><span class="field-tag opt">암호화 저장</span></div>
-                <div class="field-desc" id="descSecretKey">외부에 노출되지 않도록 암호화 처리되어 안전하게 보관됩니다.</div>
-                <input type="password" id="apiSecretKey" placeholder="Secret Key 또는 Client Secret 입력" />
-              </div>
-            </div>
-          </div>
         </div>
       </details>
     </div>
@@ -844,6 +895,46 @@
       triggerInstantPreview(true);
     }
 
+    function updatePosStatusLabel() {
+      const pos = document.getElementById("widgetPos").value;
+      const b = document.getElementById("widgetBottomPx").value;
+      const s = document.getElementById("widgetSidePx").value;
+      const sideText = pos === "bottom_left" ? "왼쪽 하단" : "오른쪽 하단";
+      const el = document.getElementById("posStatusText");
+      if (el) el.innerText = `현재: ${sideText} (아래 여백 ${b}px · 옆 여백 ${s}px)`;
+    }
+
+    function setWidgetSide(pos) {
+      document.getElementById("widgetPos").value = pos;
+      document.getElementById("posBtnRight").classList.toggle("active", pos === "bottom_right");
+      document.getElementById("posBtnLeft").classList.toggle("active", pos === "bottom_left");
+      updatePosStatusLabel();
+      triggerInstantPreview(true);
+    }
+
+    function nudgeWidget(deltaSide, deltaBottom) {
+      const bEl = document.getElementById("widgetBottomPx");
+      const sEl = document.getElementById("widgetSidePx");
+      let b = parseInt(bEl.value || "24", 10) + deltaBottom;
+      let s = parseInt(sEl.value || "24", 10) + deltaSide;
+      b = Math.max(12, Math.min(240, b));
+      s = Math.max(12, Math.min(200, s));
+      bEl.value = String(b);
+      sEl.value = String(s);
+      updatePosStatusLabel();
+      triggerInstantPreview(true);
+    }
+
+    function resetWidgetPos() {
+      document.getElementById("widgetPos").value = "bottom_right";
+      document.getElementById("widgetBottomPx").value = "24";
+      document.getElementById("widgetSidePx").value = "24";
+      document.getElementById("posBtnRight").classList.add("active");
+      document.getElementById("posBtnLeft").classList.remove("active");
+      updatePosStatusLabel();
+      triggerInstantPreview(true);
+    }
+
     function triggerInstantPreview(openWindow = true) {
       const icon = document.getElementById("botIconStyle").value;
       const tpl = document.getElementById("chatTemplate").value;
@@ -856,6 +947,9 @@
       const email = document.getElementById("contactEmail").value.trim() || "help@mycompany.com";
       const hours = document.getElementById("businessHours").value.trim() || "평일 09:00~18:00";
       const qbRaw = document.getElementById("quickButtonsInput").value.trim();
+      const pos = document.getElementById("widgetPos").value || "bottom_right";
+      const bottomPx = document.getElementById("widgetBottomPx").value || "24";
+      const sidePx = document.getElementById("widgetSidePx").value || "24";
 
       const params = new URLSearchParams({
         mall_id: "showroom_preview",
@@ -870,6 +964,9 @@
         preview_email: email,
         preview_hours: hours,
         preview_quick_buttons: qbRaw,
+        preview_pos: pos,
+        preview_bottom: bottomPx,
+        preview_side: sidePx,
         t: Date.now()
       });
 
@@ -995,15 +1092,22 @@
       const apiStoreUid = document.getElementById("apiStoreUid").value.trim();
       const apiClientKey = document.getElementById("apiClientKey").value.trim();
       const apiSecretKey = document.getElementById("apiSecretKey").value.trim();
-      let policy_config = undefined;
+      const widgetPos = document.getElementById("widgetPos").value || "bottom_right";
+      const widgetBottomPx = parseInt(document.getElementById("widgetBottomPx").value || "24", 10);
+      const widgetSidePx = parseInt(document.getElementById("widgetSidePx").value || "24", 10);
+      const policy_config = {
+        widget_layout: {
+          pos: widgetPos,
+          bottom_px: widgetBottomPx,
+          side_px: widgetSidePx
+        }
+      };
       if (commPlatform && commPlatform !== "none") {
-        policy_config = {
-          commerce_api: {
-            platform: commPlatform,
-            store_uid: apiStoreUid,
-            client_key: apiClientKey,
-            secret_masked: apiSecretKey ? ("****" + apiSecretKey.slice(-4)) : ""
-          }
+        policy_config.commerce_api = {
+          platform: commPlatform,
+          store_uid: apiStoreUid,
+          client_key: apiClientKey,
+          secret_masked: apiSecretKey ? ("****" + apiSecretKey.slice(-4)) : ""
         };
       }
 
@@ -1049,14 +1153,14 @@
       const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(lastDirectChatUrl)}`;
       const apiBadgeHtml = createdStore.commerce_api_Connected
         ? `<span style="background:#D1FAE5;color:#065F46;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:800;">⚡ 실시간 주문·배송·A/S API 연동 활성 (${createdStore.commerce_platform})</span>`
-        : `<span style="background:#FEF3C7;color:#92400E;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:700;">💡 기본 AI 상담·상품추천·사진판독 모드 (API 미입력)</span>`;
+        : `<span style="background:#FEF3C7;color:#92400E;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:700;">💡 기본 AI 상담·상품추천·사진판독 모드</span>`;
 
       const box = document.getElementById("issuedResultBox");
       box.style.display = "block";
       box.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
           <div>
-            <h4 style="margin:0 0 6px 0;color:var(--obsidian);font-size:16px;">🎉 [${createdStore.store_name}] 전용 챗봇 30일 무료 체험 코드가 발급되었습니다!</h4>
+            <h4 style="margin:0 0 6px 0;color:var(--obsidian);font-size:16px;">🎉 [${createdStore.store_name}] 전용 AI 챗봇 설치 코드가 발급되었습니다!</h4>
             <div style="font-size:12.5px;color:#856221;font-weight:700;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <span>• 몰 ID: <b>${createdStore.mall_id}</b> | 봇 이름: <b>${createdStore.bot_name}</b> | <b>${createdStore.status_message}</b></span>
               ${apiBadgeHtml}
@@ -1064,7 +1168,7 @@
           </div>
           <button class="btn" style="padding:10px 18px;font-size:13px;" onclick="copyIssuedSnippet(this)">📋 ① 자사몰/워드프레스 설치코드 복사</button>
         </div>
-        <code>${fullEmbedTag.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
+        <code class="snippet-block">${fullEmbedTag.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
 
         <div style="margin-top:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:#FFFFFF;padding:14px 16px;border-radius:12px;border:1.5px solid #F2DFB6;">
           <img src="${qrImgUrl}" alt="QR" style="width:84px;height:84px;border-radius:10px;border:1px solid #EAE5DC;padding:4px;background:#fff;" />
@@ -1097,7 +1201,7 @@
     }
 
     async function addKnowledge() {
-      const mallId = document.getElementById("targetMallId").value.trim() || "demo_mall";
+      const mallId = document.getElementById("targetMallId").value.trim() || "showroom_preview";
       const title = document.getElementById("prodTitle").value.trim() || "루미에르 로즈 세럼";
       const price = parseInt(document.getElementById("prodPrice").value || "38000", 10);
       const purchase_url = document.getElementById("prodUrl").value.trim() || "/products/rose-serum";
@@ -1114,7 +1218,7 @@
     }
 
     async function crawlUrl() {
-      const mallId = document.getElementById("targetMallId").value.trim() || "demo_mall";
+      const mallId = document.getElementById("targetMallId").value.trim() || "showroom_preview";
       const url = document.getElementById("prodUrl").value.trim();
       const tags = document.getElementById("prodTags").value.trim();
       if (!url) {
@@ -1134,6 +1238,7 @@
       }
     }
     window.addEventListener("DOMContentLoaded", () => {
+      loadServerIntegrationInfo();
       triggerInstantPreview(false);
     });
   </script>

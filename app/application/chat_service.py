@@ -115,6 +115,13 @@ class ChatService:
         session_db.add(user_msg)
         await session_db.flush()
 
+        # 1.5 Check if store subscription is expired
+        store_obj = await store_service.get_store_by_mall_id(session_db, mall_id)
+        if store_obj:
+            _, is_exp, _, exp_msg = store_service.evaluate_subscription_status(store_obj)
+            if is_exp:
+                return chat_session.id, f"⛔ {exp_msg}", "subscription_expired", []
+
         # 2. Check 0-token Deterministic FAQ first (Does not consume AI quota)
         faq_answer = self.rag.lookup_deterministic_faq(message_text)
         if faq_answer:
@@ -213,6 +220,14 @@ class ChatService:
         session_db.add(user_msg)
         await session_db.commit()
 
+        # 0. Check if store subscription is expired
+        store_obj = await store_service.get_store_by_mall_id(session_db, mall_id)
+        if store_obj:
+            _, is_exp, _, exp_msg = store_service.evaluate_subscription_status(store_obj)
+            if is_exp:
+                yield f"⛔ {exp_msg}"
+                return
+
         # Check FAQ first (0-token)
         faq_answer = self.rag.lookup_deterministic_faq(message_text)
         if faq_answer:
@@ -225,6 +240,31 @@ class ChatService:
                 role="assistant",
                 content=faq_answer,
                 intent="faq_deterministic",
+            )
+            session_db.add(assistant_msg)
+            await session_db.commit()
+            return
+
+        # Check Order / Shipping inquiry (ORD-...)
+        if "주문" in message_text or "배송" in message_text or "ORD-" in message_text:
+            order_match = re.search(r"ORD-[A-Za-z0-9-]+", message_text)
+            if order_match:
+                order_id = order_match.group(0)
+                order = await self.order_service.get_order_details(order_id)
+                if order:
+                    status_kor = "배송 완료" if order.is_delivered() else "배송 진행 중"
+                    order_reply = f"📦 주문번호 **[{order.order_id}]**는 현재 **[{status_kor}]** 상태입니다.\n• 주문 상품: {order.items[0].product_name}\n• 상품 상태 사진 판독이 필요하시면 아래 **[📷 사진 업로드]** 버튼을 눌러 사진을 올려주세요!"
+                else:
+                    order_reply = f"주문번호 [{order_id}]를 조회할 수 없습니다. 번호를 다시 확인해 주세요."
+            else:
+                order_reply = "주문 및 배송 조회를 원하시면 'ORD-'로 시작하는 주문번호(예: ORD-NORMAL)를 함께 입력해 주세요."
+            yield order_reply
+            assistant_msg = MessageModel(
+                id=str(uuid.uuid4()),
+                session_id=chat_session.id,
+                role="assistant",
+                content=order_reply,
+                intent="shipping_inquiry",
             )
             session_db.add(assistant_msg)
             await session_db.commit()
