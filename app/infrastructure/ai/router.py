@@ -7,6 +7,7 @@ from app.domain.claims.models import ClaimVisionObservation
 from app.domain.ports.ai_port import AIProviderPort
 from app.infrastructure.ai.gemini import GeminiProvider
 from app.infrastructure.ai.groq import GroqProvider
+from app.infrastructure.ai.mistral import MistralProvider
 from app.infrastructure.ai.mock import MockAIProvider
 from app.infrastructure.ai.nvidia import NvidiaProvider
 
@@ -36,6 +37,8 @@ class AIProviderRouter(AIProviderPort):
             self.providers["nvidia"] = NvidiaProvider(api_key=settings.NVIDIA_API_KEY)
         if settings.GEMINI_API_KEY:
             self.providers["gemini"] = GeminiProvider(api_key=settings.GEMINI_API_KEY)
+        if settings.MISTRAL_API_KEY:
+            self.providers["mistral"] = MistralProvider(api_key=settings.MISTRAL_API_KEY)
 
         # Fallback to mock if no keys are provided
         if not self.providers:
@@ -59,7 +62,7 @@ class AIProviderRouter(AIProviderPort):
         if self.mock_mode or "mock" in self.providers:
             return ["mock"]
         chain = []
-        preferred = [settings.AI_DEFAULT_PROVIDER, settings.AI_FALLBACK_PROVIDER, "gemini"]
+        preferred = [settings.AI_DEFAULT_PROVIDER, settings.AI_FALLBACK_PROVIDER, "mistral", "gemini"]
         for p in preferred:
             if p in self.providers and p not in chain:
                 chain.append(p)

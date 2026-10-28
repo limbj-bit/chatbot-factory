@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: Optional[str] = None
     NVIDIA_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
+    MISTRAL_API_KEY: Optional[str] = None
 
     AI_DEFAULT_PROVIDER: str = "groq"
     AI_FALLBACK_PROVIDER: str = "nvidia"

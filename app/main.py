@@ -4,7 +4,15 @@ import uuid
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.api import admin_router, chat_router, claims_router, health_router, orders_router
+from app.api import (
+    admin_router,
+    chat_router,
+    claims_router,
+    health_router,
+    orders_router,
+    stores_router,
+    widget_router,
+)
 from app.core.config import settings
 from app.core.logging import correlation_id_ctx, logger
 from app.infrastructure.database.session import init_db
@@ -53,6 +61,8 @@ app.include_router(chat_router)
 app.include_router(claims_router)
 app.include_router(orders_router)
 app.include_router(admin_router)
+app.include_router(stores_router)
+app.include_router(widget_router)
 
 # Mount static files for embeddable widget and demo page
 static_dir = os.path.join(os.path.dirname(__file__), "..", "static")

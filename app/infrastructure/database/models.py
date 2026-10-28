@@ -32,6 +32,27 @@ class UserModel(Base):
     )
 
 
+class StoreModel(Base):
+    __tablename__ = "stores"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    mall_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    store_name: Mapped[str] = mapped_column(String(128), index=True)
+    industry: Mapped[str] = mapped_column(String(32), default="fresh_food")  # fresh_food, electronics, fashion, general
+    as_type: Mapped[str] = mapped_column(String(64), default="refund_and_warranty")
+    theme_color: Mapped[str] = mapped_column(String(16), default="#2E7D32")
+    policy_config_json: Mapped[str] = mapped_column(Text, default="{}")
+    welcome_message: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
 class SessionModel(Base):
     __tablename__ = "sessions"
 
