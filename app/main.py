@@ -3,6 +3,7 @@ import os
 import uuid
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from app.api import (
     admin_router,
@@ -68,6 +69,16 @@ app.include_router(widget_router)
 static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+
+@app.get("/showroom", include_in_schema=False)
+async def serve_customer_showroom():
+    return FileResponse(os.path.join(static_dir, "index.html"))
+
+
+@app.get("/admin", include_in_schema=False)
+async def serve_master_admin_console():
+    return FileResponse(os.path.join(static_dir, "admin.html"))
 
 
 if __name__ == "__main__":

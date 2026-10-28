@@ -136,10 +136,19 @@ async def test_widget_trial_warning_expiry_and_remote_extension():
         assert "기간 만료 안내" in exp_script
         assert "사용기한이 만료되어 입력할 수 없습니다" in exp_script
 
-        # 3. Extend subscription by 30 days remotely via PATCH API
+        # 3. Attempt to extend subscription without Admin Key -> must be blocked (401)
+        unauth_patch = await client.patch(
+            "/api/stores/lumiere_expired/subscription",
+            json={"extend_days": 30, "plan_type": "active"},
+        )
+        assert unauth_patch.status_code == 401
+
+        # 4. Extend subscription by 30 days remotely via Admin Key
+        admin_headers = {"X-Admin-Key": "admin-dev-secret-key-change-in-prod"}
         patch_res = await client.patch(
             "/api/stores/lumiere_expired/subscription",
             json={"extend_days": 30, "plan_type": "active"},
+            headers=admin_headers,
         )
         assert patch_res.status_code == 200
         patch_data = patch_res.json()

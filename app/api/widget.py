@@ -146,6 +146,14 @@ FLATICON_PRESET_SVGS: Dict[str, str] = {
 async def get_dynamic_widget_script(
     request: Request,
     mall_id: str = Query("demo_mall", description="Store Mall ID"),
+    preview_icon: str = Query("", description="Instant preview icon override"),
+    preview_shape: str = Query("", description="Instant preview launcher shape override"),
+    preview_template: str = Query("", description="Instant preview chat template override"),
+    preview_bot_name: str = Query("", description="Instant preview bot name override"),
+    preview_store_name: str = Query("", description="Instant preview store name override"),
+    preview_label: str = Query("", description="Instant preview bot label override"),
+    preview_badge: str = Query("", description="Instant preview brand badge override"),
+    preview_industry: str = Query("", description="Instant preview industry override"),
     session: AsyncSession = Depends(get_db),
 ):
     """Serve a dynamically customized JavaScript widget with 10 Commercial Chat Window Templates & 16 Flaticon Avatars."""
@@ -156,41 +164,41 @@ async def get_dynamic_widget_script(
         blocked_js = f'console.warn("[ChatbotFactory] Unauthorized domain for mall_id={mall_id}. Allowed domains: {store.allowed_domains if store else ""}");'
         return Response(content=blocked_js, media_type="application/javascript")
 
-    title = store.store_name if store else "코스라프리"
-    industry = store.industry if store else "general"
-    theme_color = store.theme_color if store else "#0284C7"
-    bot_name = (store.bot_name if store and store.bot_name else "코스봇")
-    brand_badge = (store.brand_badge if store and store.brand_badge else title[:8])
+    title = preview_store_name or (store.store_name if store else "코스라프리")
+    industry = preview_industry or (store.industry if store else "general")
+    ind_defaults = INDUSTRY_DEFAULTS.get(industry, INDUSTRY_DEFAULTS["general"])
+    theme_color = store.theme_color if store else ind_defaults.get("theme_color", "#0284C7")
+    bot_name = preview_bot_name or (store.bot_name if store and store.bot_name else ind_defaults.get("bot_name", "코스봇"))
+    brand_badge = preview_badge or (store.brand_badge if store and store.brand_badge else title[:8])
     header_title = (store.header_title if store and store.header_title else "고객상담센터")
-    chat_template = (store.chat_template if store and store.chat_template else "cosraw_grid")
-    contact_email = (store.contact_email if store and store.contact_email else "contact@cosrawfree.com")
+    chat_template = preview_template or (store.chat_template if store and store.chat_template else "cosraw_grid")
+    contact_email = (store.contact_email if store and store.contact_email else ind_defaults.get("contact_email", "contact@cosrawfree.com"))
     business_hours = (store.business_hours if store and store.business_hours else "평일 09:00~18:00")
     input_placeholder = (
         store.input_placeholder
         if store and store.input_placeholder
-        else "궁금한 성분명(예: 레티놀)이나 질문을 입력하세요..."
+        else ind_defaults.get("input_placeholder", "궁금한 성분명(예: 레티놀)이나 질문을 입력하세요...")
     )
 
     quick_buttons: List[str] = []
-    if store and store.quick_buttons_json:
+    if store and store.quick_buttons_json and not preview_industry:
         try:
             quick_buttons = json.loads(store.quick_buttons_json)
         except Exception:
             quick_buttons = []
     if not quick_buttons:
-        ind_info = INDUSTRY_DEFAULTS.get(industry, INDUSTRY_DEFAULTS["general"])
-        quick_buttons = ind_info.get("quick_buttons", [])
+        quick_buttons = ind_defaults.get("quick_buttons", [])
 
     welcome_msg = (
         store.welcome_message.replace("\n", "\\n")
-        if store and store.welcome_message
+        if store and store.welcome_message and not preview_store_name and not preview_bot_name
         else f"안녕하세요. {title}의 AI 상담사 <b>'{bot_name}'</b> 입니다. 🧪\\n어떤 원료나 서비스가 궁금하신가요?"
     )
 
-    bot_icon_style = (store.bot_icon_style if store and store.bot_icon_style else "flaticon_cute_robot")
-    launcher_shape = (store.launcher_shape if store and store.launcher_shape else "cosbot_badge")
-    bot_label = (store.bot_label if store and store.bot_label else f"{bot_name} 상담")
-    bot_avatar_url = (store.bot_avatar_url if store and store.bot_avatar_url else "")
+    bot_icon_style = preview_icon or (store.bot_icon_style if store and store.bot_icon_style else ind_defaults.get("bot_icon_style", "flaticon_cute_robot"))
+    launcher_shape = preview_shape or (store.launcher_shape if store and store.launcher_shape else "cosbot_badge")
+    bot_label = preview_label or (store.bot_label if store and store.bot_label else f"{bot_name} 상담")
+    bot_avatar_url = (store.bot_avatar_url if store and store.bot_avatar_url and not preview_icon else "")
 
     if bot_avatar_url:
         safe_url = bot_avatar_url.replace('"', '\\"')

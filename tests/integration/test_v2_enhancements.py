@@ -318,3 +318,52 @@ async def test_phase6_bot_name_16_icons_and_10_chat_window_templates():
             assert f'botIconStyle: "{chosen_icon}"' in script_text
             assert 'botName: "코스봇"' in script_text
             assert "contact@cosrawfree.com" in script_text
+
+
+@pytest.mark.asyncio
+async def test_phase7_zero_hole_security_showroom_vs_admin_separation():
+    """
+    Verify Zero-Hole Security:
+    1. Public self-service showroom caps trial_days at 14 even if a customer tries to pass trial_days=999 or None.
+    2. Listing all stores (GET /api/stores or GET /api/admin/stores) without X-Admin-Key is blocked with 401.
+    3. Extending subscription without X-Admin-Key is blocked with 401.
+    4. Master Admin Console (/admin) and Customer Showroom (/showroom) are served properly.
+    """
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        # 1. Customer tries to cheat by requesting 3650 days without Admin Key -> capped at 14 days
+        cheat_res = await client.post(
+            "/api/stores",
+            json={
+                "store_name": "얌체 스토어",
+                "industry": "beauty",
+                "mall_id": "sneaky_store",
+                "trial_days": 3650,
+                "daily_quota_limit": 99999,
+            },
+        )
+        assert cheat_res.status_code == 201
+        cheat_data = cheat_res.json()
+        assert cheat_data["trial_days"] == 14
+        assert cheat_data["remaining_days"] == 14
+        assert cheat_data["daily_quota_limit"] == 300
+
+        # 2. Unauthorized user tries to list all stores -> 401 Unauthorized
+        unauth_list = await client.get("/api/stores")
+        assert unauth_list.status_code == 401
+        unauth_admin_list = await client.get("/api/admin/stores")
+        assert unauth_admin_list.status_code == 401
+
+        # 3. Authorized Master Admin lists all stores and extends subscription
+        admin_headers = {"X-Admin-Key": "admin-dev-secret-key-change-in-prod"}
+        auth_list = await client.get("/api/admin/stores", headers=admin_headers)
+        assert auth_list.status_code == 200
+        assert any(s["mall_id"] == "sneaky_store" for s in auth_list.json())
+
+        # 4. Verify /showroom and /admin routes serve their respective HTML pages
+        showroom_page = await client.get("/showroom")
+        assert showroom_page.status_code == 200
+        assert "SELF-SERVICE DESIGN SHOWROOM" in showroom_page.text
+
+        admin_page = await client.get("/admin")
+        assert admin_page.status_code == 200
+        assert "MASTER ADMIN CONSOLE" in admin_page.text

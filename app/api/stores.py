@@ -1,9 +1,11 @@
 import base64
-from typing import Any, Dict, List
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.notification_service import notification_service
 from app.application.store_service import store_service
+from app.core.config import settings
+from app.core.security import verify_admin_key
 from app.infrastructure.database.session import get_db
 from app.schemas.store import (
     StoreCreateRequest,
@@ -19,25 +21,49 @@ router = APIRouter(prefix="/api/stores", tags=["Stores"])
 
 @router.post("", response_model=StoreResponse, status_code=status.HTTP_201_CREATED)
 async def create_store_endpoint(
-    request: StoreCreateRequest, session: AsyncSession = Depends(get_db)
+    request: StoreCreateRequest,
+    session: AsyncSession = Depends(get_db),
+    x_admin_key: Optional[str] = Header(None, alias="X-Admin-Key"),
 ):
-    """Register a new e-commerce store and generate an intelligent AS chatbot."""
+    """Register a new e-commerce store and generate an intelligent AS chatbot.
+    If called from public self-service showroom without X-Admin-Key, trial_days is capped at 14 days (cannot be unlimited or >14).
+    """
+    is_admin = bool(x_admin_key and x_admin_key == settings.ADMIN_API_KEY)
+    if not is_admin:
+        if request.trial_days is None or request.trial_days > 14:
+            request.trial_days = 14
+        if request.daily_quota_limit > 300:
+            request.daily_quota_limit = 300
     return await store_service.create_store(session, request)
 
 
-@router.get("", response_model=List[StoreResponse])
+@router.get("/{mall_id}", response_model=StoreResponse)
+async def get_single_store_endpoint(
+    mall_id: str, session: AsyncSession = Depends(get_db)
+):
+    """Fetch a single store's public widget status and configuration by mall_id."""
+    store = await store_service.get_store_by_mall_id(session, mall_id)
+    if not store:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Store '{mall_id}' not found.",
+        )
+    return store_service._to_response(store)
+
+
+@router.get("", response_model=List[StoreResponse], dependencies=[Depends(verify_admin_key)])
 async def list_stores_endpoint(session: AsyncSession = Depends(get_db)):
-    """List all registered stores and their embed script snippets."""
+    """Master Admin only: List all registered stores and their embed script snippets."""
     return await store_service.list_stores(session)
 
 
-@router.patch("/{mall_id}/subscription", response_model=StoreResponse)
+@router.patch("/{mall_id}/subscription", response_model=StoreResponse, dependencies=[Depends(verify_admin_key)])
 async def update_store_subscription_endpoint(
     mall_id: str,
     request: StoreSubscriptionUpdateRequest,
     session: AsyncSession = Depends(get_db),
 ):
-    """Extend a store's trial/subscription period, webhook URL, allowed domains, or daily quota."""
+    """Master Admin only: Extend a store's trial/subscription period, webhook URL, allowed domains, or daily quota."""
     updated = await store_service.update_subscription(session, mall_id, request)
     if not updated:
         raise HTTPException(

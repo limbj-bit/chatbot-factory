@@ -3,9 +3,11 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.admin_service import AdminService
+from app.application.store_service import store_service
 from app.core.security import verify_admin_key
 from app.infrastructure.database.session import get_db
 from app.schemas.admin import AdminClaimApproveRequest, AdminClaimRejectRequest
+from app.schemas.store import StoreResponse, StoreSubscriptionUpdateRequest
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 admin_service = AdminService()
@@ -92,3 +94,25 @@ async def reject_claim_endpoint(
         return {"status": "success", "claim_id": claim_id, "rejected": success}
     except ValueError as val_err:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(val_err))
+
+
+@router.get("/stores", response_model=List[StoreResponse])
+async def admin_list_stores_endpoint(session: AsyncSession = Depends(get_db)):
+    """Master Admin only: List all stores, trial D-Days, quotas, and settings."""
+    return await store_service.list_stores(session)
+
+
+@router.patch("/stores/{mall_id}/subscription", response_model=StoreResponse)
+async def admin_update_store_subscription_endpoint(
+    mall_id: str,
+    request: StoreSubscriptionUpdateRequest,
+    session: AsyncSession = Depends(get_db),
+):
+    """Master Admin only: Extend trial/subscription days, change plan, or suspend a store."""
+    updated = await store_service.update_subscription(session, mall_id, request)
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Store '{mall_id}' not found.",
+        )
+    return updated

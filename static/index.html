@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>챗봇공장 프로 스튜디오 & 신선마켓 - AI 클레임 자동화 데모</title>
+  <title>AI 챗봇 디자인 쇼룸 & 신선마켓 데모</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
@@ -13,12 +13,19 @@
       color: #1E293B;
     }
     .container {
-      max-width: 1080px;
+      max-width: 1060px;
       margin: 0 auto;
       background: #FFFFFF;
       padding: 32px;
       border-radius: 16px;
       box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
     }
     h1 { color: #0F172A; margin-top: 0; font-size: 24px; }
     .badge {
@@ -29,8 +36,18 @@
       border-radius: 999px;
       font-size: 12.5px;
       font-weight: 700;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
+    .admin-link {
+      font-size: 12px;
+      color: #64748B;
+      text-decoration: none;
+      border: 1px solid #CBD5E1;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: #F8FAFC;
+    }
+    .admin-link:hover { background: #E2E8F0; color: #0F172A; }
     .order-box, .factory-box {
       border: 1px solid #E2E8F0;
       border-radius: 12px;
@@ -126,83 +143,76 @@
       background: #0284C7;
       color: #fff;
       border: none;
-      padding: 9px 18px;
+      padding: 10px 20px;
       border-radius: 8px;
       font-weight: 700;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 13.5px;
     }
     .btn-sm { padding: 6px 12px; font-size: 12px; background: #1E40AF; }
     .btn-pink { background: #EC4899; }
-    .btn-dark { background: #0F172A; }
-    .store-card {
-      background: #fff;
-      border: 1px solid #E2E8F0;
-      border-radius: 10px;
-      padding: 14px;
-      margin-top: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
+    .issued-box {
+      display: none;
+      background: #ECFDF5;
+      border: 2px solid #10B981;
+      border-radius: 12px;
+      padding: 18px;
+      margin-top: 16px;
     }
-    .status-pill {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 999px;
-      font-size: 11.5px;
-      font-weight: 700;
-    }
-    .status-ok { background: #DCFCE7; color: #166534; }
-    .status-warn { background: #FEF3C7; color: #92400E; }
-    .status-exp { background: #FEE2E2; color: #991B1B; }
     code {
       display: block;
       background: #0F172A;
       color: #38BDF8;
-      padding: 7px 10px;
-      border-radius: 6px;
-      font-size: 12px;
-      margin-top: 6px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-top: 8px;
+      word-break: break-all;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="badge">PRO AGENCY EDITION · 16 Icons × 10 UX Templates</div>
-    <h1>신선식품 이커머스 쇼핑몰 & 지능형 챗봇 분양 스튜디오</h1>
-    <p style="font-size:14px;color:#475569;">아이콘과 채팅창 템플릿을 고르고 <strong>[✨ 새 스토어 챗봇 분양하기]</strong> 또는 스토어 목록의 <strong>[👁️ 우측하단 실시간 미리보기]</strong>를 눌러 바로 확인해 보세요.</p>
+    <div class="top-bar">
+      <div>
+        <div class="badge">SELF-SERVICE DESIGN SHOWROOM · 16 Icons × 10 UX Templates</div>
+        <h1>신선식품 이커머스 쇼핑몰 & AI 챗봇 셀프 디자인 쇼룸</h1>
+      </div>
+      <a href="/admin" class="admin-link">🔐 공장장 마스터 콘솔 (관리자 전용)</a>
+    </div>
+    <p style="font-size:14px;color:#475569;">
+      아래에서 <strong>16가지 캐릭터 아이콘</strong>과 <strong>10가지 채팅창 템플릿</strong>을 클릭해 보세요! 클릭하는 즉시 <strong>화면 우측 하단 챗봇 모양이 실시간으로 변신</strong>합니다. 마음에 드는 조합을 고른 뒤 <strong>[🎁 14일 무료 체험 코드 발급받기]</strong>를 누르면 내 쇼핑몰 전용 설치 코드가 즉시 발급됩니다.
+    </p>
     
     <div class="factory-box">
-      <h3>🏭 1. 프리미엄 챗봇 디자인 & 템플릿 빌더 (유료 분양 스튜디오)</h3>
+      <h3>🎨 STEP 1. 우리 쇼핑몰 챗봇 디자인 직접 골라보기 (클릭 시 우측 하단 즉시 반영!)</h3>
       <div class="form-grid">
-        <input type="text" id="storeName" placeholder="스토어명 (예: 코스라프리, 루미에르)" />
-        <input type="text" id="mallId" placeholder="몰 ID (예: cosrawfree)" />
-        <select id="industry">
+        <input type="text" id="storeName" value="루미에르 뷰티" oninput="triggerInstantPreview()" placeholder="쇼핑몰 이름 (예: 루미에르 뷰티)" />
+        <input type="text" id="mallId" placeholder="희망 몰 ID (영문, 생략 시 자동생성)" />
+        <select id="industry" onchange="triggerInstantPreview()">
           <option value="raw_materials">🧪 원료/B2B 플랫폼 (코스라프리)</option>
-          <option value="beauty">💄 뷰티 & 코스메틱 (핑크)</option>
+          <option value="beauty" selected>💄 뷰티 & 코스메틱 (핑크)</option>
           <option value="electronics">⚡ 디지털 & 가전 (블루)</option>
           <option value="fashion">👗 패션 & 의류 (퍼플)</option>
           <option value="fresh_food">🍎 신선식품 (그린)</option>
         </select>
-        <input type="text" id="botName" value="코스봇" placeholder="봇 이름 (예: 코스봇, 루나봇)" />
-        <input type="text" id="brandBadge" placeholder="헤더 좌측 배지 (예: 코스라프리)" />
-        <select id="launcherShape">
+        <input type="text" id="botName" value="코스봇" oninput="triggerInstantPreview()" placeholder="봇 이름 (예: 코스봇, 루나봇)" />
+        <input type="text" id="brandBadge" value="루미에르" oninput="triggerInstantPreview()" placeholder="헤더 좌측 배지 (예: 루미에르)" />
+        <select id="launcherShape" onchange="triggerInstantPreview()">
           <option value="cosbot_badge">👑 코스봇 배지형 (원형+하단캡슐 ⭐️추천)</option>
           <option value="sticker">✨ Flaticon 투명 스티커형 (둥둥 떠다님)</option>
           <option value="pill">💊 가로 캡슐 버튼형</option>
           <option value="circle">🔵 심플 원형</option>
         </select>
-        <input type="text" id="botLabel" value="코스봇 상담" placeholder="하단 배지 문구 (예: 코스봇 상담)" />
-        <input type="text" id="contactEmail" value="contact@cosrawfree.com" placeholder="하단 문의 이메일" />
+        <input type="text" id="botLabel" value="코스봇 상담" oninput="triggerInstantPreview()" placeholder="하단 배지 문구 (예: 코스봇 상담)" />
+        <input type="text" id="contactEmail" value="contact@cosrawfree.com" placeholder="하단 고객문의 이메일" />
         <input type="text" id="businessHours" value="평일 09:00~18:00" placeholder="운영시간 안내" />
-        <input type="number" id="trialDays" value="14" min="0" placeholder="무료 체험 일수 (14)" />
+        <input type="text" id="allowedDomains" placeholder="설치할 쇼핑몰 도메인 (선택)" />
       </div>
       <input type="text" id="quickButtonsInput" style="width:100%;padding:8px 12px;margin-bottom:8px;border:1px solid #CBD5E1;border-radius:8px;box-sizing:border-box;font-size:13px;" placeholder="커스텀 5개 빠른 메뉴 버튼 (콤마 구분, 비워두면 업종별 5개 버튼 자동 세팅)" />
 
       <!-- 16 Flaticon Icons Picker -->
-      <div class="section-label">🎨 16종 Flaticon 스타일 봇 아이콘 카탈로그 (클릭 선택 또는 직접 파일 업로드):</div>
+      <div class="section-label">🤖 16종 Flaticon 캐릭터 아이콘 선택 (클릭 즉시 우측하단 반영):</div>
       <input type="hidden" id="botIconStyle" value="flaticon_cute_robot" />
       <div class="icon-picker-grid">
         <div class="icon-option selected" onclick="selectIcon('flaticon_cute_robot', this)"><div class="preview-circle">🤖</div><span>1. 코스봇 로봇</span></div>
@@ -224,24 +234,24 @@
       </div>
 
       <!-- 10 Chat Window UX Templates Picker -->
-      <div class="section-label">🪟 10종 상용 UX 채팅창 구성 템플릿 (첨부 아티클 & 최신 트렌드 반영):</div>
+      <div class="section-label">🪟 10종 상용 UX 채팅창 구성 템플릿 선택 (클릭 즉시 우측하단 채팅창 변신):</div>
       <input type="hidden" id="chatTemplate" value="cosraw_grid" />
       <div class="tpl-picker-grid">
         <div class="tpl-card selected" onclick="selectTemplate('cosraw_grid', this)">
           <strong>1. 코스라프리 2x2+1 그리드</strong>
-          <small>다크네이비 헤더 + 파란 배지 + 5대 핵심 버튼 그리드 (기본)</small>
+          <small>다크네이비 헤더 + 파란 배지 + 5대 핵심 버튼 그리드</small>
         </div>
         <div class="tpl-card" onclick="selectTemplate('floating_hero', this)">
           <strong>2. 플로팅 히어로 라운지형</strong>
-          <small>[첨부자료1] 딥 그라데이션 헤더 위로 겹쳐 올라오는 VIP 웰컴 카드</small>
+          <small>딥 그라데이션 헤더 위로 겹쳐 올라오는 VIP 웰컴 카드</small>
         </div>
         <div class="tpl-card" onclick="selectTemplate('app_icon_matrix', this)">
           <strong>3. 슈퍼앱 3x2 원형 아이콘판</strong>
-          <small>[첨부자료2] 동그란 컬러 아이콘 배지가 바둑판처럼 정렬된 앱 스타일</small>
+          <small>동그란 컬러 아이콘 배지가 바둑판처럼 정렬된 앱 스타일</small>
         </div>
         <div class="tpl-card" onclick="selectTemplate('tabbed_portal', this)">
           <strong>4. 멀티 탭 포털 대시보드형</strong>
-          <small>[첨부자료IA] 상단 [🏠홈 메뉴 / 💬실시간 상담 / 📸A/S판독] 탭 전환형</small>
+          <small>상단 [🏠홈 메뉴 / 💬실시간 상담 / 📸A/S판독] 탭 전환형</small>
         </div>
         <div class="tpl-card" onclick="selectTemplate('step_wizard', this)">
           <strong>5. STEP 문진/자가진단 위저드</strong>
@@ -269,23 +279,25 @@
         </div>
       </div>
 
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;">
-        <button class="btn" onclick="createStore()">✨ 새 스토어 챗봇 분양 & 즉시 미리보기</button>
-        <label style="font-size:12px;color:#475569;background:#fff;padding:6px 10px;border:1px solid #CBD5E1;border-radius:8px;">
-          📁 내 Flaticon 파일(PNG/GIF/SVG) 직접 업로드:
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;">
+        <button class="btn" onclick="createMyTrialStore()">🎁 선택한 디자인으로 14일 무료 체험 코드 발급받기</button>
+        <label style="font-size:12px;color:#475569;background:#fff;padding:7px 12px;border:1px solid #CBD5E1;border-radius:8px;">
+          📁 또는 내 로고/Flaticon 파일(PNG/GIF/SVG) 직접 업로드:
           <input type="file" id="customAvatarFile" accept="image/*" style="font-size:12px;" />
         </label>
       </div>
-      <div id="storeList" style="margin-top: 16px;"></div>
+
+      <!-- Issued Snippet Box (Only shows the customer's own newly created store!) -->
+      <div id="issuedResultBox" class="issued-box"></div>
     </div>
 
     <div class="factory-box">
-      <h3>🧠 2. 스토어별 상품 URL 자동 학습기 & AI 카운슬러 지식 주입</h3>
+      <h3>🧠 STEP 2. 내 쇼핑몰 상품 URL 자동 학습기 (선택 사항)</h3>
       <div class="form-grid">
-        <input type="text" id="targetMallId" placeholder="대상 몰 ID (예: lumiere_beauty)" />
+        <input type="text" id="targetMallId" placeholder="발급받은 몰 ID 입력" />
         <input type="text" id="prodTitle" placeholder="상품명 (예: 로즈 글로우 세럼)" />
         <input type="number" id="prodPrice" placeholder="판매가 (예: 38000)" />
-        <input type="text" id="prodUrl" placeholder="구매 링크 또는 크롤링할 URL" />
+        <input type="text" id="prodUrl" placeholder="구매 링크 또는 크롤링할 상세페이지 URL" />
         <input type="text" id="prodTags" placeholder="추천 태그 (예: 건성,미백,나이아신,임산부)" />
       </div>
       <input type="text" id="prodContent" style="width:100%;padding:8px 12px;margin-bottom:10px;border:1px solid #CBD5E1;border-radius:8px;box-sizing:border-box;" placeholder="전성분/특징 입력 (또는 비워두고 URL 자동 크롤링 실행)" />
@@ -312,20 +324,44 @@
       document.getElementById("botIconStyle").value = styleName;
       document.querySelectorAll(".icon-option").forEach(item => item.classList.remove("selected"));
       el.classList.add("selected");
+      triggerInstantPreview();
     }
 
     function selectTemplate(tplName, el) {
       document.getElementById("chatTemplate").value = tplName;
       document.querySelectorAll(".tpl-card").forEach(item => item.classList.remove("selected"));
       el.classList.add("selected");
+      triggerInstantPreview();
     }
 
-    function previewStoreWidget(mallId) {
+    function triggerInstantPreview() {
+      const icon = document.getElementById("botIconStyle").value;
+      const tpl = document.getElementById("chatTemplate").value;
+      const shape = document.getElementById("launcherShape").value;
+      const botName = document.getElementById("botName").value.trim() || "코스봇";
+      const storeName = document.getElementById("storeName").value.trim() || "코스라프리";
+      const label = document.getElementById("botLabel").value.trim() || `${botName} 상담`;
+      const badge = document.getElementById("brandBadge").value.trim() || storeName.slice(0, 8);
+      const industry = document.getElementById("industry").value;
+
+      const params = new URLSearchParams({
+        mall_id: "showroom_preview",
+        preview_icon: icon,
+        preview_template: tpl,
+        preview_shape: shape,
+        preview_bot_name: botName,
+        preview_store_name: storeName,
+        preview_label: label,
+        preview_badge: badge,
+        preview_industry: industry,
+        t: Date.now()
+      });
+
       const oldScript = document.getElementById("dynamic-preview-script");
       if (oldScript) oldScript.remove();
       const s = document.createElement("script");
       s.id = "dynamic-preview-script";
-      s.src = `/api/widget/script?mall_id=${encodeURIComponent(mallId)}&t=${Date.now()}`;
+      s.src = `/api/widget/script?${params.toString()}`;
       s.onload = () => {
         const win = document.querySelector(".fresh-widget-window");
         if (win) win.style.display = "flex";
@@ -333,40 +369,7 @@
       document.body.appendChild(s);
     }
 
-    async function loadStores() {
-      const res = await fetch("/api/stores");
-      const stores = await res.json();
-      const container = document.getElementById("storeList");
-      if (!stores.length) {
-        container.innerHTML = "<p style='font-size:13px;color:#6B7280;'>아직 분양된 스토어가 없습니다.</p>";
-        return;
-      }
-      container.innerHTML = stores.map(s => {
-        let pillClass = "status-ok";
-        if (s.is_expired) pillClass = "status-exp";
-        else if (s.expiry_warning) pillClass = "status-warn";
-        return `
-          <div class="store-card">
-            <div>
-              <strong>[${s.brand_badge}] ${s.store_name}</strong> — 봇이름: <b>${s.bot_name}</b> (${s.mall_id})
-              <span class="status-pill ${pillClass}">${s.status_message}</span>
-              <div style="font-size:12px;color:#4B5563;margin-top:4px;">
-                🪟 템플릿: <b>${s.chat_template}</b> |
-                🎨 아이콘: <b>${s.bot_icon_style}</b> (${s.launcher_shape} / "${s.bot_label}") |
-                📧 ${s.contact_email}
-              </div>
-              <code>${s.embed_script_tag.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
-            </div>
-            <div style="display:flex;gap:6px;">
-              <button class="btn btn-sm btn-dark" onclick="previewStoreWidget('${s.mall_id}')">👁️ 우측하단 실시간 미리보기</button>
-              <button class="btn btn-sm" onclick="extendStore('${s.mall_id}', 30)">+30일 연장</button>
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    async function createStore() {
+    async function createMyTrialStore() {
       const store_name = document.getElementById("storeName").value.trim() || "코스라프리";
       const mall_id = document.getElementById("mallId").value.trim() || undefined;
       const industry = document.getElementById("industry").value;
@@ -378,7 +381,7 @@
       const bot_icon_style = document.getElementById("botIconStyle").value;
       const contact_email = document.getElementById("contactEmail").value.trim() || "contact@cosrawfree.com";
       const business_hours = document.getElementById("businessHours").value.trim() || "평일 09:00~18:00";
-      const trial_days = parseInt(document.getElementById("trialDays").value || "14", 10);
+      const allowed_domains = document.getElementById("allowedDomains").value.trim() || undefined;
       const qbRaw = document.getElementById("quickButtonsInput").value.trim();
       const quick_buttons = qbRaw ? qbRaw.split(",").map(x => x.trim()).filter(Boolean) : undefined;
 
@@ -398,33 +401,49 @@
           contact_email,
           business_hours,
           quick_buttons,
-          trial_days
+          allowed_domains,
+          trial_days: 14
         })
       });
-      const createdStore = await createRes.json();
+      let createdStore = await createRes.json();
 
       const avatarInput = document.getElementById("customAvatarFile");
       if (avatarInput.files && avatarInput.files[0]) {
         const fd = new FormData();
         fd.append("file", avatarInput.files[0]);
-        await fetch(`/api/stores/${createdStore.mall_id}/avatar`, {
+        const upRes = await fetch(`/api/stores/${createdStore.mall_id}/avatar`, {
           method: "POST",
           body: fd
         });
+        if (upRes.ok) createdStore = await upRes.json();
         avatarInput.value = "";
       }
 
-      await loadStores();
-      previewStoreWidget(createdStore.mall_id);
-    }
+      document.getElementById("targetMallId").value = createdStore.mall_id;
+      const fullEmbedTag = `<script src="${window.location.origin}/api/widget/script?mall_id=${createdStore.mall_id}" async><\/script>`;
 
-    async function extendStore(mallId, days) {
-      await fetch(`/api/stores/${mallId}/subscription`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ extend_days: days, plan_type: "active" })
-      });
-      await loadStores();
+      const box = document.getElementById("issuedResultBox");
+      box.style.display = "block";
+      box.innerHTML = `
+        <h4 style="margin:0 0 6px 0;color:#065F46;">🎉 [${createdStore.store_name}] 챗봇 14일 무료 체험 코드가 발급되었습니다!</h4>
+        <div style="font-size:13px;color:#047857;">
+          • 발급된 몰 ID: <b>${createdStore.mall_id}</b> | 봇 이름: <b>${createdStore.bot_name}</b> | 무료 체험 상태: <b>${createdStore.status_message}</b>
+        </div>
+        <p style="font-size:12.5px;margin:8px 0 4px;color:#1E293B;">아래 스크립트 한 줄을 복사하여 쇼핑몰 HTML 하단(<code>&lt;/body&gt;</code> 바로 위)에 붙여넣으세요:</p>
+        <code>${fullEmbedTag.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
+      `;
+
+      // Load actual saved store widget
+      const oldScript = document.getElementById("dynamic-preview-script");
+      if (oldScript) oldScript.remove();
+      const s = document.createElement("script");
+      s.id = "dynamic-preview-script";
+      s.src = `/api/widget/script?mall_id=${encodeURIComponent(createdStore.mall_id)}&t=${Date.now()}`;
+      s.onload = () => {
+        const win = document.querySelector(".fresh-widget-window");
+        if (win) win.style.display = "flex";
+      };
+      document.body.appendChild(s);
     }
 
     async function addKnowledge() {
@@ -464,8 +483,6 @@
         document.getElementById("knowledgeStatus").innerText = `⚠️ URL 크롤링 실패 (외부 접속 제한 등)`;
       }
     }
-
-    loadStores();
   </script>
 
   <!-- Initial Default Widget Script -->
