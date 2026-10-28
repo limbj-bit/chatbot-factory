@@ -3,8 +3,9 @@ import os
 import uuid
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
+import httpx
 from app.api import (
     admin_router,
     chat_router,
@@ -87,6 +88,75 @@ async def serve_customer_showroom():
 @app.get("/admin", include_in_schema=False)
 async def serve_master_admin_console():
     return FileResponse(os.path.join(static_dir, "admin.html"))
+
+
+@app.get("/api/system/server-info", tags=["System"])
+async def get_server_integration_info(request: Request):
+    """Return the server's outbound public IP (for Coupang Wing IP whitelist) and base callback URLs."""
+    outbound_ip = "자동 감지 중 (고정 IP 대역)"
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            resp = await client.get("https://api.ipify.org?format=json")
+            if resp.status_code == 200:
+                outbound_ip = resp.json().get("ip", outbound_ip)
+    except Exception:
+        outbound_ip = request.client.host if request.client else "Render Cloud Outbound IP"
+
+    base_url = str(request.base_url).rstrip("/")
+    return {
+        "outbound_ip": outbound_ip,
+        "base_url": base_url,
+        "oauth_redirect_uri": f"{base_url}/api/orders/oauth/callback",
+        "order_webhook_url": f"{base_url}/api/orders/webhook",
+    }
+
+
+@app.get("/chat/{mall_id}", response_class=HTMLResponse, include_in_schema=False)
+async def serve_direct_store_chat_page(mall_id: str):
+    """Standalone mobile/desktop full-view AI chat landing page for SmartStore, Coupang, Instagram, and QR codes."""
+    safe_mall = mall_id.replace('"', "").replace("<", "").replace(">", "")
+    html_page = f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>24시간 AI 고객상담 & 사진 판독 센터</title>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {{
+      margin: 0; padding: 24px; font-family: "Pretendard", sans-serif;
+      background: radial-gradient(circle at 20% 0%, #FFFFFF 0%, #FDFBF7 55%, #F7F3EA 100%);
+      color: #1E293B; display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+    }}
+    .welcome-card {{
+      max-width: 520px; width: 100%; background: #FFFFFF; border: 1.5px solid #F2DFB6;
+      border-radius: 20px; padding: 22px 24px; text-align: center;
+      box-shadow: 0 14px 36px rgba(180, 150, 95, 0.12); margin-bottom: 16px;
+    }}
+    .welcome-card h2 {{ margin: 0 0 8px; font-size: 20px; color: #1E293B; }}
+    .welcome-card p {{ margin: 0; font-size: 13.5px; color: #64748B; line-height: 1.55; }}
+    /* Automatically center and expand widget on standalone link */
+    .fresh-widget-window {{
+      display: flex !important;
+      position: fixed !important;
+      bottom: 24px !important;
+      right: 50% !important;
+      transform: translateX(50%) !important;
+      width: min(440px, calc(100vw - 24px)) !important;
+      height: min(680px, calc(100vh - 150px)) !important;
+    }}
+    .fresh-widget-launcher {{ display: none !important; }}
+  </style>
+</head>
+<body>
+  <div class="welcome-card">
+    <h2>✨ 24시간 AI 스마트 상담 & 사진 판독 센터</h2>
+    <p>네이버 스마트스토어 · 쿠팡 · 공식몰 통합 상담창입니다.<br>아래 채팅창에 궁금한 점을 입력하시거나 <b>📷 상품 사진</b>을 올려주세요!</p>
+  </div>
+  <script src="/api/widget/script?mall_id={safe_mall}" async></script>
+</body>
+</html>"""
+    return HTMLResponse(content=html_page)
 
 
 if __name__ == "__main__":

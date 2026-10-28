@@ -195,7 +195,8 @@
               <div style="font-size:12px;color:#475569;margin-top:6px;">
                 🪟 템플릿: <b>${s.chat_template}</b> | 🎨 아이콘: <b>${s.bot_icon_style}</b> (${s.launcher_shape}) |
                 📊 일일 AI 쿼터: <b>${s.daily_quota_used} / ${s.daily_quota_limit}건</b> |
-                🔒 허용 도메인: <b>${s.allowed_domains || "전체(*)"}</b>
+                🔌 API 연동: <b>${s.commerce_api_Connected ? (s.commerce_platform + " (" + (s.commerce_store_uid || "연동됨") + ")") : "기본모드(미연동)"}</b> |
+                📱 직통링크: <a href="/chat/${s.mall_id}" target="_blank" style="color:#B45309;font-weight:700;">/chat/${s.mall_id}</a>
               </div>
               <code>${fullScript.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
             </div>

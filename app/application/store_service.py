@@ -434,6 +434,15 @@ class StoreService:
             ind_info = INDUSTRY_DEFAULTS.get(store.industry, INDUSTRY_DEFAULTS["general"])
             q_buttons = ind_info.get("quick_buttons", [])
 
+        try:
+            policy_dict = json.loads(store.policy_config_json or "{}")
+        except Exception:
+            policy_dict = {}
+        comm_api = policy_dict.get("commerce_api", {}) if isinstance(policy_dict, dict) else {}
+        comm_platform = comm_api.get("platform")
+        comm_connected = bool(comm_platform and comm_platform != "none" and comm_api.get("client_key"))
+        comm_uid = comm_api.get("store_uid")
+
         return StoreResponse(
             store_id=store.id,
             mall_id=store.mall_id,
@@ -465,6 +474,10 @@ class StoreService:
             business_hours=store.business_hours or "평일 09:00~18:00",
             input_placeholder=store.input_placeholder or "궁금한 성분명이나 질문을 입력하세요...",
             bot_avatar_url=store.bot_avatar_url,
+            commerce_platform=comm_platform,
+            commerce_api_Connected=comm_connected,
+            commerce_store_uid=comm_uid,
+            direct_chat_url=f"/chat/{store.mall_id}",
             created_at=store.created_at.isoformat(),
         )
 

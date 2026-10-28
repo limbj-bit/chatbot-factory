@@ -543,6 +543,74 @@
           <input type="text" id="quickButtonsInput" placeholder="비워두면 자동 생성! (직접 입력 예: 🚚 배송조회, 💄 피부맞춤 추천, 🌿 전성분 문의, 🎁 이벤트, 🔄 교환/환불)" />
         </div>
       </details>
+
+      <!-- 선택 옵션: 실시간 주문·배송·A/S 자동 연동 (쿠팡/스마트스토어/카페24/아임웹 3종 키 + 서버 IP/URL 제공) -->
+      <details style="margin-top:12px;background:#FFFDF9;border:1.5px solid #F2DFB6;border-radius:12px;padding:12px 16px;" ontoggle="if(this.open) loadServerIntegrationInfo();">
+        <summary style="cursor:pointer;font-size:13.5px;font-weight:800;color:#92400E;outline:none;">
+          🔌 <b>[선택 옵션]</b> 실시간 주문조회 · 배송추적 · 자동 A/S 연동 (쿠팡 / 스마트스토어 / 카페24 / 아임웹 API 키 입력)
+          <span style="font-weight:500;font-size:12px;color:var(--text-muted);">— 입력 안 해도 기본 상담·상품 추천·사진 판독은 100% 작동합니다!</span>
+        </summary>
+        <div style="margin-top:14px;">
+          <div style="background:#FFFFFF;border:1px solid #E8CA8C;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:800;color:#1E293B;margin-bottom:6px;">
+              📌 STEP A. 먼저 아래 [우리 챗봇 서버 IP 주소]와 [연동 콜백 URL]을 복사해서 쇼핑몰 관리자 센터에 등록해 주세요!
+            </div>
+            <div style="font-size:12px;color:#64748B;margin-bottom:10px;">
+              • <b>쿠팡(Coupang Wing)</b> 등에서 API 키를 발급받을 때 외부 허용 IP 주소와 연동 URL을 요구합니다. 아래 복사 버튼을 눌러 그대로 붙여넣으세요.
+            </div>
+            <div class="form-grid" style="margin-bottom:0;">
+              <div class="field-card" style="background:#FAF9F6;">
+                <div class="field-title"><span>🌐 우리 챗봇 서버 공인 IP (쿠팡 Wing 허용 IP 등록용)</span><span class="field-tag">복사용</span></div>
+                <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+                  <input type="text" id="serverOutboundIp" readonly value="서버 IP 조회 중..." style="background:#FFFFFF;font-family:monospace;" />
+                  <button type="button" class="btn" style="padding:9px 14px;font-size:12px;white-space:nowrap;" onclick="copyTextValue('serverOutboundIp', this)">📋 IP 복사</button>
+                </div>
+              </div>
+              <div class="field-card" style="background:#FAF9F6;">
+                <div class="field-title"><span>🔗 우리 챗봇 연동 URL (Redirect URI / Webhook URL)</span><span class="field-tag">복사용</span></div>
+                <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+                  <input type="text" id="serverWebhookUrl" readonly value="https://chatbot-factory-yqa0.onrender.com/api/orders/webhook" style="background:#FFFFFF;font-family:monospace;" />
+                  <button type="button" class="btn" style="padding:9px 14px;font-size:12px;white-space:nowrap;" onclick="copyTextValue('serverWebhookUrl', this)">📋 URL 복사</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#FFFFFF;border:1px solid var(--stone-border);border-radius:12px;padding:14px 16px;">
+            <div style="font-size:13px;font-weight:800;color:#1E293B;margin-bottom:6px;">
+              🔑 STEP B. 연동할 쇼핑몰 플랫폼을 고르고 발급받은 3종 키(아이디 · API Key · Secret Key)를 입력해 주세요
+            </div>
+            <div class="form-grid" style="margin-top:10px;margin-bottom:0;">
+              <div class="field-card">
+                <div class="field-title"><span>① 연동할 커머스 플랫폼 선택</span><span class="field-tag opt">선택사항</span></div>
+                <div class="field-desc" id="commPlatformGuide">연동할 플랫폼을 선택하면 아래 입력칸 이름이 해당 플랫폼 규격으로 자동 전환됩니다.</div>
+                <select id="commercePlatform" onchange="onCommercePlatformChange()">
+                  <option value="none" selected>선택 안 함 (API 없이 기본 상담 + 사진 판독만 사용)</option>
+                  <option value="coupang_wing">🚀 쿠팡 (Coupang Wing 오픈 API 연동)</option>
+                  <option value="naver_smartstore">🟢 네이버 스마트스토어 (커머스 API 연동)</option>
+                  <option value="cafe24">🛍️ 카페24 (Cafe24 자사몰 API 연동)</option>
+                  <option value="imweb">🎨 아임웹 (Imweb 자사몰 API 연동)</option>
+                </select>
+              </div>
+              <div class="field-card">
+                <div class="field-title"><span id="labelStoreUid">② 업체코드 / 스토어 아이디</span><span class="field-tag opt">ID</span></div>
+                <div class="field-desc" id="descStoreUid">쿠팡 Vendor ID(예: A00123456) 또는 스마트스토어/카페24 몰 ID</div>
+                <input type="text" id="apiStoreUid" placeholder="예: A00123456 또는 myshop_id" />
+              </div>
+              <div class="field-card">
+                <div class="field-title"><span id="labelClientKey">③ Access Key / Client ID (API 키)</span><span class="field-tag opt">API Key</span></div>
+                <div class="field-desc" id="descClientKey">판매자 센터에서 발급받은 Access Key 또는 애플리케이션 ID</div>
+                <input type="text" id="apiClientKey" placeholder="Access Key 또는 Client ID 입력" />
+              </div>
+              <div class="field-card">
+                <div class="field-title"><span id="labelSecretKey">④ Secret Key / Client Secret (시크릿 키)</span><span class="field-tag opt">암호화 저장</span></div>
+                <div class="field-desc" id="descSecretKey">외부에 노출되지 않도록 암호화 처리되어 안전하게 보관됩니다.</div>
+                <input type="password" id="apiSecretKey" placeholder="Secret Key 또는 Client Secret 입력" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
     </div>
 
     <div class="factory-box">
@@ -636,6 +704,22 @@
           <div class="field-desc" style="color:var(--obsidian);font-size:12px;line-height:1.55;margin-top:4px;">
             <b>1.</b> 홈페이지 하단 공통 파일(<code>footer.html</code> 또는 <code>index.html</code>) 또는 고도몰/식스샵 <b>[외부 스크립트]</b> 열기<br>
             <b>2.</b> 맨 마지막 <b><code>&lt;/body&gt;</code> 태그 바로 윗줄</b>에 복사한 코드 한 줄 붙여넣고 저장하면 모든 웹페이지에서 즉시 작동!
+          </div>
+        </div>
+
+        <div class="field-card" style="border-top:3px solid #16A34A;">
+          <div class="field-title"><span>🟢 네이버 스마트스토어 (SmartStore)</span><span class="field-tag">링크·QR + API</span></div>
+          <div class="field-desc" style="color:var(--obsidian);font-size:12px;line-height:1.55;margin-top:4px;">
+            <b>[기본 연결]</b> 코드 발급 시 함께 나오는 <b>[📱 전용 상담창 직통 링크]</b>와 <b>[QR코드]</b>를 스마트스토어 상세페이지 상단 배너·알림톡·택배 동봉 카드에 넣으세요!<br>
+            <b>[주문·배송·AS 자동 연동]</b> <b>네이버 커머스 API 센터</b>에서 발급받은 <code>스토어ID / 애플리케이션 ID / 시크릿</code>을 위 <b>[🔌 선택 옵션]</b>에 입력하면 실시간 주문/배송/반품 조회까지 자동화됩니다!
+          </div>
+        </div>
+
+        <div class="field-card" style="border-top:3px solid #EA580C;">
+          <div class="field-title"><span>🚀 쿠팡 (Coupang Wing) · 인스타 마켓</span><span class="field-tag">IP등록 + 3종키</span></div>
+          <div class="field-desc" style="color:var(--obsidian);font-size:12px;line-height:1.55;margin-top:4px;">
+            <b>[기본 연결]</b> 발급된 <b>[📱 전용 상담창 직통 링크 & QR코드]</b>를 쿠팡 출고 안내 문자나 택배 박스 동봉 엽서에 넣으면 고객이 폰으로 찍자마자 사진 판독 접수를 할 수 있습니다.<br>
+            <b>[주문·배송·AS 자동 연동]</b> <b>쿠팡 Wing ➔ 판매자정보 ➔ 추가정보(Open API)</b>에 위 <b>[우리 서버 공인 IP]</b>를 등록한 뒤 발급받은 <code>업체코드(Vendor ID) / Access Key / Secret Key</code> 3종을 입력해 주세요!
           </div>
         </div>
       </div>
@@ -797,6 +881,90 @@
       document.body.appendChild(s);
     }
 
+    let lastDirectChatUrl = "";
+
+    async function loadServerIntegrationInfo() {
+      const ipInput = document.getElementById("serverOutboundIp");
+      const urlInput = document.getElementById("serverWebhookUrl");
+      if (urlInput) urlInput.value = `${window.location.origin}/api/orders/webhook`;
+      try {
+        const res = await fetch("/api/system/server-info");
+        if (res.ok) {
+          const data = await res.json();
+          if (ipInput && data.outbound_ip) ipInput.value = data.outbound_ip;
+          if (urlInput && data.order_webhook_url) urlInput.value = data.order_webhook_url;
+        }
+      } catch (e) {
+        if (ipInput) ipInput.value = "Render Cloud 고정 IP 대역";
+      }
+    }
+
+    function copyTextValue(inputId, btnEl) {
+      const val = document.getElementById(inputId)?.value;
+      if (!val) return;
+      navigator.clipboard.writeText(val).then(() => {
+        const orig = btnEl.innerText;
+        btnEl.innerText = "✅ 복사됨!";
+        setTimeout(() => { btnEl.innerText = orig; }, 2200);
+      });
+    }
+
+    function copyDirectLink(btnEl) {
+      if (!lastDirectChatUrl) return;
+      navigator.clipboard.writeText(lastDirectChatUrl).then(() => {
+        const orig = btnEl.innerText;
+        btnEl.innerText = "✅ 상담창 직통 주소 복사 완료!";
+        setTimeout(() => { btnEl.innerText = orig; }, 2500);
+      });
+    }
+
+    function onCommercePlatformChange() {
+      const pf = document.getElementById("commercePlatform").value;
+      const lUid = document.getElementById("labelStoreUid");
+      const dUid = document.getElementById("descStoreUid");
+      const lKey = document.getElementById("labelClientKey");
+      const dKey = document.getElementById("descClientKey");
+      const lSec = document.getElementById("labelSecretKey");
+      const dSec = document.getElementById("descSecretKey");
+      const guide = document.getElementById("commPlatformGuide");
+
+      if (pf === "coupang_wing") {
+        guide.innerHTML = "<b>[쿠팡 Wing]</b> 판매자센터 ➔ 판매자정보 ➔ 추가정보(Open API)에서 위 <b>[우리 서버 공인 IP]</b>를 먼저 등록한 뒤 아래 3가지를 복사해 넣으세요.";
+        lUid.innerText = "② 쿠팡 업체코드 (Vendor ID)";
+        dUid.innerText = "쿠팡 Wing 상단에 표시되는 A로 시작하는 업체코드 (예: A00123456)";
+        lKey.innerText = "③ 쿠팡 Access Key (액세스 키)";
+        dKey.innerText = "Open API 키 발급 시 생성된 Access Key 문자열";
+        lSec.innerText = "④ 쿠팡 Secret Key (시크릿 키)";
+        dSec.innerText = "Open API 키 발급 시 생성된 Secret Key 문자열";
+      } else if (pf === "naver_smartstore") {
+        guide.innerHTML = "<b>[네이버 스마트스토어]</b> 네이버 커머스 API 센터 ➔ 내 애플리케이션에서 발급받은 3종 정보를 입력해 주세요.";
+        lUid.innerText = "② 스마트스토어 아이디 (채널명)";
+        dUid.innerText = "운영 중인 스마트스토어 URL의 영문 아이디";
+        lKey.innerText = "③ 애플리케이션 ID (Client ID)";
+        dKey.innerText = "커머스 API 센터에서 발급받은 애플리케이션 ID";
+        lSec.innerText = "④ 애플리케이션 시크릿 (Client Secret)";
+        dSec.innerText = "커머스 API 센터에서 발급받은 애플리케이션 시크릿";
+      } else if (pf === "cafe24") {
+        guide.innerHTML = "<b>[카페24]</b> 카페24 개발자센터(Developers) 앱 관리에서 위 <b>[연동 URL]</b>을 Redirect URI로 등록 후 아래 3가지를 입력해 주세요.";
+        lUid.innerText = "② 카페24 몰 아이디 (Mall ID)";
+        dUid.innerText = "카페24 관리자 로그인 시 사용하는 영문 몰 아이디";
+        lKey.innerText = "③ Client ID (클라이언트 아이디)";
+        dKey.innerText = "카페24 앱 설정에서 발급받은 Client ID";
+        lSec.innerText = "④ Client Secret (클라이언트 시크릿)";
+        dSec.innerText = "카페24 앱 설정에서 발급받은 Client Secret";
+      } else if (pf === "imweb") {
+        guide.innerHTML = "<b>[아임웹]</b> 아임웹 환경설정 ➔ 오픈 API에서 발급받은 API Key와 Secret Key를 입력해 주세요.";
+        lUid.innerText = "② 아임웹 사이트 코드 (Site Code)";
+        dUid.innerText = "아임웹 관리자에서 확인 가능한 사이트 고유 코드 (예: S2026...)";
+        lKey.innerText = "③ 아임웹 API Key";
+        dKey.innerText = "아임웹 오픈 API에서 발급받은 API Key";
+        lSec.innerText = "④ 아임웹 Secret Key";
+        dSec.innerText = "아임웹 오픈 API에서 발급받은 Secret Key";
+      } else {
+        guide.innerText = "연동할 플랫폼을 선택하면 아래 입력칸 이름이 해당 플랫폼 규격으로 자동 전환됩니다.";
+      }
+    }
+
     async function createMyTrialStore() {
       const store_name = document.getElementById("storeName").value.trim() || "코스라프리";
       const mall_id = document.getElementById("mallId").value.trim() || undefined;
@@ -812,6 +980,22 @@
       const allowed_domains = document.getElementById("allowedDomains").value.trim() || undefined;
       const qbRaw = document.getElementById("quickButtonsInput").value.trim();
       const quick_buttons = qbRaw ? qbRaw.split(",").map(x => x.trim()).filter(Boolean) : undefined;
+
+      const commPlatform = document.getElementById("commercePlatform").value;
+      const apiStoreUid = document.getElementById("apiStoreUid").value.trim();
+      const apiClientKey = document.getElementById("apiClientKey").value.trim();
+      const apiSecretKey = document.getElementById("apiSecretKey").value.trim();
+      let policy_config = undefined;
+      if (commPlatform && commPlatform !== "none") {
+        policy_config = {
+          commerce_api: {
+            platform: commPlatform,
+            store_uid: apiStoreUid,
+            client_key: apiClientKey,
+            secret_masked: apiSecretKey ? ("****" + apiSecretKey.slice(-4)) : ""
+          }
+        };
+      }
 
       const createRes = await fetch("/api/stores", {
         method: "POST",
@@ -830,6 +1014,7 @@
           business_hours,
           quick_buttons,
           allowed_domains,
+          policy_config,
           trial_days: 30
         })
       });
@@ -850,22 +1035,41 @@
       document.getElementById("targetMallId").value = createdStore.mall_id;
       const fullEmbedTag = `<script src="${window.location.origin}/api/widget/script?mall_id=${createdStore.mall_id}" async><\/script>`;
       lastIssuedSnippetText = fullEmbedTag;
+      lastDirectChatUrl = `${window.location.origin}/chat/${createdStore.mall_id}`;
+      const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(lastDirectChatUrl)}`;
+      const apiBadgeHtml = createdStore.commerce_api_Connected
+        ? `<span style="background:#D1FAE5;color:#065F46;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:800;">⚡ 실시간 주문·배송·A/S API 연동 활성 (${createdStore.commerce_platform})</span>`
+        : `<span style="background:#FEF3C7;color:#92400E;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:700;">💡 기본 AI 상담·상품추천·사진판독 모드 (API 미입력)</span>`;
 
       const box = document.getElementById("issuedResultBox");
       box.style.display = "block";
       box.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
           <div>
-            <h4 style="margin:0 0 4px 0;color:var(--obsidian);font-size:16px;">🎉 [${createdStore.store_name}] 전용 챗봇 30일 무료 체험 코드가 발급되었습니다!</h4>
-            <div style="font-size:12.5px;color:#856221;font-weight:700;">
-              • 발급된 몰 ID: <b>${createdStore.mall_id}</b> | 봇 이름: <b>${createdStore.bot_name}</b> | 상태: <b>${createdStore.status_message}</b>
+            <h4 style="margin:0 0 6px 0;color:var(--obsidian);font-size:16px;">🎉 [${createdStore.store_name}] 전용 챗봇 30일 무료 체험 코드가 발급되었습니다!</h4>
+            <div style="font-size:12.5px;color:#856221;font-weight:700;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <span>• 몰 ID: <b>${createdStore.mall_id}</b> | 봇 이름: <b>${createdStore.bot_name}</b> | <b>${createdStore.status_message}</b></span>
+              ${apiBadgeHtml}
             </div>
           </div>
-          <button class="btn" style="padding:10px 18px;font-size:13px;" onclick="copyIssuedSnippet(this)">📋 이 설치 코드 1초 복사하기</button>
+          <button class="btn" style="padding:10px 18px;font-size:13px;" onclick="copyIssuedSnippet(this)">📋 ① 자사몰/워드프레스 설치코드 복사</button>
         </div>
         <code>${fullEmbedTag.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
-        <div style="margin-top:10px;font-size:12.5px;color:var(--obsidian);background:#FFFFFF;padding:10px 14px;border-radius:8px;border:1px solid var(--gold-border);">
-          💡 <b>내 쇼핑몰에 넣는 법:</b> 위 <b>[📋 이 설치 코드 1초 복사하기]</b> 버튼을 누른 뒤, 아래 <b>STEP 3 (카페24 · 아임웹 · 고도몰 · 자체몰 안내)</b>를 보고 내 쇼핑몰 관리자 페이지 하단 스크립트 칸에 붙여넣기만 하시면 즉시 완료됩니다!
+
+        <div style="margin-top:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:#FFFFFF;padding:14px 16px;border-radius:12px;border:1.5px solid #F2DFB6;">
+          <img src="${qrImgUrl}" alt="QR" style="width:84px;height:84px;border-radius:10px;border:1px solid #EAE5DC;padding:4px;background:#fff;" />
+          <div style="flex:1;min-width:240px;">
+            <div style="font-size:13.5px;font-weight:800;color:#1E293B;margin-bottom:4px;">
+              📱 ② 스마트스토어 · 쿠팡 · 인스타 · 택배 동봉 카드용 [전용 상담창 직통 링크 & QR]
+            </div>
+            <div style="font-size:12px;color:#64748B;margin-bottom:8px;">
+              스크립트 설치가 안 되는 <b>네이버 스마트스토어·쿠팡</b>에서는 아래 주소를 상세페이지 배너·알림톡에 걸거나, 왼쪽 <b>QR코드</b>를 택배 박스에 동봉하세요!
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <a href="${lastDirectChatUrl}" target="_blank" style="font-size:13px;font-weight:800;color:#B45309;text-decoration:underline;word-break:break-all;">${lastDirectChatUrl}</a>
+              <button type="button" class="btn" style="padding:7px 14px;font-size:12px;" onclick="copyDirectLink(this)">📋 직통 링크 복사</button>
+            </div>
+          </div>
         </div>
       `;
 

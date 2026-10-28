@@ -385,3 +385,38 @@ async def test_phase7_zero_hole_security_showroom_vs_admin_separation():
         admin_page = await client.get("/admin")
         assert admin_page.status_code == 200
         assert "MASTER ADMIN CONSOLE" in admin_page.text
+
+        # 5. Verify Server Integration Info (Outbound IP + Webhook URL) & Direct Chat Page (/chat/{mall_id})
+        sys_info = await client.get("/api/system/server-info")
+        assert sys_info.status_code == 200
+        sys_json = sys_info.json()
+        assert "outbound_ip" in sys_json
+        assert "/api/orders/webhook" in sys_json["order_webhook_url"]
+
+        # 6. Verify store creation with Coupang Wing 3-key commerce_api option and direct chat link
+        coupang_res = await client.post(
+            "/api/stores",
+            json={
+                "store_name": "쿠팡 로켓 셀러몰",
+                "industry": "medical_clinic",
+                "mall_id": "coupang_med_store",
+                "policy_config": {
+                    "commerce_api": {
+                        "platform": "coupang_wing",
+                        "store_uid": "A00987654",
+                        "client_key": "cp_access_key_123",
+                        "secret_masked": "****9999",
+                    }
+                },
+            },
+        )
+        assert coupang_res.status_code == 201
+        cp_data = coupang_res.json()
+        assert cp_data["commerce_platform"] == "coupang_wing"
+        assert cp_data["commerce_api_Connected"] is True
+        assert cp_data["commerce_store_uid"] == "A00987654"
+        assert cp_data["direct_chat_url"] == "/chat/coupang_med_store"
+
+        direct_chat_page = await client.get("/chat/coupang_med_store")
+        assert direct_chat_page.status_code == 200
+        assert "mall_id=coupang_med_store" in direct_chat_page.text
