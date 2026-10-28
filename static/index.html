@@ -357,17 +357,20 @@
     <div class="studio-body">
     
     <div class="factory-box">
-      <h3>🎨 STEP 1. 우리 쇼핑몰 챗봇 기본 정보 & 디자인 설정 (수정 시 우측 하단 챗봇에 즉시 반영!)</h3>
+      <h3>🎨 STEP 1. 우리 쇼핑몰 챗봇 만들기 (아래 ①~④번 확인 후 아이콘·템플릿만 고르세요!)</h3>
+      
+      <!-- 1순위: 고객이 직접 적어야 할 핵심 4가지 -->
+      <div class="section-label" style="margin-top:4px;">✍️ 1단계: 내 쇼핑몰 기본 정보 4가지만 적어주세요 (수정 즉시 우측 하단 챗봇에 반영!)</div>
       <div class="form-grid">
         <div class="field-card">
-          <div class="field-title"><span>① 우리 쇼핑몰 이름 (상호명)</span><span class="field-tag">필수</span></div>
-          <div class="field-desc">챗봇 첫 인사말("안녕하세요, OO입니다")에 표시될 쇼핑몰 이름입니다.</div>
-          <input type="text" id="storeName" value="오뜨엘라 뷰티" oninput="triggerInstantPreview()" placeholder="예: 오뜨엘라 뷰티, 코스라프리" />
+          <div class="field-title"><span>① 내 쇼핑몰 이름 (상호명)</span><span class="field-tag">직접입력</span></div>
+          <div class="field-desc">챗봇 첫 인사말("안녕하세요, OO입니다")에 나오는 내 쇼핑몰 이름입니다.</div>
+          <input type="text" id="storeName" value="오뜨엘라 뷰티" oninput="syncAutoFields(); triggerInstantPreview();" placeholder="예: 오뜨엘라 뷰티, 코스라프리" />
         </div>
 
         <div class="field-card">
-          <div class="field-title"><span>② 쇼핑몰 업종 & 대표 컬러</span><span class="field-tag">필수</span></div>
-          <div class="field-desc">업종을 고르면 맞춤 테마 색상과 기본 상담 버튼·AI 지식이 자동 세팅됩니다.</div>
+          <div class="field-title"><span>② 내 쇼핑몰 업종 선택</span><span class="field-tag">직접선택</span></div>
+          <div class="field-desc">업종을 고르면 색상과 업종별 단골 질문 버튼 5개가 자동으로 만들어집니다.</div>
           <select id="industry" onchange="triggerInstantPreview()">
             <option value="raw_materials">🧪 원료/B2B 플랫폼 (코스라프리 블루)</option>
             <option value="beauty" selected>💄 뷰티 & 코스메틱 (로즈 핑크)</option>
@@ -378,67 +381,20 @@
         </div>
 
         <div class="field-card">
-          <div class="field-title"><span>③ AI 상담원(챗봇) 이름</span><span class="field-tag">필수</span></div>
-          <div class="field-desc">대화창 말풍선 위에 <b>[AI 챗봇 (이름)]</b>으로 표시되는 챗봇의 호칭입니다.</div>
-          <input type="text" id="botName" value="엘라봇" oninput="triggerInstantPreview()" placeholder="예: 엘라봇, 코스봇, 상담봇" />
+          <div class="field-title"><span>③ 챗봇 이름 짓기</span><span class="field-tag">직접입력</span></div>
+          <div class="field-desc">대화창 말풍선 위에 <b>[AI 챗봇 (이름)]</b>으로 표시되는 상담봇 별명입니다.</div>
+          <input type="text" id="botName" value="엘라봇" oninput="syncAutoFields(); triggerInstantPreview();" placeholder="예: 엘라봇, 코스봇, 아리봇" />
         </div>
 
         <div class="field-card">
-          <div class="field-title"><span>④ 채팅창 상단 왼쪽 배지 문구</span><span class="field-tag">필수</span></div>
-          <div class="field-desc">채팅창 맨 위 헤더의 <b>[배지] 고객상담센터</b> 네모 칸 안에 들어갈 짧은 브랜드명입니다.</div>
-          <input type="text" id="brandBadge" value="오뜨엘라" oninput="triggerInstantPreview()" placeholder="예: 오뜨엘라, 코스라프리 (4~6자 권장)" />
-        </div>
-
-        <div class="field-card">
-          <div class="field-title"><span>⑤ 우측 하단 챗봇 버튼 모양</span><span class="field-tag">필수</span></div>
-          <div class="field-desc">쇼핑몰 화면 오른쪽 아래에 떠 있는 챗봇 호출 버튼의 외형 디자인입니다.</div>
-          <select id="launcherShape" onchange="triggerInstantPreview()">
-            <option value="cosbot_badge">👑 원형 링 + 하단 캡슐명찰 (⭐️추천)</option>
-            <option value="circle">🔵 모던 심플 원형 (깔끔한 동그라미)</option>
-            <option value="pill">💊 화이트 가로 캡슐 버튼형 (아이콘+글씨)</option>
-            <option value="sticker">✨ 투명 스티커형 (배경 없이 둥둥 떠다님)</option>
-          </select>
-        </div>
-
-        <div class="field-card">
-          <div class="field-title"><span>⑥ 챗봇 버튼 하단 명찰 문구</span><span class="field-tag">필수</span></div>
-          <div class="field-desc">우측 하단 동그란 챗봇 아이콘 바로 밑 캡슐에 적히는 짧은 안내 문구입니다.</div>
-          <input type="text" id="botLabel" value="엘라봇 상담" oninput="triggerInstantPreview()" placeholder="예: 실시간 상담, 엘라봇 상담, 문의하기" />
-        </div>
-
-        <div class="field-card">
-          <div class="field-title"><span>⑦ 채팅창 하단 고객센터 이메일</span><span class="field-tag">필수</span></div>
-          <div class="field-desc">채팅창 맨 아래 안내줄에 표시되어 고객이 이메일 문의를 보낼 수 있는 주소입니다.</div>
+          <div class="field-title"><span>④ 우리 고객센터 이메일</span><span class="field-tag">직접입력</span></div>
+          <div class="field-desc">채팅창 맨 아랫줄에 표시되어 고객이 이메일 문의를 보낼 수 있는 주소입니다.</div>
           <input type="text" id="contactEmail" value="help@mycompany.com" placeholder="예: help@mycompany.com" />
         </div>
-
-        <div class="field-card">
-          <div class="field-title"><span>⑧ 고객센터 상담 운영시간</span><span class="field-tag">필수</span></div>
-          <div class="field-desc">채팅창 맨 아래 이메일 옆에 함께 적히는 고객센터 영업시간 안내입니다.</div>
-          <input type="text" id="businessHours" value="평일 09:00~18:00" placeholder="예: 평일 09:00~18:00 (주말·공휴일 휴무)" />
-        </div>
-
-        <div class="field-card">
-          <div class="field-title"><span>⑨ 희망 몰 ID (영문 코드명)</span><span class="field-tag opt">선택 (자동생성)</span></div>
-          <div class="field-desc">설치 코드 구분용 영문 ID입니다. <b>비워두시면 자동으로 생성</b>되니 안 적으셔도 됩니다!</div>
-          <input type="text" id="mallId" placeholder="비워두면 자동 생성 (예: my_beauty_mall)" />
-        </div>
-
-        <div class="field-card">
-          <div class="field-title"><span>⑩ 설치할 내 쇼핑몰 도메인 주소</span><span class="field-tag opt">선택 (보안용)</span></div>
-          <div class="field-desc">적어두시면 해당 도메인 외 다른 사이트에서 내 챗봇 코드를 도용하지 못합니다.</div>
-          <input type="text" id="allowedDomains" placeholder="비워두면 모든 사이트 허용 (예: myshop.com)" />
-        </div>
       </div>
 
-      <div class="field-card" style="margin-bottom:14px;">
-        <div class="field-title"><span>⑪ 채팅창 첫 화면 '빠른 질문 버튼 5개' 직접 지정하기</span><span class="field-tag opt">선택 (비워두면 업종별 자동 세팅)</span></div>
-        <div class="field-desc">채팅창을 열었을 때 고객이 바로 누를 수 있는 자주 묻는 질문 버튼들입니다. <b>비워두시면 위 ②번에서 고른 업종에 맞춰 5개 버튼이 자동으로 들어갑니다!</b> 직접 바꾸시려면 쉼표(<code>,</code>)로 구분해 적어주세요.</div>
-        <input type="text" id="quickButtonsInput" placeholder="비워두면 업종별 기본 버튼 자동 적용! (직접 입력 예시: 🚚 배송조회, 💄 피부타입별 추천, 🌿 전성분 문의, 🎁 이달의 이벤트, 🔄 교환/환불 접수)" />
-      </div>
-
-      <!-- 18 Luxury Commercial Bot Icons Picker -->
-      <div class="section-label">✨ 18종 프리미엄 챗봇 아이콘 & 실사 모델 선택 (클릭 즉시 우측하단 반영):</div>
+      <!-- 2순위: 고객이 눈으로 보고 클릭하는 아이콘 & 템플릿 -->
+      <div class="section-label">✨ 2단계: 마음에 드는 챗봇 아이콘(18종)을 클릭해 보세요 (클릭 즉시 우측하단 반영):</div>
       <input type="hidden" id="botIconStyle" value="preset_beauty_model" />
       <div class="icon-picker-grid">
         <div class="icon-option selected" onclick="selectIcon('preset_beauty_model', this)"><div class="preview-circle" data-icon-key="preset_beauty_model"></div><span>1. K-뷰티 화보모델</span></div>
@@ -461,8 +417,8 @@
         <div class="icon-option" onclick="selectIcon('flaticon_shield_as', this)"><div class="preview-circle" data-icon-key="flaticon_shield_as"></div><span>18. 트러스트 안심실드</span></div>
       </div>
 
-      <!-- 10 Chat Window UX Templates Picker -->
-      <div class="section-label">🪟 10종 상용 UX 채팅창 구성 템플릿 선택 (클릭 즉시 우측하단 채팅창 변신):</div>
+      <!-- 3순위: 채팅창 템플릿 클릭 -->
+      <div class="section-label">🪟 3단계: 마음에 드는 채팅창 화면 구성(10종)을 클릭해 보세요 (클릭 즉시 우측하단 변신):</div>
       <input type="hidden" id="chatTemplate" value="cosraw_grid" />
       <div class="tpl-picker-grid">
         <div class="tpl-card selected" onclick="selectTemplate('cosraw_grid', this)">
@@ -507,76 +463,208 @@
         </div>
       </div>
 
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;">
+      <!-- 4순위: 즉시 행동 버튼 (코드 발급 & 내 사진 업로드) -->
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:18px;padding:16px;background:#FFFFFF;border:1.5px solid var(--gold-border);border-radius:14px;">
         <button class="btn" onclick="createMyTrialStore()">🎁 선택한 디자인으로 30일 무료 체험 코드 발급받기</button>
-        <label style="font-size:12.5px;color:#0F172A;font-weight:600;background:#F0F9FF;padding:8px 14px;border:1.5px dashed #0284C7;border-radius:8px;cursor:pointer;">
-          📸 내 사진/모델/로고 파일(JPG/PNG/GIF/SVG) 즉시 적용해보기:
+        <label style="font-size:13px;color:var(--obsidian);font-weight:700;background:#FAF8F5;padding:11px 16px;border:1.5px dashed var(--gold-accent);border-radius:10px;cursor:pointer;">
+          📸 내 사진/모델/로고 파일(JPG·PNG·GIF) 직접 올려서 적용하기:
           <input type="file" id="customAvatarFile" accept="image/*" onchange="previewCustomFile(this)" style="font-size:12px;" />
         </label>
       </div>
 
       <!-- Issued Snippet Box (Only shows the customer's own newly created store!) -->
       <div id="issuedResultBox" class="issued-box"></div>
+
+      <!-- 맨 아래쪽: 자동으로 처리되는 세부 항목들 (원할 때만 펼쳐서 수정) -->
+      <details style="margin-top:18px;background:#FFFFFF;border:1px solid var(--stone-border);border-radius:12px;padding:12px 16px;">
+        <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--text-muted);outline:none;">
+          ⚙️ <b>[자동 완성 항목]</b> 버튼 모양 · 상단 배지 · 운영시간 · 빠른 질문 5개 · 몰 ID 직접 바꾸기 <span style="font-weight:500;font-size:12px;">(안 건드려도 위 ①~③번에 맞춰 자동으로 완성됩니다 · 직접 바꾸시려면 클릭!)</span>
+        </summary>
+        <div class="form-grid" style="margin-top:14px;">
+          <div class="field-card">
+            <div class="field-title"><span>우측 하단 버튼 외형</span><span class="field-tag opt">기본: 원형링+명찰</span></div>
+            <div class="field-desc">우측 하단 챗봇 호출 버튼의 테두리 모양입니다.</div>
+            <select id="launcherShape" onchange="triggerInstantPreview()">
+              <option value="cosbot_badge">👑 원형 링 + 하단 캡슐명찰 (기본)</option>
+              <option value="circle">🔵 모던 심플 원형 (동그라미만)</option>
+              <option value="pill">💊 화이트 가로 캡슐 버튼형</option>
+              <option value="sticker">✨ 투명 스티커형</option>
+            </select>
+          </div>
+          <div class="field-card">
+            <div class="field-title"><span>채팅창 상단 배지 문구</span><span class="field-tag opt">자동: 쇼핑몰 앞글자</span></div>
+            <div class="field-desc">채팅창 맨 위 [배지] 고객상담센터에 들어갈 짧은 이름입니다.</div>
+            <input type="text" id="brandBadge" value="오뜨엘라" oninput="this.dataset.manual='1'; triggerInstantPreview();" placeholder="비워두면 쇼핑몰 이름 자동 적용" />
+          </div>
+          <div class="field-card">
+            <div class="field-title"><span>버튼 아래 작은 명찰 문구</span><span class="field-tag opt">자동: 챗봇이름+상담</span></div>
+            <div class="field-desc">우측 하단 동그란 아이콘 밑 캡슐에 적히는 글씨입니다.</div>
+            <input type="text" id="botLabel" value="엘라봇 상담" oninput="this.dataset.manual='1'; triggerInstantPreview();" placeholder="비워두면 'OO봇 상담' 자동 적용" />
+          </div>
+          <div class="field-card">
+            <div class="field-title"><span>고객센터 운영시간</span><span class="field-tag opt">기본: 평일 09~18시</span></div>
+            <div class="field-desc">채팅창 하단 이메일 옆에 표시되는 상담 가능 시간입니다.</div>
+            <input type="text" id="businessHours" value="평일 09:00~18:00" placeholder="예: 평일 09:00~18:00" />
+          </div>
+          <div class="field-card">
+            <div class="field-title"><span>희망 몰 ID (영문)</span><span class="field-tag opt">자동 생성됨</span></div>
+            <div class="field-desc">비워두시면 고유 영문 ID가 자동으로 생성됩니다.</div>
+            <input type="text" id="mallId" placeholder="비워두면 자동 생성" />
+          </div>
+          <div class="field-card">
+            <div class="field-title"><span>설치 도메인 제한 (보안)</span><span class="field-tag opt">자동: 전체 허용</span></div>
+            <div class="field-desc">특정 도메인에서만 챗봇이 열리게 잠그고 싶을 때만 적으세요.</div>
+            <input type="text" id="allowedDomains" placeholder="비워두면 모든 사이트에서 작동" />
+          </div>
+        </div>
+        <div class="field-card">
+          <div class="field-title"><span>채팅창 첫 화면 '빠른 질문 버튼 5개' 직접 지정</span><span class="field-tag opt">자동: 업종별 5개 버튼 자동 세팅됨</span></div>
+          <div class="field-desc">비워두시면 선택한 업종에 맞는 5개 버튼이 자동 생성됩니다. 직접 바꾸시려면 쉼표(<code>,</code>)로 구분해 적어주세요.</div>
+          <input type="text" id="quickButtonsInput" placeholder="비워두면 자동 생성! (직접 입력 예: 🚚 배송조회, 💄 피부맞춤 추천, 🌿 전성분 문의, 🎁 이벤트, 🔄 교환/환불)" />
+        </div>
+      </details>
     </div>
 
     <div class="factory-box">
-      <h3>🧠 STEP 2. 내 쇼핑몰 주력 상품 & 지식 학습시키기 (선택 사항 · AI가 상담 중 구매카드로 자동 추천!)</h3>
-      <p style="font-size:12.5px;color:#64748B;margin-top:-6px;margin-bottom:12px;">
-        위 STEP 1에서 코드를 발급받으신 뒤, 우리 쇼핑몰 대표 상품을 등록해 두시면 고객이 질문할 때 챗봇이 <b>[🛒 바로 구매하기] 카드</b>를 대화창에 띄워줍니다.
+      <h3>🧠 STEP 2. 내 쇼핑몰 주력 상품 AI에게 학습시키기 (상담 중 [🛒 바로 구매하기] 카드 자동 추천!)</h3>
+      
+      <!-- 최우선 행동 1: 상품 주소(URL) 1개만 붙여넣고 자동 학습! -->
+      <div class="field-card" style="border:1.5px solid var(--gold-accent);background:#FFFDF9;padding:18px;margin-bottom:14px;">
+        <div class="field-title" style="font-size:14.5px;">
+          <span>🚀 [가장 쉬운 방법 ⭐️] 내 쇼핑몰 상품 인터넷 주소(URL) 1개만 붙여넣으세요!</span>
+          <span class="field-tag">추천 · 3초 자동학습</span>
+        </div>
+        <div class="field-desc" style="font-size:12.5px;margin-bottom:8px;">
+          상품 상세페이지 인터넷 주소(<code>https://...</code>)만 아래 칸에 붙여넣고 <b>[🌐 URL 하나로 자동 학습하기]</b> 버튼을 누르면 상품명·가격·설명을 AI가 알아서 읽어옵니다!
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <input type="text" id="prodUrl" style="flex:2;min-width:240px;" placeholder="👉 여기에 내 쇼핑몰 상품 주소(URL) 붙여넣기 (예: https://myshop.com/product/123)" />
+          <input type="text" id="prodTags" style="flex:1;min-width:180px;" placeholder="추천 키워드 (선택, 예: 건성, 미백, 세럼)" />
+          <button class="btn" style="padding:10px 20px;" onclick="crawlUrl()">🌐 URL 하나로 자동 학습하기</button>
+        </div>
+      </div>
+
+      <!-- 차순위 행동 2: URL 없이 직접 글자로 입력하고 싶을 때 -->
+      <details style="background:#FFFFFF;border:1px solid var(--stone-border);border-radius:12px;padding:12px 16px;">
+        <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--obsidian);outline:none;">
+          ✍️ 또는 URL 없이 <b>상품명 · 가격 · 특징을 직접 글자로 적어서</b> 등록하려면 여기를 클릭하세요
+        </summary>
+        <div class="form-grid" style="margin-top:12px;">
+          <div class="field-card">
+            <div class="field-title"><span>① 추천할 상품명</span><span class="field-tag">직접입력</span></div>
+            <div class="field-desc">대화창 구매 카드 제목에 나올 상품 이름입니다.</div>
+            <input type="text" id="prodTitle" placeholder="예: 오뜨엘라 로즈 글로우 세럼 50ml" />
+          </div>
+          <div class="field-card">
+            <div class="field-title"><span>② 판매 가격 (원, 숫자만)</span><span class="field-tag">직접입력</span></div>
+            <div class="field-desc">구매 카드에 표시될 판매 금액입니다.</div>
+            <input type="number" id="prodPrice" placeholder="예: 38000" />
+          </div>
+        </div>
+        <div class="field-card" style="margin-bottom:12px;">
+          <div class="field-title"><span>③ 상품 핵심 특징 / 전성분 / 효능 설명</span><span class="field-tag">직접입력</span></div>
+          <div class="field-desc">고객이 질문했을 때 AI가 안내해 줄 상품 설명을 적어주세요.</div>
+          <input type="text" id="prodContent" placeholder="예: 다마스크 장미꽃수 70%와 나이아신아마이드 5% 함유로 민감성 피부도 자극 없이 미백·보습 케어가 가능합니다." />
+        </div>
+        <button class="btn btn-pink" onclick="addKnowledge()">📚 직접 입력한 내용으로 상품 추천카드 등록하기</button>
+      </details>
+
+      <!-- 맨 아래쪽: 자동으로 채워지는 쇼핑몰 ID 표시줄 -->
+      <div style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);">
+        <span>🔗 <b>자동 연결된 내 쇼핑몰 ID</b> (위 STEP 1에서 코드 발급 시 자동으로 채워집니다):</span>
+        <input type="text" id="targetMallId" style="width:180px;padding:5px 10px;border:1px solid var(--stone-border);border-radius:6px;background:#F4F3F0;color:var(--text-muted);font-size:12px;" placeholder="발급 시 자동 입력됨" />
+      </div>
+      <div id="knowledgeStatus" style="margin-top:10px;font-size:13.5px;font-weight:700;color:#059669;"></div>
+    </div>
+
+    <!-- STEP 3: 초보자도 1분 만에 따라 하는 내 쇼핑몰 연결 가이드 -->
+    <div class="factory-box">
+      <h3>🔌 STEP 3. 발급받은 코드로 내 쇼핑몰에 챗봇 연결하는 방법 (복사해서 붙여넣기만 하면 끝!)</h3>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:-6px;margin-bottom:14px;">
+        위 <b>STEP 1</b>에서 발급받은 한 줄짜리 <code>&lt;script&gt;...&lt;/script&gt;</code> 코드를 복사한 뒤, 사용 중인 쇼핑몰 관리자 화면에 아래 순서대로 붙여넣으시면 <b>1초 만에 쇼핑몰 우측 하단에 챗봇이 나타납니다!</b>
       </p>
       <div class="form-grid">
-        <div class="field-card">
-          <div class="field-title"><span>① 대상 쇼핑몰 ID</span><span class="field-tag">자동입력됨</span></div>
-          <div class="field-desc">STEP 1에서 코드 발급 시 자동으로 채워집니다.</div>
-          <input type="text" id="targetMallId" placeholder="발급받은 몰 ID (예: mall_a1b2c3)" />
+        <div class="field-card" style="border-top:3px solid #0284C7;">
+          <div class="field-title"><span>🛍️ 카페24 (Cafe24) 쇼핑몰</span><span class="field-tag">가장 많이 사용</span></div>
+          <div class="field-desc" style="color:var(--obsidian);font-size:12px;line-height:1.55;margin-top:4px;">
+            <b>1.</b> 카페24 관리자 로그인<br>
+            <b>2.</b> 좌측 메뉴 <b>[디자인]</b> ➔ <b>[외부 스크립트]</b> 클릭<br>
+            <b>3.</b> 우측 <b>[스크립트 추가]</b> 버튼 클릭<br>
+            <b>4.</b> 위치: <b>[전 화면(공통) · 하단(Footer)]</b> 선택 후 복사한 코드 붙여넣고 <b>[저장]</b> 하면 즉시 완료!
+          </div>
         </div>
-        <div class="field-card">
-          <div class="field-title"><span>② 추천할 상품명</span><span class="field-tag">상품등록 시</span></div>
-          <div class="field-desc">대화창 추천 카드 제목으로 표시될 상품 이름입니다.</div>
-          <input type="text" id="prodTitle" placeholder="예: 오뜨엘라 로즈 글로우 세럼 50ml" />
+
+        <div class="field-card" style="border-top:3px solid #10B981;">
+          <div class="field-title"><span>🌐 아임웹 (Imweb) 쇼핑몰</span><span class="field-tag">클릭 3번</span></div>
+          <div class="field-desc" style="color:var(--obsidian);font-size:12px;line-height:1.55;margin-top:4px;">
+            <b>1.</b> 아임웹 관리자 페이지 접속<br>
+            <b>2.</b> 좌측 메뉴 <b>[환경설정]</b> ➔ <b>[SEO(검색엔진최적화) / 헤더설정]</b> 클릭<br>
+            <b>3.</b> 화면 아래쪽 <b>[Footer Code (푸터 코드)]</b> 입력 칸에 복사한 코드 붙여넣고 <b>[저장]</b> 하면 즉시 완료!
+          </div>
         </div>
-        <div class="field-card">
-          <div class="field-title"><span>③ 판매 가격 (숫자만)</span><span class="field-tag opt">선택</span></div>
-          <div class="field-desc">상품 추천 카드에 표시될 판매 금액(원)입니다.</div>
-          <input type="number" id="prodPrice" placeholder="예: 38000" />
+
+        <div class="field-card" style="border-top:3px solid #8B5CF6;">
+          <div class="field-title"><span>🏪 고도몰 · 식스샵 · 메이크샵</span><span class="field-tag">공통 스크립트</span></div>
+          <div class="field-desc" style="color:var(--obsidian);font-size:12px;line-height:1.55;margin-top:4px;">
+            <b>1.</b> 쇼핑몰 관리자 페이지 접속<br>
+            <b>2.</b> <b>[외부 서비스/스크립트 관리]</b> 또는 <b>[디자인 ➔ 하단 공통 푸터]</b> 메뉴 이동<br>
+            <b>3.</b> 하단 스크립트 칸에 복사한 코드 붙여넣고 <b>[저장]</b> 하면 즉시 완료!
+          </div>
         </div>
-        <div class="field-card">
-          <div class="field-title"><span>④ 상품 상세페이지 인터넷 주소 (URL)</span><span class="field-tag">구매링크/크롤링</span></div>
-          <div class="field-desc">고객이 [바로 구매하기]를 눌렀을 때 이동할 주소 또는 자동 학습할 URL입니다.</div>
-          <input type="text" id="prodUrl" placeholder="예: https://myshop.com/product/123" />
-        </div>
-        <div class="field-card">
-          <div class="field-title"><span>⑤ 추천 키워드 태그 (쉼표 구분)</span><span class="field-tag opt">선택</span></div>
-          <div class="field-desc">고객이 이 단어로 질문할 때 이 상품을 우선 추천합니다.</div>
-          <input type="text" id="prodTags" placeholder="예: 건성, 미백, 속건조, 민감성, 세럼" />
+
+        <div class="field-card" style="border-top:3px solid var(--gold-accent);">
+          <div class="field-title"><span>💻 일반 자체 제작 홈페이지</span><span class="field-tag">HTML / 워드프레스</span></div>
+          <div class="field-desc" style="color:var(--obsidian);font-size:12px;line-height:1.55;margin-top:4px;">
+            <b>1.</b> 홈페이지 하단 공통 파일(<code>footer.html</code> 또는 <code>index.html</code>) 열기<br>
+            <b>2.</b> 맨 마지막 <b><code>&lt;/body&gt;</code> 태그 바로 윗줄</b>에 복사한 코드 한 줄 붙여넣고 저장하면 즉시 완료!
+          </div>
         </div>
       </div>
-      <div class="field-card" style="margin-bottom:12px;">
-        <div class="field-title"><span>⑥ 상품 핵심 특징 / 전성분 / 안내 문구</span><span class="field-tag opt">직접 입력 또는 URL 크롤링 시 생략 가능</span></div>
-        <div class="field-desc">AI가 고객에게 설명해 줄 상품 특징이나 효능을 적어주세요. (위 ④번에 URL만 넣고 [🌐 URL 자동 크롤링 학습]을 누르시면 비워두셔도 됩니다!)</div>
-        <input type="text" id="prodContent" placeholder="예: 다마스크 장미꽃수 70%와 나이아신아마이드 5% 함유로 민감성 피부도 자극 없이 미백·보습 케어가 가능합니다." />
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-pink" onclick="addKnowledge()">📚 위 내용으로 상품 지식 & 추천카드 등록</button>
-        <button class="btn btn-sm" onclick="crawlUrl()">🌐 ④번 상품 URL에서 자동으로 내용 읽어와 학습하기</button>
-      </div>
-      <div id="knowledgeStatus" style="margin-top:10px;font-size:13px;color:#059669;"></div>
     </div>
 
     <div class="order-box">
-      <h4>📦 테스트용 가상 주문 정보</h4>
+      <h4>📦 우측 하단 챗봇 실시간 상담 & 사진 판독 테스트 가이드</h4>
       <ul>
-        <li><strong>ORD-NORMAL</strong> : 정상 배송 완료 (설향 딸기 1kg / 24,000원) - 사진 업로드 시 자동 환불 판정</li>
-        <li><strong>ORD-EXPIRED</strong> : 배송 완료 4일 경과 (보상 기한 48시간 초과 건)</li>
-        <li><strong>ORD-SHIPPING</strong> : 배송 진행 중 (아직 미배송된 주문)</li>
+        <li><strong>ORD-NORMAL</strong> : 정상 배송 완료 건 - 채팅창에 입력 후 상품 사진을 올리면 AI가 파손·불량을 자동 판독합니다.</li>
+        <li><strong>ORD-EXPIRED</strong> : 배송 완료 4일 경과 건 (보상 기한 초과 자동 안내 테스트)</li>
+        <li><strong>ORD-SHIPPING</strong> : 배송 진행 중 건 (미배송 안내 테스트)</li>
       </ul>
-      <p style="font-size: 13px; color: #6B7280;">채팅창에 "배송비 얼마예요?", "민감성 피부 앰플 추천해줘", 또는 주문번호 "ORD-NORMAL"을 입력해 보세요.</p>
+      <p style="font-size: 13px; color: #6B7280;">우측 하단 채팅창에 "배송비 얼마예요?", "민감성 피부 세럼 추천해줘", 또는 주문번호 "ORD-NORMAL"을 직접 입력해 보세요.</p>
     </div>
     </div>
   </div>
 
   <script>
     let customPreviewDataUrl = "";
+    let lastIssuedSnippetText = "";
+
+    function syncAutoFields() {
+      const storeName = document.getElementById("storeName").value.trim() || "오뜨엘라";
+      const botName = document.getElementById("botName").value.trim() || "엘라봇";
+      const badgeEl = document.getElementById("brandBadge");
+      const labelEl = document.getElementById("botLabel");
+      if (badgeEl && !badgeEl.dataset.manual) {
+        badgeEl.value = storeName.split(" ")[0].slice(0, 6);
+      }
+      if (labelEl && !labelEl.dataset.manual) {
+        labelEl.value = `${botName} 상담`;
+      }
+    }
+
+    function copyIssuedSnippet(btnEl) {
+      if (!lastIssuedSnippetText) return;
+      navigator.clipboard.writeText(lastIssuedSnippetText).then(() => {
+        const orig = btnEl.innerText;
+        btnEl.innerText = "✅ 복사 완료! 이제 아래 STEP 3 안내에 따라 쇼핑몰에 붙여넣으세요!";
+        btnEl.style.background = "#059669";
+        btnEl.style.color = "#FFFFFF";
+        setTimeout(() => {
+          btnEl.innerText = orig;
+          btnEl.style.background = "";
+          btnEl.style.color = "";
+        }, 3500);
+      });
+    }
 
     function populateShowroomIcons() {
       if (!window.CHATBOT_FACTORY_SVGS) return;
@@ -721,16 +809,24 @@
 
       document.getElementById("targetMallId").value = createdStore.mall_id;
       const fullEmbedTag = `<script src="${window.location.origin}/api/widget/script?mall_id=${createdStore.mall_id}" async><\/script>`;
+      lastIssuedSnippetText = fullEmbedTag;
 
       const box = document.getElementById("issuedResultBox");
       box.style.display = "block";
       box.innerHTML = `
-        <h4 style="margin:0 0 6px 0;color:#065F46;">🎉 [${createdStore.store_name}] 챗봇 30일 무료 체험 코드가 발급되었습니다!</h4>
-        <div style="font-size:13px;color:#047857;">
-          • 발급된 몰 ID: <b>${createdStore.mall_id}</b> | 봇 이름: <b>${createdStore.bot_name}</b> | 무료 체험 상태: <b>${createdStore.status_message}</b>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div>
+            <h4 style="margin:0 0 4px 0;color:var(--obsidian);font-size:16px;">🎉 [${createdStore.store_name}] 전용 챗봇 30일 무료 체험 코드가 발급되었습니다!</h4>
+            <div style="font-size:12.5px;color:#856221;font-weight:700;">
+              • 발급된 몰 ID: <b>${createdStore.mall_id}</b> | 봇 이름: <b>${createdStore.bot_name}</b> | 상태: <b>${createdStore.status_message}</b>
+            </div>
+          </div>
+          <button class="btn" style="padding:10px 18px;font-size:13px;" onclick="copyIssuedSnippet(this)">📋 이 설치 코드 1초 복사하기</button>
         </div>
-        <p style="font-size:12.5px;margin:8px 0 4px;color:#1E293B;">아래 스크립트 한 줄을 복사하여 쇼핑몰 HTML 하단(<code>&lt;/body&gt;</code> 바로 위)에 붙여넣으세요:</p>
         <code>${fullEmbedTag.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
+        <div style="margin-top:10px;font-size:12.5px;color:var(--obsidian);background:#FFFFFF;padding:10px 14px;border-radius:8px;border:1px solid var(--gold-border);">
+          💡 <b>내 쇼핑몰에 넣는 법:</b> 위 <b>[📋 이 설치 코드 1초 복사하기]</b> 버튼을 누른 뒤, 아래 <b>STEP 3 (카페24 · 아임웹 · 고도몰 · 자체몰 안내)</b>를 보고 내 쇼핑몰 관리자 페이지 하단 스크립트 칸에 붙여넣기만 하시면 즉시 완료됩니다!
+        </div>
       `;
 
       // Load actual saved store widget
