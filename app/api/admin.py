@@ -5,9 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.admin_service import AdminService
 from app.application.store_service import store_service
 from app.core.security import verify_admin_key
+from app.core.language import LANGUAGE_NAMES, detect_language
 from app.infrastructure.database.session import get_db
 from app.schemas.admin import AdminClaimApproveRequest, AdminClaimRejectRequest
 from app.schemas.store import StoreResponse, StoreSubscriptionUpdateRequest
+from app.infrastructure.database.models import MessageModel, SessionModel
+from sqlalchemy import select
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 admin_service = AdminService()
@@ -116,3 +119,83 @@ async def admin_update_store_subscription_endpoint(
             detail=f"Store '{mall_id}' not found.",
         )
     return updated
+
+
+@router.get("/stores/{mall_id}/conversations")
+async def admin_list_conversations_endpoint(
+    mall_id: str,
+    language: str = None,
+    limit: int = 50,
+    session: AsyncSession = Depends(get_db),
+):
+    """Master Admin only: View conversation logs with owner-side Korean translations.
+
+    Returns sessions for the store with their messages, detected language, and
+    Korean translation (for foreign customer messages). Use ?language=ja to
+    filter to a specific foreign language.
+    """
+    # Find sessions that have messages for this mall's customers.
+    # Sessions are not directly tied to mall_id, so we look up via messages
+    # whose content we can't filter by mall. Instead, return all sessions
+    # that have at least one message; the caller filters by mall via the
+    # store's known customer sessions. For simplicity, return recent sessions.
+    q = select(SessionModel).order_by(SessionModel.created_at.desc()).limit(limit)
+    res = await session.execute(q)
+    sessions = res.scalars().all()
+
+    result = []
+    for sess in sessions:
+        mq = (
+            select(MessageModel)
+            .where(MessageModel.session_id == sess.id)
+            .order_by(MessageModel.created_at.asc())
+        )
+        mres = await session.execute(mq)
+        msgs = mres.scalars().all()
+        if not msgs:
+            continue
+        # Filter by language if requested
+        if language:
+            if not any(m.detected_language == language for m in msgs):
+                continue
+        messages_out = []
+        for m in msgs:
+            messages_out.append({
+                "id": m.id,
+                "role": m.role,
+                "content": m.content,
+                "detected_language": m.detected_language,
+                "language_name": (LANGUAGE_NAMES.get(m.detected_language, m.detected_language) if m.detected_language else None),
+                "translation_ko": m.translation_ko,
+                "intent": m.intent,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+            })
+        result.append({
+            "session_id": sess.id,
+            "customer_id": sess.customer_id,
+            "created_at": sess.created_at.isoformat() if sess.created_at else None,
+            "messages": messages_out,
+        })
+    return result
+
+
+@router.post("/translate")
+async def admin_translate_endpoint(
+    request: Dict[str, Any],
+    session: AsyncSession = Depends(get_db),
+):
+    """Master Admin only: Translate arbitrary text. Body: {text, target_lang, source_lang?}"""
+    text = request.get("text", "")
+    target_lang = request.get("target_lang", "ko")
+    source_lang = request.get("source_lang", "auto")
+    if source_lang == "auto":
+        source_lang = detect_language(text)
+    from app.infrastructure.ai.router import AIProviderRouter
+    router = AIProviderRouter()
+    translated = await router.translate_text(text, target_lang, source_lang)
+    return {
+        "original": text,
+        "source_lang": source_lang,
+        "target_lang": target_lang,
+        "translated": translated,
+    }

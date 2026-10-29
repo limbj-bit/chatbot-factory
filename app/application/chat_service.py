@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.commerce_service import commerce_service
 from app.application.order_service import OrderService
 from app.application.store_service import store_service
+from app.core.language import detect_language, LANGUAGE_NAMES
 from app.core.logging import logger
 from app.domain.orders.models import Order, OrderStatus
 from app.domain.ports.ai_port import AIProviderPort
@@ -387,15 +388,26 @@ class ChatService:
         start_time = time.time()
         recommended_products: List[ProductRecommendationCard] = []
 
-        # 1. Record User Message
+        # 1. Record User Message (with language detection for owner-side translation)
+        detected_lang = detect_language(message_text)
         user_msg = MessageModel(
             id=str(uuid.uuid4()),
             session_id=chat_session.id,
             role="user",
             content=message_text,
+            detected_language=detected_lang,
         )
         session_db.add(user_msg)
         await session_db.flush()
+
+        # Translate foreign customer messages to Korean for the owner dashboard
+        if detected_lang != "ko":
+            try:
+                ko_translation = await self.ai_router.translate_text(message_text, "ko", detected_lang)
+                user_msg.translation_ko = ko_translation
+                await session_db.flush()
+            except Exception as e:
+                logger.warning(f"[Chat] Translation to Korean failed: {e}")
 
         # 1.2 Load recent conversation turns for multi-turn memory (current msg excluded)
         history = await self._load_history(
@@ -477,6 +489,7 @@ class ChatService:
             content=response_text,
             intent=intent,
             latency_ms=latency_ms,
+            detected_language=detected_lang,
         )
         session_db.add(assistant_msg)
         await session_db.commit()
@@ -494,14 +507,25 @@ class ChatService:
         """Stream SSE tokens while saving messages and enforcing store daily quota."""
         chat_session = await self.get_or_create_session(session_db, session_id, customer_id)
 
+        detected_lang = detect_language(message_text)
         user_msg = MessageModel(
             id=str(uuid.uuid4()),
             session_id=chat_session.id,
             role="user",
             content=message_text,
+            detected_language=detected_lang,
         )
         session_db.add(user_msg)
         await session_db.commit()
+
+        # Translate foreign customer messages to Korean for the owner dashboard
+        if detected_lang != "ko":
+            try:
+                ko_translation = await self.ai_router.translate_text(message_text, "ko", detected_lang)
+                user_msg.translation_ko = ko_translation
+                await session_db.commit()
+            except Exception as e:
+                logger.warning(f"[Chat] Translation to Korean failed: {e}")
 
         # Load recent turns for multi-turn memory (current msg excluded)
         history = await self._load_history(
@@ -581,6 +605,7 @@ class ChatService:
             role="assistant",
             content=full_content,
             intent="stream_response",
+            detected_language=detected_lang,
         )
         session_db.add(assistant_msg)
         await session_db.commit()
