@@ -1,4 +1,3 @@
-import base64
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession

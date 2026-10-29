@@ -176,6 +176,7 @@ class StoreResponse(BaseModel):
     business_hours: str = "365일 24시간"
     input_placeholder: str = "궁금한 상품명이나 질문을 입력하세요..."
     bot_avatar_url: Optional[str] = None
+    widget_layout: Optional[Dict[str, Any]] = None
     commerce_platform: Optional[str] = None
     commerce_api_Connected: bool = False
     commerce_store_uid: Optional[str] = None

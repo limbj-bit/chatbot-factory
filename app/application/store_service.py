@@ -450,6 +450,13 @@ class StoreService:
         comm_platform = comm_api.get("platform")
         comm_connected = bool(comm_platform and comm_platform != "none" and comm_api.get("client_key"))
         comm_uid = comm_api.get("store_uid")
+        widget_layout = (
+            policy_dict.get("widget_layout")
+            if isinstance(policy_dict, dict)
+            else None
+        )
+        if not isinstance(widget_layout, dict):
+            widget_layout = None
 
         return StoreResponse(
             store_id=store.id,
@@ -482,6 +489,7 @@ class StoreService:
             business_hours=store.business_hours or "365일 24시간",
             input_placeholder=store.input_placeholder or "궁금한 성분명이나 질문을 입력하세요...",
             bot_avatar_url=store.bot_avatar_url,
+            widget_layout=widget_layout,
             commerce_platform=comm_platform,
             commerce_api_Connected=comm_connected,
             commerce_store_uid=comm_uid,

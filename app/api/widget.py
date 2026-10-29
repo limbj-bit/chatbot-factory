@@ -217,6 +217,7 @@ async def get_dynamic_widget_script(
     preview_commerce: str = Query("", description="Instant preview commerce platform override"),
     preview_avatar_url: str = Query("", description="Instant preview custom avatar data URL / URL"),
     preview_theme_color: str = Query("", description="Instant preview theme color override"),
+    preview_avatar_px: int = Query(0, description="Instant preview launcher avatar diameter in px"),
     session: AsyncSession = Depends(get_db),
 ):
     """Serve a dynamically customized JavaScript widget with 10 Commercial Chat Window Templates & 16 Flaticon Avatars."""
@@ -395,13 +396,29 @@ async def get_dynamic_widget_script(
     side_px = preview_side if preview_side > 0 else int(saved_layout.get("side_px", 24))
     bottom_px = max(10, min(260, bottom_px))
     side_px = max(10, min(220, side_px))
-    win_bottom_px = bottom_px + 92
+    try:
+        raw_avatar_px = (
+            preview_avatar_px
+            if preview_avatar_px > 0
+            else int(saved_layout.get("avatar_px", 76) or 76)
+        )
+    except Exception:
+        raw_avatar_px = 76
+    avatar_px = max(56, min(96, raw_avatar_px))
+    badge_w = avatar_px + 12
+    badge_h = avatar_px + 16
+    mobile_avatar_px = max(52, min(84, int(round(avatar_px * 0.84))))
+    mobile_badge_w = mobile_avatar_px + 12
+    mobile_badge_h = mobile_avatar_px + 16
+    win_bottom_px = bottom_px + avatar_px + 20
+    teaser_bottom_px = bottom_px + avatar_px + 12
+    teaser_side_gap = avatar_px + 6
     horiz_css = f"left: {side_px}px; right: auto;" if widget_pos == "bottom_left" else f"right: {side_px}px; left: auto;"
     # Teaser bubble sits inward from the launcher (toward page center).
     teaser_horiz_css = (
-        f"left: {side_px + 82}px; right: auto;"
+        f"left: {side_px + teaser_side_gap}px; right: auto;"
         if widget_pos == "bottom_left"
-        else f"right: {side_px + 82}px; left: auto;"
+        else f"right: {side_px + teaser_side_gap}px; left: auto;"
     )
     teaser_tail_side = "left" if widget_pos == "bottom_left" else "right"
 
@@ -503,10 +520,10 @@ async def get_dynamic_widget_script(
     }}
     .fresh-widget-launcher:hover {{ filter: brightness(1.06); transform: scale(1.05); }}
     .fresh-widget-launcher.shape-cosbot_badge {{
-      width: 78px; height: 84px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      width: {badge_w}px; height: {badge_h}px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
     }}
     .fresh-cosbot-ring {{
-      width: 68px; height: 68px; border-radius: 50%; padding: 3px;
+      width: {avatar_px}px; height: {avatar_px}px; border-radius: 50%; padding: 3px;
       background: linear-gradient(145deg, #FFFDF9 0%, #F3DFB6 48%, ${{config.primaryColor}} 100%);
       box-shadow: 0 10px 26px rgba(15, 23, 42, 0.22), inset 0 1px 2px rgba(255,255,255,0.95);
       display: flex; align-items: center; justify-content: center; box-sizing: border-box;
@@ -518,22 +535,23 @@ async def get_dynamic_widget_script(
     }}
     .fresh-cosbot-inner svg {{ width: 100%; height: 100%; }}
     .fresh-cosbot-label {{
-      margin-top: -13px;
+      margin-top: -10px;
       background: linear-gradient(90deg, ${{config.primaryColor}} 0%, #D97706 100%);
-      color: #FFFFFF; font-size: 11px; font-weight: 700; letter-spacing: -0.3px;
-      padding: 3px 10px; border-radius: 999px; border: 1.5px solid #FFFFFF;
+      color: #FFFFFF; font-size: 10px; font-weight: 700; letter-spacing: -0.3px;
+      line-height: 1.15;
+      padding: 1px 9px; border-radius: 999px; border: 1.5px solid #FFFFFF;
       box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18); white-space: nowrap; z-index: 2;
     }}
     .fresh-widget-launcher.shape-sticker {{
-      width: 72px; height: 72px; background: transparent; display: flex; flex-direction: column; align-items: center;
+      width: {avatar_px}px; height: {avatar_px}px; background: transparent; display: flex; flex-direction: column; align-items: center;
       filter: drop-shadow(0 6px 14px rgba(15,23,42,0.18));
     }}
-    .fresh-widget-launcher.shape-sticker svg {{ width: 64px; height: 64px; }}
+    .fresh-widget-launcher.shape-sticker svg {{ width: {max(48, avatar_px - 8)}px; height: {max(48, avatar_px - 8)}px; }}
     .fresh-widget-launcher.shape-circle {{
-      width: 64px; height: 64px; border-radius: 50%; background: transparent;
+      width: {avatar_px}px; height: {avatar_px}px; border-radius: 50%; background: transparent;
       filter: drop-shadow(0 6px 16px rgba(15, 23, 42, 0.22)); display: flex; align-items: center; justify-content: center;
     }}
-    .fresh-widget-launcher.shape-circle svg {{ width: 64px; height: 64px; }}
+    .fresh-widget-launcher.shape-circle svg {{ width: {max(48, avatar_px - 8)}px; height: {max(48, avatar_px - 8)}px; }}
     .fresh-widget-launcher.shape-pill {{
       background: #FFFFFF; border: 1.5px solid #E5D5B5; border-radius: 999px;
       padding: 6px 16px 6px 8px; display: flex; align-items: center; gap: 8px;
@@ -545,7 +563,7 @@ async def get_dynamic_widget_script(
     /* Closed-chat teaser bubble (rotating industry prompts) */
     .fresh-teaser-bubble {{
       position: fixed;
-      bottom: {bottom_px + 78}px;
+      bottom: {teaser_bottom_px}px;
       {teaser_horiz_css}
       max-width: min(230px, calc(100vw - 110px));
       background: #FFFFFF;
@@ -587,7 +605,7 @@ async def get_dynamic_widget_script(
         max-width: min(190px, calc(100vw - 96px));
         font-size: 12px;
         padding: 9px 12px;
-        bottom: {bottom_px + 72}px;
+        bottom: {max(teaser_bottom_px - 8, bottom_px + 64)}px;
       }}
     }}
 
@@ -613,9 +631,10 @@ async def get_dynamic_widget_script(
         border-radius: 16px;
       }}
       .fresh-widget-launcher.shape-cosbot_badge {{
-        width: 64px; height: 70px;
+        width: {mobile_badge_w}px; height: {mobile_badge_h}px;
       }}
-      .fresh-cosbot-ring {{ width: 56px; height: 56px; }}
+      .fresh-cosbot-ring {{ width: {mobile_avatar_px}px; height: {mobile_avatar_px}px; }}
+      .fresh-cosbot-label {{ font-size: 9.5px; padding: 1px 8px; margin-top: -9px; }}
       .fresh-msg {{ font-size: 12.5px; padding: 10px 12px; }}
       .fresh-input {{ font-size: 14px; padding: 10px 14px; min-height: 55px; border-radius: 8px; }}
       .fresh-btn-send {{ width: 42px; height: 42px; }}
