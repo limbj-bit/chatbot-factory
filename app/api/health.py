@@ -23,4 +23,5 @@ async def health_check(session: AsyncSession = Depends(get_db)):
         "database": "connected" if db_ok else "disconnected",
         "mock_ai": settings.MOCK_AI,
         "mock_cafe24": settings.MOCK_CAFE24,
+        "deploy_marker": "schema-heal-v2",
     }

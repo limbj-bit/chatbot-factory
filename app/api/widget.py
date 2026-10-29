@@ -222,7 +222,18 @@ async def get_dynamic_widget_script(
     session: AsyncSession = Depends(get_db),
 ):
     """Serve a dynamically customized JavaScript widget with 10 Commercial Chat Window Templates & 16 Flaticon Avatars."""
-    store = await store_service.get_store_by_mall_id(session, mall_id)
+    try:
+        store = await store_service.get_store_by_mall_id(session, mall_id)
+    except Exception as e:
+        # Preview/showroom must not die on schema drift; fall back to query overrides.
+        from app.core.logging import logger as _log
+
+        _log.exception("[Widget] store lookup failed mall_id=%s: %s", mall_id, e)
+        try:
+            await session.rollback()
+        except Exception:
+            pass
+        store = None
 
     origin_or_referer = request.headers.get("origin") or request.headers.get("referer")
     # The widget talks back to THIS backend (Render), not the host page origin.

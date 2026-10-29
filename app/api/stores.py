@@ -44,7 +44,13 @@ async def get_single_store_endpoint(
     mall_id: str, session: AsyncSession = Depends(get_db)
 ):
     """Fetch a single store's public widget status and configuration by mall_id."""
-    store = await store_service.get_store_by_mall_id(session, mall_id)
+    try:
+        store = await store_service.get_store_by_mall_id(session, mall_id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"store_lookup_failed:{type(e).__name__}:{e}",
+        ) from e
     if not store:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
