@@ -977,7 +977,9 @@ async def get_dynamic_widget_script(
       cardEl.className = "fresh-product-card";
       const priceHtml = c.price ? `<div class="price">${{c.price.toLocaleString()}}원</div>` : "";
       const linkHtml = c.purchase_url ? `<a class="buy-link" href="${{c.purchase_url}}" target="_blank">🛒 상품 상세 / 바로 구매하기</a>` : "";
+      const imgHtml = c.image_url ? `<img src="${{c.image_url}}" alt="${{c.title}}" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-bottom:8px;" onerror="this.style.display='none'" />` : "";
       cardEl.innerHTML = `
+        ${{imgHtml}}
         <h4>✨ [맞춤 추천] ${{c.title}}</h4>
         ${{priceHtml}}
         <div>${{c.summary}}</div>
