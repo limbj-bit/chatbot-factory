@@ -152,10 +152,10 @@ async def upload_store_bot_avatar_endpoint(
 ):
     """Upload a custom Flaticon PNG/GIF/SVG/WebP icon file to use as the store's bot launcher and chat avatar."""
     raw_bytes = await file.read()
-    if len(raw_bytes) > 5 * 1024 * 1024:
+    if len(raw_bytes) > 10 * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Avatar image file must be under 5MB.",
+            detail="Avatar image file must be under 10MB.",
         )
     try:
         from PIL import Image
