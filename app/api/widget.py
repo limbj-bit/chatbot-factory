@@ -364,7 +364,7 @@ async def get_dynamic_widget_script(
     safe_commerce_badge = commerce_badge.replace('"', '\\"')
     quick_buttons_js = json.dumps(quick_buttons, ensure_ascii=False)
     presets_js = json.dumps(
-        {k: " ".join(line.strip() for line in v.splitlines()) for k, v in FLATICON_PRESET_SVGS.items()},
+        {k: " ".join(line.strip() for line in v.splitlines()).replace("/static/presets/", backend_origin + "/static/presets/") for k, v in FLATICON_PRESET_SVGS.items()},
         ensure_ascii=False,
     )
 
