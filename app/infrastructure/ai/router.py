@@ -46,19 +46,46 @@ class AIProviderRouter(AIProviderPort):
             logger.info("AIProviderRouter initialized in MOCK mode.")
             return
 
-        # Real Providers if keys present
+        # Real Providers — each gets a task-tuned default model from settings.
         if settings.GROQ_API_KEY:
-            self.providers["groq"] = GroqProvider(api_key=settings.GROQ_API_KEY)
+            self.providers["groq"] = GroqProvider(
+                api_key=settings.GROQ_API_KEY,
+                default_model=settings.GROQ_TEXT_MODEL,
+            )
         nvidia_key = settings.NVIDIA_API_KEY or settings.NVIDIA_NIM_API_KEY
         if nvidia_key:
-            self.providers["nvidia"] = NvidiaProvider(api_key=nvidia_key)
+            self.providers["nvidia"] = NvidiaProvider(
+                api_key=nvidia_key,
+                default_model=settings.NVIDIA_TEXT_MODEL,
+                vision_model=settings.NVIDIA_VISION_MODEL,
+            )
         if settings.GEMINI_API_KEY:
-            self.providers["gemini"] = GeminiProvider(api_key=settings.GEMINI_API_KEY)
+            self.providers["gemini"] = GeminiProvider(
+                api_key=settings.GEMINI_API_KEY,
+                default_model=settings.GEMINI_TEXT_MODEL,
+            )
         if settings.MISTRAL_API_KEY:
-            self.providers["mistral"] = MistralProvider(api_key=settings.MISTRAL_API_KEY)
+            self.providers["mistral"] = MistralProvider(
+                api_key=settings.MISTRAL_API_KEY,
+                default_model=settings.MISTRAL_TEXT_MODEL,
+            )
         if settings.OPENROUTER_API_KEY:
-            self.providers["openrouter"] = OpenRouterProvider(api_key=settings.OPENROUTER_API_KEY)
-        logger.info(f"AIProviderRouter initialized with live providers: {list(self.providers.keys())}")
+            self.providers["openrouter"] = OpenRouterProvider(
+                api_key=settings.OPENROUTER_API_KEY,
+                text_model=settings.OPENROUTER_TEXT_MODEL,
+                vision_model=settings.OPENROUTER_VISION_MODEL,
+            )
+        logger.info(
+            "AIProviderRouter live providers=%s models={groq:%s nvidia:%s/%s mistral:%s openrouter:%s/%s gemini:%s}",
+            list(self.providers.keys()),
+            settings.GROQ_TEXT_MODEL,
+            settings.NVIDIA_TEXT_MODEL,
+            settings.NVIDIA_VISION_MODEL,
+            settings.MISTRAL_TEXT_MODEL,
+            settings.OPENROUTER_TEXT_MODEL,
+            settings.OPENROUTER_VISION_MODEL,
+            settings.GEMINI_TEXT_MODEL,
+        )
 
         # Fallback to mock if no keys are provided
         if not self.providers:

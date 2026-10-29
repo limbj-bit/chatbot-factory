@@ -51,8 +51,14 @@ class Settings(BaseSettings):
     AI_FALLBACK_PROVIDER: str = "nvidia"
     # Free vision preferred; Gemini remains last resort in get_vision_provider_chain()
     AI_VISION_PROVIDER: str = "nvidia"
-    # OpenRouter vision model used for claim image diagnosis (multi-model backup).
-    OPENROUTER_VISION_MODEL: str = "openai/gpt-4o-mini"
+    # Per-provider models (task-tuned). Override via env without code changes.
+    GROQ_TEXT_MODEL: str = "qwen/qwen3.8-27b"  # fast KR-capable chat
+    NVIDIA_TEXT_MODEL: str = "meta/llama-3.1-70b-instruct"
+    NVIDIA_VISION_MODEL: str = "microsoft/phi-3.5-vision-instruct"
+    MISTRAL_TEXT_MODEL: str = "mistral-large-latest"  # strong multilingual CS
+    OPENROUTER_TEXT_MODEL: str = "qwen/qwen-2.5-72b-instruct"  # chat quality (not vision)
+    OPENROUTER_VISION_MODEL: str = "openai/gpt-4o-mini"  # claim photo backup
+    GEMINI_TEXT_MODEL: str = "gemini-2.0-flash"  # paid last-resort chat+vision
 
     # Cafe24 Integration
     CAFE24_MALL_ID: str = "demo_mall"

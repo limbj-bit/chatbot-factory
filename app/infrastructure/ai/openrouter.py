@@ -27,7 +27,10 @@ class OpenRouterProvider(AIProviderPort):
     ):
         self.api_key = api_key
         self.vision_model = vision_model or settings.OPENROUTER_VISION_MODEL
-        self.text_model = text_model or self.vision_model
+        # Chat must NOT reuse the vision mini model — pick a dedicated text model.
+        self.text_model = text_model or getattr(
+            settings, "OPENROUTER_TEXT_MODEL", None
+        ) or "qwen/qwen-2.5-72b-instruct"
 
     def _headers(self) -> dict:
         return {
