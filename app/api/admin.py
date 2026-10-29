@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.admin_service import AdminService
 from app.application.store_service import store_service
+from app.core.config import settings
 from app.core.security import verify_admin_key
 from app.core.language import LANGUAGE_NAMES, detect_language
 from app.infrastructure.database.session import get_db

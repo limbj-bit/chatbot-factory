@@ -1282,6 +1282,15 @@ class StoreService:
         await session.execute(
             sql_delete(StoreKnowledgeModel).where(StoreKnowledgeModel.mall_id == mall_id)
         )
+        # Delete related data
+        try:
+            from app.infrastructure.database.models import WebhookAlertLogModel, OrderCacheModel, ClaimModel, CommerceConnectionModel
+            await session.execute(sql_delete(WebhookAlertLogModel).where(WebhookAlertLogModel.mall_id == mall_id))
+            await session.execute(sql_delete(OrderCacheModel).where(OrderCacheModel.mall_id == mall_id))
+            await session.execute(sql_delete(ClaimModel).where(ClaimModel.mall_id == mall_id))
+            await session.execute(sql_delete(CommerceConnectionModel).where(CommerceConnectionModel.mall_id == mall_id))
+        except Exception:
+            pass
         # Messages are linked to sessions, not stores - skip message deletion
         # Delete store
         q = select(StoreModel).where(StoreModel.mall_id == mall_id)
