@@ -20,7 +20,7 @@ FLATICON_PRESET_SVGS: Dict[str, str] = {
         </linearGradient>
       </defs>
       <circle cx="32" cy="32" r="31" fill="url(#ring_bm)"/>
-      <image href="/static/presets/beauty_model.jpg" x="2" y="2" width="60" height="60" preserveAspectRatio="xMidYMin slice" clip-path="url(#clip_bm)"/>
+      <image href="/static/presets/beauty_model.png" x="2" y="2" width="60" height="60" preserveAspectRatio="xMidYMin slice" clip-path="url(#clip_bm)"/>
     </svg>""",
     # 2. 세이지 그린 지식백과 & 아이디어 전구 (사장님 업로드 원료/지식 일러스트)
     "preset_sage_book": """<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
