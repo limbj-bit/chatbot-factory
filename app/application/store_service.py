@@ -963,12 +963,85 @@ class StoreService:
                 break
         return result
 
+    async def _deep_discover_product_urls(self, start_url: str, max_urls: int = 500) -> List[str]:
+        """BFS crawl from start_url: follow internal links and collect product URLs."""
+        parsed_start = urlparse(start_url)
+        host = parsed_start.netloc.lower()
+        if not host:
+            return []
+        visited = set()
+        queue = [start_url]
+        product_urls = []
+        product_seen = set()
+        skip_signals = (
+            "cart", "checkout", "login", "register", "account", "myshop",
+            "search", "board", "notice", "faq", "policy",
+            "about", "contact", "sitemap", "javascript:", "mailto:", "tel:", "#",
+        )
+        product_signals = (
+            "product", "goods", "item", "detail", "view", "shop_view",
+            "/p/", "product_no", "productno", "goods_no", "goodsno",
+        )
+        listing_signals = ("category", "list", "shop", "goods_list", "product_list")
+        page_count = 0
+        max_pages = 30
+        while queue and page_count < max_pages and len(product_urls) < max_urls:
+            url = queue.pop(0)
+            if url in visited:
+                continue
+            visited.add(url)
+            page_count += 1
+            try:
+                html = await self._fetch_html(url, timeout=10.0)
+            except Exception:
+                continue
+            # Extract product URLs from this page
+            hrefs = re.findall(r'href\s*=\s*["\']([^"\']+)["\']', html, re.IGNORECASE)
+            locs = re.findall(r"<loc>\s*(.*?)\s*</loc>", html, re.IGNORECASE)
+            for raw in hrefs + locs:
+                raw = raw.strip()
+                if not raw:
+                    continue
+                if raw.startswith("//"):
+                    raw = parsed_start.scheme + ":" + raw
+                elif raw.startswith("/"):
+                    raw = parsed_start.scheme + "://" + host + raw
+                elif not raw.startswith("http"):
+                    raw = parsed_start.scheme + "://" + host + "/" + raw.lstrip("./")
+                try:
+                    p = urlparse(raw)
+                except Exception:
+                    continue
+                if p.netloc.lower() != host:
+                    continue
+                low = (p.path + "?" + p.query).lower()
+                if any(s in low for s in skip_signals):
+                    continue
+                clean = p._replace(fragment="").geturl()
+                if any(s in low for s in product_signals):
+                    if clean not in product_seen:
+                        product_seen.add(clean)
+                        product_urls.append(clean)
+                        if len(product_urls) >= max_urls:
+                            break
+                elif any(s in low for s in listing_signals):
+                    if clean not in visited and clean not in queue:
+                        queue.append(clean)
+            # Also try pagination
+            for pn in range(2, 6):
+                paginated = url.split("?")[0] + "?page=" + str(pn)
+                if paginated not in visited and paginated not in queue:
+                    # Only add if original URL looks like a listing
+                    if any(s in url.lower() for s in listing_signals):
+                        queue.append(paginated)
+        return product_urls[:max_urls]
+
     async def crawl_store_catalog(
         self,
         session: AsyncSession,
         mall_id: str,
         crawl_req: "StoreCatalogCrawlRequest",
-    ) -> "StoreCatalogCrawlResponse":
+        ) -> "StoreCatalogCrawlResponse":
         import asyncio as _asyncio
         from app.schemas.store import StoreCatalogCrawlResponse, StoreKnowledgeResponse
         from app.schemas.store import StoreKnowledgeCrawlRequest
@@ -1036,6 +1109,15 @@ class StoreService:
                             break
                     except Exception:
                         break
+            # Deep crawl: if listing page discovery is thin, crawl the whole site
+            if not is_sitemap and len(urls) < 50:
+                try:
+                    deep_urls = await self._deep_discover_product_urls(crawl_req.url, max_urls=500)
+                    for u in deep_urls:
+                        if u not in urls:
+                            urls.append(u)
+                except Exception as e:
+                    logger.warning("[CatalogCrawl] Deep crawl failed: %s", e)
             # Fallback: try sitemap.xml if discovery was thin
             if len(urls) < 3:
                 try:
