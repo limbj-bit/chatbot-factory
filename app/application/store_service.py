@@ -489,6 +489,59 @@ class StoreService:
         store_id = str(uuid.uuid4())
         mall_id = request.mall_id or f"shop_{uuid.uuid4().hex[:8]}"
 
+        # UPSERT: if a store with this mall_id already exists, update its
+        # branding/policy fields instead of failing on the unique constraint.
+        # This lets the showroom act as the AS (after-sales) tool: re-generate
+        # with the same mall_id and the embed script never needs re-install.
+        existing_store = await self.get_store_by_mall_id(session, mall_id)
+        if existing_store is not None:
+            existing_store.store_name = request.store_name
+            existing_store.industry = request.industry
+            if request.theme_color:
+                existing_store.theme_color = request.theme_color
+            if request.welcome_message:
+                existing_store.welcome_message = request.welcome_message
+            if request.contact_email:
+                existing_store.contact_email = request.contact_email
+            if request.business_hours:
+                existing_store.business_hours = request.business_hours
+            if request.bot_name:
+                existing_store.bot_name = request.bot_name
+            if request.brand_badge:
+                existing_store.brand_badge = request.brand_badge
+            if request.header_title:
+                existing_store.header_title = request.header_title
+            if request.bot_icon_style:
+                existing_store.bot_icon_style = request.bot_icon_style
+            if request.launcher_shape:
+                existing_store.launcher_shape = request.launcher_shape
+            if request.bot_label:
+                existing_store.bot_label = request.bot_label
+            if request.chat_template:
+                existing_store.chat_template = request.chat_template
+            if request.quick_buttons:
+                existing_store.quick_buttons_json = json.dumps(request.quick_buttons, ensure_ascii=False)
+            if request.input_placeholder:
+                existing_store.input_placeholder = request.input_placeholder
+            if request.bot_avatar_url:
+                existing_store.bot_avatar_url = request.bot_avatar_url
+            if request.allowed_domains is not None:
+                existing_store.allowed_domains = request.allowed_domains
+            if request.webhook_url is not None:
+                existing_store.webhook_url = request.webhook_url
+            if request.daily_quota_limit is not None:
+                existing_store.daily_quota_limit = request.daily_quota_limit
+            try:
+                merged = json.loads(existing_store.policy_config_json or "{}")
+            except Exception:
+                merged = {}
+            if request.policy_config:
+                merged.update(request.policy_config)
+            existing_store.policy_config_json = json.dumps(merged, ensure_ascii=False)
+            await session.commit()
+            await session.refresh(existing_store)
+            return self._to_response(existing_store)
+
         industry_info = INDUSTRY_DEFAULTS.get(
             request.industry, INDUSTRY_DEFAULTS["general"]
         )
