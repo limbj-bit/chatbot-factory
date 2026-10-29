@@ -218,6 +218,7 @@ async def get_dynamic_widget_script(
     preview_avatar_url: str = Query("", description="Instant preview custom avatar data URL / URL"),
     preview_theme_color: str = Query("", description="Instant preview theme color override"),
     preview_avatar_px: int = Query(0, description="Instant preview launcher avatar diameter in px"),
+    preview_brand_logo_url: str = Query("", description="Instant preview header brand logo URL"),
     session: AsyncSession = Depends(get_db),
 ):
     """Serve a dynamically customized JavaScript widget with 10 Commercial Chat Window Templates & 16 Flaticon Avatars."""
@@ -245,6 +246,32 @@ async def get_dynamic_widget_script(
         theme_color = ind_defaults.get("theme_color", "#0284C7")
     bot_name = preview_bot_name or (store.bot_name if store and store.bot_name else ind_defaults.get("bot_name", "코스봇"))
     brand_badge = preview_badge or (store.brand_badge if store and store.brand_badge else title[:8])
+    brand_logo_url = ""
+    if preview_brand_logo_url.strip():
+        brand_logo_url = preview_brand_logo_url.strip()
+    elif store and getattr(store, "brand_logo_url", None):
+        brand_logo_url = store.brand_logo_url or ""
+    # Never ship multi-MB logos in the widget script.
+    if brand_logo_url.startswith("data:") and len(brand_logo_url) > 20_000:
+        from app.infrastructure.avatar_compress import (
+            bytes_to_data_uri,
+            compress_logo_bytes,
+        )
+        import base64 as _b64_logo
+
+        try:
+            _comma = brand_logo_url.find(",")
+            _raw = _b64_logo.b64decode(brand_logo_url[_comma + 1 :], validate=False)
+            _data, _mime = compress_logo_bytes(_raw, max_edge=96)
+            brand_logo_url = bytes_to_data_uri(_data, _mime)
+            if store is not None and (store.brand_logo_url or "") != brand_logo_url:
+                store.brand_logo_url = brand_logo_url
+                try:
+                    await session.commit()
+                except Exception:
+                    await session.rollback()
+        except Exception:
+            brand_logo_url = ""
     header_title = (store.header_title if store and store.header_title else "고객상담센터")
     chat_template = preview_template or (store.chat_template if store and store.chat_template else "cosraw_grid")
     contact_email = preview_email or (store.contact_email if store and store.contact_email else ind_defaults.get("contact_email", "contact@cosrawfree.com"))
@@ -434,6 +461,16 @@ async def get_dynamic_widget_script(
     safe_label = bot_label.replace('"', '\\"')
     safe_bot_name = bot_name.replace('"', '\\"')
     safe_brand_badge = brand_badge.replace('"', '\\"')
+    safe_brand_logo = (brand_logo_url or "").replace("\\", "\\\\").replace('"', '\\"')
+    if brand_logo_url:
+        safe_logo_src = brand_logo_url.replace('"', "&quot;")
+        brand_pill_html = (
+            f'<span class="fresh-brand-pill has-logo">'
+            f'<img src="{safe_logo_src}" alt="{safe_brand_badge}" class="fresh-brand-logo-img" />'
+            f"</span>"
+        )
+    else:
+        brand_pill_html = f'<span class="fresh-brand-pill">{safe_brand_badge}</span>'
     safe_header_title = header_title.replace('"', '\\"')
     safe_email = contact_email.replace('"', '\\"')
     safe_hours = business_hours.replace('"', '\\"')
@@ -480,6 +517,7 @@ async def get_dynamic_widget_script(
     botLabel: "{safe_label}",
     botName: "{safe_bot_name}",
     brandBadge: "{safe_brand_badge}",
+    brandLogoUrl: "{safe_brand_logo}",
     headerTitle: "{safe_header_title}",
     chatTemplate: "{chat_template}",
     quickButtons: {quick_buttons_js},
@@ -661,9 +699,21 @@ async def get_dynamic_widget_script(
     .fresh-brand-pill {{
       background: rgba(255, 255, 255, 0.22); backdrop-filter: blur(4px); color: #FFFFFF; font-size: 12px; font-weight: 700;
       padding: 4px 10px; border-radius: 6px; letter-spacing: -0.2px;
+      display: inline-flex; align-items: center; justify-content: center;
+      max-width: 96px; min-height: 24px; overflow: hidden;
+    }}
+    .fresh-brand-pill.has-logo {{
+      padding: 3px 6px; background: #FFFFFF; min-width: 36px; min-height: 28px;
+    }}
+    .fresh-brand-logo-img {{
+      display: block; max-width: 84px; max-height: 24px; width: auto; height: auto;
+      object-fit: contain; object-position: center;
     }}
     .fresh-widget-window.tpl-cosraw_grid .fresh-brand-pill {{
       background: #0284C7;
+    }}
+    .fresh-widget-window.tpl-cosraw_grid .fresh-brand-pill.has-logo {{
+      background: #FFFFFF;
     }}
     .fresh-header-main-title {{ margin: 0; font-size: 16px; font-weight: 700; color: #FFFFFF; }}
     .fresh-header-controls {{ display: flex; align-items: center; gap: 14px; color: #CBD5E1; }}
@@ -1000,7 +1050,7 @@ async def get_dynamic_widget_script(
   chatWindow.innerHTML = `
     <div class="fresh-widget-header">
       <div class="fresh-header-left">
-        <span class="fresh-brand-pill">${{config.brandBadge}}</span>
+        {brand_pill_html}
         <h3 class="fresh-header-main-title">${{config.headerTitle}}</h3>
       </div>
       <div class="fresh-header-controls">

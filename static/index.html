@@ -754,7 +754,13 @@
             <div class="field-desc">채팅창 맨 위 [배지] 고객상담센터에 들어갈 짧은 이름입니다.</div>
             <input type="text" id="brandBadge" value="오뜨엘라" oninput="this.dataset.manual='1'; triggerInstantPreview();" placeholder="비워두면 쇼핑몰 이름 자동 적용" />
           </div>
-          <div class="field-card">
+                    <div class="field-card">
+            <div class="field-title"><span>채팅창 헤더 로고</span><span class="field-tag opt">선택</span></div>
+            <div class="field-desc">파란 배지(상점이름) 자리에 로고 이미지를 넣습니다. 없으면 이름 텍스트를 유지합니다. 비율은 유지한 채 배치됩니다.</div>
+            <input type="file" id="customBrandLogoFile" accept="image/*" onchange="previewBrandLogoFile(this)" style="font-size:12px;width:100%;" />
+            <button type="button" class="pos-btn" onclick="clearBrandLogo()" style="margin-top:8px;color:#64748B;">🗑️ 로고 제거 (이름으로)</button>
+          </div>
+<div class="field-card">
             <div class="field-title"><span>버튼 아래 작은 명찰 문구</span><span class="field-tag opt">자동: 챗봇이름+상담</span></div>
             <div class="field-desc">우측 하단 동그란 아이콘 밑 캡슐에 적히는 글씨입니다.</div>
             <input type="text" id="botLabel" value="엘라봇 상담" oninput="this.dataset.manual='1'; triggerInstantPreview();" placeholder="비워두면 'OO봇 상담' 자동 적용" />
@@ -909,6 +915,7 @@
 
   <script>
     let customPreviewDataUrl = "";
+    let customBrandLogoDataUrl = "";
     let lastIssuedSnippetText = "";
 
     function syncAutoFields() {
@@ -960,6 +967,36 @@
         const labelEl = circleLauncher.querySelector(".fresh-cosbot-label");
         circleLauncher.innerHTML = `<div style="width:64px;height:64px;border-radius:50%;overflow:hidden;border:2.5px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.18);">${imgHtml}</div>` + (labelEl ? labelEl.outerHTML : "");
       }
+    }
+
+    
+    function applyBrandLogoToLiveDom(dataUrl) {
+      const pill = document.querySelector(".fresh-brand-pill");
+      if (!pill) return;
+      if (dataUrl) {
+        pill.classList.add("has-logo");
+        pill.innerHTML = `<img src="${dataUrl}" alt="logo" class="fresh-brand-logo-img" />`;
+      }
+    }
+
+    function previewBrandLogoFile(inputEl) {
+      if (!inputEl.files || !inputEl.files[0]) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        customBrandLogoDataUrl = e.target.result;
+        applyBrandLogoToLiveDom(customBrandLogoDataUrl);
+        const win = document.querySelector(".fresh-widget-window");
+        if (win) win.style.display = "flex";
+      };
+      reader.readAsDataURL(inputEl.files[0]);
+    }
+
+    function clearBrandLogo() {
+      customBrandLogoDataUrl = "";
+      window._clearBrandLogo = true;
+      const input = document.getElementById("customBrandLogoFile");
+      if (input) input.value = "";
+      triggerInstantPreview(true);
     }
 
     function previewCustomFile(inputEl) {
@@ -1399,6 +1436,42 @@
         } catch (e) { /* keep existing server avatar */ }
       }
 
+      
+      const logoInput = document.getElementById("customBrandLogoFile");
+      async function uploadBrandLogoBlob(blob, filename) {
+        const fd = new FormData();
+        fd.append("file", blob, filename || "brand-logo.png");
+        const upRes = await fetch(`/api/stores/${createdStore.mall_id}/brand-logo`, {
+          method: "POST",
+          body: fd
+        });
+        if (upRes.ok) createdStore = await upRes.json();
+        return upRes.ok;
+      }
+      if (logoInput && logoInput.files && logoInput.files[0]) {
+        await uploadBrandLogoBlob(logoInput.files[0], logoInput.files[0].name);
+        logoInput.value = "";
+      } else if (customBrandLogoDataUrl && customBrandLogoDataUrl.indexOf("data:") === 0) {
+        try {
+          const blob = await (await fetch(customBrandLogoDataUrl)).blob();
+          await uploadBrandLogoBlob(blob, "brand-logo-resync.png");
+        } catch (e) {}
+      } else if (window._clearBrandLogo) {
+        try {
+          await fetch(`/api/stores/${createdStore.mall_id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              store_name: document.getElementById("storeName").value.trim() || createdStore.store_name,
+              mall_id: createdStore.mall_id,
+              industry: getSelectedIndustryValue(),
+              brand_logo_url: ""
+            })
+          });
+        } catch (e) {}
+        window._clearBrandLogo = false;
+      }
+
       document.getElementById("targetMallId").value = createdStore.mall_id;
   if (window._isEditingExisting) {
     const box = document.getElementById("issuedResultBox");
@@ -1745,6 +1818,11 @@
 
         // Keep for live DOM polish only ? never stuff huge data: URIs into script query.
         customPreviewDataUrl = "";
+        customBrandLogoDataUrl = "";
+        window._clearBrandLogo = false;
+        if (data.brand_logo_url) {
+          customBrandLogoDataUrl = data.brand_logo_url;
+        }
         if (data.bot_avatar_url) {
           customPreviewDataUrl = data.bot_avatar_url;
           setFieldValue("botIconStyle", data.bot_icon_style || "custom_upload");

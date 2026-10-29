@@ -66,6 +66,37 @@ def bytes_to_data_uri(data: bytes, mime: str) -> str:
     return f"data:{mime};base64," + base64.b64encode(data).decode("ascii")
 
 
+def compress_logo_bytes(raw: bytes, max_edge: int = 96) -> Tuple[bytes, str]:
+    """Fit logo inside max_edge box without cropping (preserve aspect ratio)."""
+    from PIL import Image, ImageFile
+
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+    Image.MAX_IMAGE_PIXELS = max(getattr(Image, "MAX_IMAGE_PIXELS", 0) or 0, 200_000_000)
+
+    img = Image.open(io.BytesIO(raw))
+    img.load()
+    img = img.convert("RGBA")
+    img.thumbnail((max_edge, max_edge), Image.Resampling.LANCZOS)
+
+    extrema = img.split()[-1].getextrema()
+    has_transparency = extrema[0] < 250
+    if has_transparency:
+        out = io.BytesIO()
+        img.save(out, format="PNG", optimize=True)
+        data = out.getvalue()
+        if len(data) > SOFT_MAX_DATA_URI_LEN:
+            bg = Image.new("RGB", img.size, (255, 255, 255))
+            bg.paste(img, mask=img.split()[-1])
+            out2 = io.BytesIO()
+            bg.save(out2, format="JPEG", quality=82, optimize=True)
+            return out2.getvalue(), "image/jpeg"
+        return data, "image/png"
+
+    out = io.BytesIO()
+    img.convert("RGB").save(out, format="JPEG", quality=85, optimize=True)
+    return out.getvalue(), "image/jpeg"
+
+
 def compress_avatar_data_uri(
     data_uri: Optional[str],
     *,

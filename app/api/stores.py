@@ -184,3 +184,40 @@ async def upload_store_bot_avatar_endpoint(
             detail=f"Store with mall_id '{mall_id}' not found.",
         )
     return updated
+
+
+@router.post("/{mall_id}/brand-logo", response_model=StoreResponse)
+async def upload_store_brand_logo_endpoint(
+    mall_id: str,
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_db),
+):
+    """Upload header brand-pill logo; aspect preserved, fitted inside ~96px."""
+    from app.infrastructure.avatar_compress import bytes_to_data_uri, compress_logo_bytes
+
+    raw_bytes = await file.read()
+    if len(raw_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Brand logo file must be under 10MB.",
+        )
+    try:
+        data, mime = compress_logo_bytes(raw_bytes, max_edge=96)
+        data_uri = bytes_to_data_uri(data, mime)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Brand logo could not be processed. Use JPG/PNG under 10MB. ({exc})",
+        ) from exc
+
+    updated = await store_service.update_subscription(
+        session,
+        mall_id,
+        StoreSubscriptionUpdateRequest(brand_logo_url=data_uri),
+    )
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Store with mall_id '{mall_id}' not found.",
+        )
+    return updated

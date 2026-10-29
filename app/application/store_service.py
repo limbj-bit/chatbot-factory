@@ -489,6 +489,7 @@ class StoreService:
             business_hours=store.business_hours or "365일 24시간",
             input_placeholder=store.input_placeholder or "궁금한 성분명이나 질문을 입력하세요...",
             bot_avatar_url=store.bot_avatar_url,
+            brand_logo_url=store.brand_logo_url,
             widget_layout=widget_layout,
             commerce_platform=comm_platform,
             commerce_api_Connected=comm_connected,
@@ -552,6 +553,11 @@ class StoreService:
                 existing_store.bot_avatar_url = av
                 if not request.bot_icon_style:
                     existing_store.bot_icon_style = "custom_upload"
+            if request.brand_logo_url is not None:
+                if request.brand_logo_url == "":
+                    existing_store.brand_logo_url = None
+                else:
+                    existing_store.brand_logo_url = request.brand_logo_url
             if request.allowed_domains is not None:
                 existing_store.allowed_domains = request.allowed_domains
             if request.webhook_url is not None:
@@ -664,6 +670,7 @@ class StoreService:
             business_hours=business_hours,
             input_placeholder=input_placeholder,
             bot_avatar_url=saved_avatar_url,
+            brand_logo_url=request.brand_logo_url or None,
         )
         session.add(store)
         await session.commit()
@@ -777,6 +784,29 @@ class StoreService:
                 store.bot_avatar_url = av
                 if not update_req.bot_icon_style:
                     store.bot_icon_style = "custom_upload"
+
+        if update_req.brand_logo_url is not None:
+            from app.infrastructure.avatar_compress import (
+                HARD_RECOMPRESS_ABOVE,
+                compress_avatar_data_uri,
+                compress_logo_bytes,
+                bytes_to_data_uri,
+            )
+            import base64 as _b64
+
+            logo = update_req.brand_logo_url
+            if logo == "":
+                store.brand_logo_url = None
+            elif logo.startswith("data:") and len(logo) > HARD_RECOMPRESS_ABOVE:
+                try:
+                    comma = logo.find(",")
+                    raw = _b64.b64decode(logo[comma + 1 :], validate=False)
+                    data, mime = compress_logo_bytes(raw)
+                    store.brand_logo_url = bytes_to_data_uri(data, mime)
+                except Exception:
+                    store.brand_logo_url = compress_avatar_data_uri(logo, force=True) or logo
+            else:
+                store.brand_logo_url = logo
 
         if update_req.reset_days is not None:
             store.trial_days = update_req.reset_days

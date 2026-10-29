@@ -60,6 +60,10 @@ class StoreCreateRequest(BaseModel):
         None,
         description="직접 업로드한 Flaticon PNG/GIF/SVG 데이터 URI 또는 외부 이미지 URL",
     )
+    brand_logo_url: Optional[str] = Field(
+        None,
+        description="헤더 브랜드 배지 로고 (없으면 상점 이름 텍스트 유지)",
+    )
 
 
 class StoreSubscriptionUpdateRequest(BaseModel):
@@ -82,6 +86,7 @@ class StoreSubscriptionUpdateRequest(BaseModel):
     business_hours: Optional[str] = Field(None, description="하단 운영시간 변경")
     input_placeholder: Optional[str] = Field(None, description="하단 입력창 placeholder 변경")
     bot_avatar_url: Optional[str] = Field(None, description="커스텀 아바타 이미지 URL 또는 Data URI 변경")
+    brand_logo_url: Optional[str] = Field(None, description="헤더 브랜드 배지 로고 이미지 URL 또는 Data URI")
 
 
 class StoreKnowledgeCreateRequest(BaseModel):
@@ -176,6 +181,7 @@ class StoreResponse(BaseModel):
     business_hours: str = "365일 24시간"
     input_placeholder: str = "궁금한 상품명이나 질문을 입력하세요..."
     bot_avatar_url: Optional[str] = None
+    brand_logo_url: Optional[str] = None
     widget_layout: Optional[Dict[str, Any]] = None
     commerce_platform: Optional[str] = None
     commerce_api_Connected: bool = False

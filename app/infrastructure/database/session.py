@@ -76,6 +76,7 @@ async def init_db() -> None:
             "ALTER TABLE messages ADD COLUMN detected_language VARCHAR(8)",
             "ALTER TABLE messages ADD COLUMN translation_ko TEXT",
             "ALTER TABLE sessions ADD COLUMN mall_id VARCHAR(64) DEFAULT 'demo_mall'",
+            "ALTER TABLE stores ADD COLUMN brand_logo_url TEXT",
         ):
             try:
                 await conn.execute(_text(stmt))

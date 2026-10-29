@@ -66,6 +66,7 @@ class StoreModel(Base):
         String(128), default="궁금한 상품명이나 질문(또는 주문번호)을 입력하세요..."
     )
     bot_avatar_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    brand_logo_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
