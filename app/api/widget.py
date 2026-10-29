@@ -366,9 +366,19 @@ async def get_dynamic_widget_script(
     safe_commerce_badge = commerce_badge.replace('"', '\\"')
     quick_buttons_js = json.dumps(quick_buttons, ensure_ascii=False)
     presets_js = json.dumps(
-        {k: " ".join(line.strip() for line in v.splitlines()).replace("/static/presets/", backend_origin + "/static/presets/") for k, v in FLATICON_PRESET_SVGS.items()},
+        {k: " ".join(line.strip() for line in v.splitlines()).replace("/static/presets/beauty_model.png", "DATA_URI_BEAUTY").replace("/static/presets/", backend_origin + "/static/presets/") for k, v in FLATICON_PRESET_SVGS.items()},
         ensure_ascii=False,
     )
+
+    # Embed beauty model image as base64 data URI to ensure it renders in all contexts
+    import base64 as _b64_mod
+    try:
+        with open("static/presets/beauty_model.png", "rb") as _f:
+            _img_b64 = _b64_mod.b64encode(_f.read()).decode("ascii")
+            _beauty_data_uri = "data:image/png;base64," + _img_b64
+    except Exception:
+        _beauty_data_uri = backend_origin + "/static/presets/beauty_model.png"
+    presets_js = presets_js.replace("DATA_URI_BEAUTY", _beauty_data_uri)
 
     js_content = f"""
 (function () {{

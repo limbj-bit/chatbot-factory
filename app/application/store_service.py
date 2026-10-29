@@ -1181,6 +1181,18 @@ class StoreService:
                         if raw not in seen_cats and parsed_dc.netloc in raw:
                             seen_cats.add(raw)
                             cat_urls_to_visit.append(raw)
+                    # Cafe24: extract cate_no values from homepage and fetch product listing pages
+                    cate_nos = set(re.findall(r'cate_no=(\d+)', home_html))
+                    for cn in list(cate_nos)[:40]:
+                        try:
+                            cat_url = home_url.rstrip("/") + "/product/list.html?cate_no=" + cn
+                            cat_html = await self._fetch_html(cat_url, timeout=8.0)
+                            cat_urls = self._discover_product_urls(cat_html, cat_url)
+                            for u in cat_urls:
+                                if u not in urls:
+                                    urls.append(u)
+                        except Exception:
+                            pass
                     # Fetch each category page (up to 20) and extract product URLs
                     for cat_url in cat_urls_to_visit[:20]:
                         try:
