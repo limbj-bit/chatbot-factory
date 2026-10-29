@@ -467,7 +467,7 @@ async def get_dynamic_widget_script(
 
     /* Base Chat Window */
     .fresh-widget-window {{
-      position: fixed; bottom: {win_bottom_px}px; {horiz_css} width: 460px; height: 660px;
+      position: fixed; bottom: {win_bottom_px}px; {horiz_css} width: 400px; height: 720px;
       max-width: calc(100vw - 32px); max-height: calc(100vh - {win_bottom_px + 20}px);
       background: #ffffff; border-radius: 22px;
       border: 1px solid rgba(197, 160, 89, 0.28);
@@ -491,7 +491,7 @@ async def get_dynamic_widget_script(
       }}
       .fresh-cosbot-ring {{ width: 56px; height: 56px; }}
       .fresh-msg {{ font-size: 13.5px; padding: 11px 14px; }}
-      .fresh-input {{ font-size: 14px; padding: 11px 16px; min-height: 42px; }}
+      .fresh-input {{ font-size: 14px; padding: 10px 14px; min-height: 55px; border-radius: 8px; }}
       .fresh-btn-send {{ width: 42px; height: 42px; }}
       .fresh-btn-send svg {{ width: 18px; height: 18px; }}
       .fresh-cosraw-btn {{ font-size: 12.5px; padding: 9px 8px; }}
@@ -663,9 +663,10 @@ async def get_dynamic_widget_script(
     }}
     .fresh-input-row {{ display: flex; gap: 8px; align-items: center; }}
     .fresh-input {{
-      flex: 1; border: 1.5px solid #0284C7; border-radius: 999px;
-      padding: 13px 20px; font-size: 15px; outline: none; color: #1E293B;
-      min-height: 46px; line-height: 1.4;
+      flex: 1; border: 1.5px solid #0284C7; border-radius: 8px;
+      padding: 10px 14px; font-size: 14px; outline: none; color: #1E293B;
+      min-height: 55px; max-height: 140px; line-height: 1.5;
+      resize: none; overflow-y: auto; font-family: inherit;
     }}
     .fresh-btn-send {{
       width: 46px; height: 46px; border-radius: 50%; background: ${{config.primaryColor}}; color: #ffffff;
@@ -867,8 +868,8 @@ async def get_dynamic_widget_script(
     </div>
     <div class="fresh-widget-footer">
       <input type="file" id="dyn-file" accept="image/*" style="display:none;" ${{disabledAttr}} />
-      <div class="fresh-input-row">
-        <input type="text" class="fresh-input" id="dyn-input" placeholder="${{inputPlaceholder}}" ${{disabledAttr}} />
+      <div class="fresh-input-row" style="align-items:flex-end;">
+        <textarea class="fresh-input" id="dyn-input" placeholder="${{inputPlaceholder}}" ${{disabledAttr}} rows="2"></textarea>
         <button class="fresh-btn-send" id="dyn-send" ${{disabledAttr}} title="전송">
           <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
         </button>
@@ -987,11 +988,19 @@ async def get_dynamic_widget_script(
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }}
 
+  // Auto-grow textarea
+  userInput.addEventListener("input", () => {{
+    userInput.style.height = "55px";
+    const newH = Math.min(userInput.scrollHeight, 140);
+    userInput.style.height = newH + "px";
+  }});
+
   async function sendMessage() {{
     if (config.isExpired) return;
     const text = userInput.value.trim();
     if (!text) return;
     userInput.value = "";
+    userInput.style.height = "55px";
     appendMessage(text, "user");
 
     const botMsg = appendMessage("답변을 준비 중입니다...", "bot");
@@ -1043,7 +1052,10 @@ async def get_dynamic_widget_script(
 
   sendBtn.addEventListener("click", sendMessage);
   userInput.addEventListener("keydown", (e) => {{
-    if (e.key === "Enter") sendMessage();
+    if (e.key === "Enter" && !e.shiftKey) {{
+      e.preventDefault();
+      sendMessage();
+    }}
   }});
 
   if (uploadBtn) {{
