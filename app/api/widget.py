@@ -260,8 +260,8 @@ async def get_dynamic_widget_script(
     brand_logo_url = ""
     if preview_brand_logo_url.strip():
         brand_logo_url = preview_brand_logo_url.strip()
-    elif store and getattr(store, "brand_logo_url", None):
-        brand_logo_url = store.brand_logo_url or ""
+    elif store is not None:
+        brand_logo_url = store_service._safe_brand_logo_url(store) or ""
     # Never ship multi-MB logos in the widget script.
     if brand_logo_url.startswith("data:") and len(brand_logo_url) > 20_000:
         from app.infrastructure.avatar_compress import (

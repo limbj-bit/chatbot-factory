@@ -8,6 +8,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 import httpx
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 from app.application.commerce_service import commerce_service
 from app.core.logging import logger
 from app.core.security import encryption_available
@@ -489,7 +490,7 @@ class StoreService:
             business_hours=store.business_hours or "365일 24시간",
             input_placeholder=store.input_placeholder or "궁금한 성분명이나 질문을 입력하세요...",
             bot_avatar_url=store.bot_avatar_url,
-            brand_logo_url=store.brand_logo_url,
+            brand_logo_url=self._safe_brand_logo_url(store),
             widget_layout=widget_layout,
             commerce_platform=comm_platform,
             commerce_api_Connected=comm_connected,
@@ -1987,26 +1988,57 @@ class StoreService:
         await session.commit()
         return False
 
+    @staticmethod
+    def _safe_brand_logo_url(store: StoreModel) -> Optional[str]:
+        """Read logo without forcing a lazy SELECT when the column is deferred/missing."""
+        if "brand_logo_url" in store.__dict__:
+            return store.__dict__.get("brand_logo_url")
+        try:
+            return store.brand_logo_url
+        except Exception:
+            return None
+
+    @staticmethod
+    def _is_brand_logo_schema_error(exc: Exception) -> bool:
+        err = f"{type(exc).__name__}: {exc}".lower()
+        return (
+            "brand_logo_url" in err
+            or "no such column" in err
+            or "does not exist" in err
+        )
+
     async def get_store_by_mall_id(
         self, session: AsyncSession, mall_id: str
         ) -> Optional[StoreModel]:
-        q = select(StoreModel).where(StoreModel.mall_id == mall_id)
+        q_full = select(StoreModel).where(StoreModel.mall_id == mall_id)
+        q_defer = (
+            select(StoreModel)
+            .options(defer(StoreModel.brand_logo_url))
+            .where(StoreModel.mall_id == mall_id)
+        )
         try:
-            res = await session.execute(q)
+            res = await session.execute(q_full)
             return res.scalar_one_or_none()
         except Exception as e:
-            # Production drift: model has brand_logo_url but SQLite/Postgres
-            # never got the ALTER. Heal once, then retry the same lookup.
-            err = f"{type(e).__name__}: {e}"
-            if "brand_logo_url" not in err and "no such column" not in err.lower() and "does not exist" not in err.lower():
+            if not self._is_brand_logo_schema_error(e):
                 raise
-            logger.warning("[Store] schema drift on get_store (%s); applying lightweight migrations", err)
+            logger.warning(
+                "[Store] schema drift on get_store (%s); applying lightweight migrations",
+                e,
+            )
             await session.rollback()
             from app.infrastructure.database.session import apply_lightweight_migrations
 
             await apply_lightweight_migrations()
-            res = await session.execute(q)
-            return res.scalar_one_or_none()
+            try:
+                res = await session.execute(q_full)
+                return res.scalar_one_or_none()
+            except Exception as e2:
+                if not self._is_brand_logo_schema_error(e2):
+                    raise
+                await session.rollback()
+                res = await session.execute(q_defer)
+                return res.scalar_one_or_none()
 
     async def list_stores(self, session: AsyncSession) -> List[StoreResponse]:
         q = select(StoreModel).order_by(StoreModel.created_at.desc())
