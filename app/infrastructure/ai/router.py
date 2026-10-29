@@ -34,6 +34,8 @@ class AIProviderRouter(AIProviderPort):
         self.providers: Dict[str, AIProviderPort] = {}
         self.provider_cooldowns: Dict[str, float] = {}  # provider_name -> cooldown_expiry_timestamp
         self.cooldown_duration_sec: float = 30.0
+        # Rotate which free provider is tried first across requests (Gemini stays last).
+        self._free_rr_index: int = 0
 
         self._setup_providers()
 
@@ -77,27 +79,57 @@ class AIProviderRouter(AIProviderPort):
         )
 
     def get_text_provider_chain(self) -> List[str]:
+        """Free providers first; Gemini is always the paid last resort.
+
+        Order: groq → nvidia → openrouter → mistral → (other free) → gemini.
+        AI_DEFAULT / AI_FALLBACK only reorder among free providers — never
+        pull Gemini ahead of free APIs.
+        """
         if self.mock_mode or "mock" in self.providers:
             return ["mock"]
-        chain = []
-        preferred = [settings.AI_DEFAULT_PROVIDER, settings.AI_FALLBACK_PROVIDER, "mistral", "gemini"]
-        for p in preferred:
-            if p in self.providers and p not in chain:
-                chain.append(p)
-        return chain
+
+        free_order = ["groq", "nvidia", "openrouter", "mistral"]
+        free: List[str] = []
+
+        for p in (settings.AI_DEFAULT_PROVIDER, settings.AI_FALLBACK_PROVIDER):
+            if p in free_order and p in self.providers and p not in free:
+                free.append(p)
+        for p in free_order:
+            if p in self.providers and p not in free:
+                free.append(p)
+        for p in self.providers:
+            if p not in free and p not in ("mock", "gemini"):
+                free.append(p)
+
+        # Round-robin start among free providers so Groq/NVIDIA/OpenRouter/Mistral
+        # all share load; on failure we still walk the full free list then Gemini.
+        if free:
+            start = self._free_rr_index % len(free)
+            self._free_rr_index += 1
+            free = free[start:] + free[:start]
+
+        if "gemini" in self.providers:
+            return free + ["gemini"]
+        return free
 
     def get_vision_provider_chain(self) -> List[str]:
+        """Vision: free NVIDIA → OpenRouter, then paid Gemini last.
+
+        AI_VISION_PROVIDER may reorder among free vision providers only —
+        Gemini is never pulled ahead of NVIDIA/OpenRouter.
+        """
         if self.mock_mode or "mock" in self.providers:
             return ["mock"]
-        chain = []
-        # Configured primary vision provider first
-        if settings.AI_VISION_PROVIDER in self.providers:
-            chain.append(settings.AI_VISION_PROVIDER)
-        # Then remaining vision-capable providers as backups (openrouter is a
-        # multi-model vision backup; groq/mistral are text-only and excluded).
-        for p in ["gemini", "nvidia", "openrouter", "mock"]:
+        free_vision = ["nvidia", "openrouter"]
+        chain: List[str] = []
+        preferred = settings.AI_VISION_PROVIDER
+        if preferred in free_vision and preferred in self.providers:
+            chain.append(preferred)
+        for p in free_vision:
             if p in self.providers and p not in chain:
                 chain.append(p)
+        if "gemini" in self.providers:
+            chain.append("gemini")
         return chain
 
     async def generate_text(
@@ -120,6 +152,16 @@ class AIProviderRouter(AIProviderPort):
                 start_time = time.time()
                 try:
                     result = await provider.generate_text(prompt, system_prompt, history)
+                    text = (result or "").strip()
+                    # Too-short / empty answers are treated as soft failures so the
+                    # next free provider (and finally Gemini) can try for better quality.
+                    if len(text) < 12:
+                        logger.warning(
+                            f"Provider {provider_name} returned weak/empty text "
+                            f"(len={len(text)}); trying fallback..."
+                        )
+                        last_error = RuntimeError(f"{provider_name} weak response")
+                        break
                     latency_ms = int((time.time() - start_time) * 1000)
                     logger.info(
                         f"AI generation succeeded via provider={provider_name} latency={latency_ms}ms"
@@ -151,14 +193,25 @@ class AIProviderRouter(AIProviderPort):
             if not self.is_provider_available(provider_name):
                 continue
             provider = self.providers[provider_name]
+            collected: List[str] = []
             try:
                 async for token in provider.stream_text(prompt, system_prompt, history):
-                    yield token
-                return
+                    if token:
+                        collected.append(token)
+                        yield token
+                # Empty successful stream → try next provider (do not treat as done)
+                if collected:
+                    return
+                logger.warning(
+                    f"Provider {provider_name} streamed 0 tokens; trying fallback..."
+                )
             except Exception as exc:
                 logger.warning(f"Provider {provider_name} streaming failed: {exc}. Trying fallback...")
-                if "429" in str(exc):
+                if "429" in str(exc) or "rate limit" in str(exc).lower():
                     self.mark_provider_rate_limited(provider_name)
+                # If we already streamed partial tokens, stop (UI already has text)
+                if collected:
+                    return
 
         yield "현재 일시적인 시스템 지연으로 상담원 연결을 도와드리겠습니다."
 

@@ -446,6 +446,57 @@ class ChatService:
         return "\n".join(lines)
 
     @staticmethod
+    def _deterministic_intake_reply(
+        industry: Optional[str], message_text: str, convo_text: str
+    ) -> Optional[str]:
+        """Fixed first-turn questions when customer asks for recommendations vaguely."""
+        rec_kw, detail_kw = _counsel_keywords(industry)
+        msg = message_text or ""
+        convo = convo_text or ""
+        wants_counsel = any(k in msg for k in rec_kw)
+        # Quick-button labels often contain meta words like "피부타입별 추천" —
+        # those are CTAs, not answered intake. Strip CTA noise before detail check.
+        detail_probe = convo
+        for noise in (
+            "피부타입별",
+            "맞춤 상품",
+            "상품 추천",
+            "맞춤 추천",
+            "전성분 &",
+            "다른 질문",
+        ):
+            detail_probe = detail_probe.replace(noise, " ")
+        # "피부타입" alone inside a menu label should not count as answered
+        meaningful_detail = [k for k in detail_kw if k not in ("피부타입", "추천")]
+        has_detail = any(k in detail_probe for k in meaningful_detail)
+        if not wants_counsel or has_detail:
+            return None
+        key = normalize_industry_key(industry)
+        if key == "beauty":
+            return (
+                "맞춤 추천을 위해 먼저 여쭤볼게요.\n"
+                "1) 피부타입은 건성 / 지성 / 복합성 / 민감성 중 어디에 가까우신가요?\n"
+                "2) 지금 가장 신경 쓰이는 부위나 고민(건조·트러블·미백·진정 등)을 알려주세요."
+            )
+        if key == "fresh_food":
+            return (
+                "맛있게 골라 드리려면 조금만 여쭤볼게요.\n"
+                "1) 선물용인가요, 바로 드실 건가요?\n"
+                "2) 선호하시는 맛(당도/산미)이나 인원을 알려주세요."
+            )
+        if key == "fashion":
+            return (
+                "핏에 맞는 추천을 위해 확인할게요.\n"
+                "1) 대략 사이즈(또는 키·몸무게 감안 여부)는 어떠신가요?\n"
+                "2) 선호 핏(슬림/오버)과 착용 상황을 알려주세요."
+            )
+        return (
+            "맞춤 안내를 위해 먼저 여쭤볼게요.\n"
+            "1) 사용 목적이나 상황을 알려주세요.\n"
+            "2) 예산·선호 조건이 있으면 함께 말씀해 주세요."
+        )
+
+    @staticmethod
     def _industry_persona_lines(
         industry_key: str, bot_display_name: str, industry_kr: str
     ) -> List[str]:
@@ -1132,6 +1183,25 @@ class ChatService:
         is_specific_query = any(k in convo_text for k in detail_kw)
         is_counselor_query = any(k in message_text for k in rec_kw)
 
+        # Deterministic intake: vague "추천" quick-taps must never show an empty
+        # bubble or jump to product cards before we know skin type / concern.
+        intake = ChatService._deterministic_intake_reply(
+            industry=industry, message_text=message_text, convo_text=convo_text
+        )
+        if intake:
+            yield intake
+            assistant_msg = MessageModel(
+                id=str(uuid.uuid4()),
+                session_id=chat_session.id,
+                role="assistant",
+                content=intake,
+                intent="counselor_intake",
+                detected_language=detected_lang,
+            )
+            session_db.add(assistant_msg)
+            await session_db.commit()
+            return
+
         # Always search RAG so expert answers are grounded in real product data.
         results = await self.rag.search_with_store_knowledge(
             session_db,
@@ -1155,7 +1225,13 @@ class ChatService:
             collected.append(token)
             yield token
 
-        raw_content = "".join(collected)
+        raw_content = "".join(collected).strip()
+        if not raw_content:
+            raw_content = (
+                "죄송합니다. 잠시 답변이 지연되고 있어요. "
+                "원하시는 상담 내용을 한 줄로 다시 말씀해 주시겠어요?"
+            )
+            yield raw_content
         intent = "stream_response"
         if results:
             intent = "ai_counselor_recommendation" if is_counselor_query else "rag_product_inquiry"

@@ -142,8 +142,7 @@ def test_vision_chain_excludes_text_only_providers(monkeypatch):
 
     # Groq/Mistral are text-only -> must NOT be in the vision chain
     assert "groq" not in chain
-    # NVIDIA + OpenRouter both present, configured primary (gemini absent) first
-    assert "nvidia" in chain
-    assert "openrouter" in chain
+    # NVIDIA → OpenRouter (Gemini absent here); free vision only
+    assert chain == ["nvidia", "openrouter"]
     # No mock in a live-key environment
     assert "mock" not in chain

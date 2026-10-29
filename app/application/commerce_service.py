@@ -305,6 +305,89 @@ class CommerceService:
         except Cafe24OrderError:
             return None, MSG_TRANSIENT
 
+    async def list_selling_product_detail_urls(
+        self,
+        session: AsyncSession,
+        mall_id: str,
+        store_base_url: str,
+        max_items: int = 2000,
+    ) -> List[str]:
+        """List selling product detail URLs via Cafe24 Admin API when OAuth is connected.
+
+        Builds stable Cafe24 detail URLs: {origin}/product/detail.html?product_no=N
+        Returns [] when not connected / token missing / API error (caller keeps crawl URLs).
+        """
+        conn = await self.get_connection(session, mall_id)
+        if conn is None or conn.status != "connected" or not conn.cafe24_mall_id:
+            return []
+        access = await self._ensure_valid_access_token(session, conn)
+        if not access:
+            return []
+
+        parsed = __import__("urllib.parse", fromlist=["urlparse"]).urlparse(store_base_url)
+        origin = f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+        if not parsed.scheme or not parsed.netloc:
+            return []
+
+        headers = {
+            "Authorization": f"Bearer {access}",
+            "Content-Type": "application/json",
+            "X-Cafe24-Api-Version": "2024-06-01",
+        }
+        urls: List[str] = []
+        offset = 0
+        limit = 100
+        base = f"https://{conn.cafe24_mall_id}.cafe24api.com/api/v2/admin/products"
+        try:
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                while len(urls) < max_items:
+                    resp = await client.get(
+                        base,
+                        headers=headers,
+                        params={
+                            "limit": limit,
+                            "offset": offset,
+                            "display": "T",
+                            "selling": "T",
+                            "fields": "product_no,product_name",
+                        },
+                    )
+                    if resp.status_code == 401:
+                        if await self.refresh_access_token(session, conn):
+                            access = decrypt_secret(conn.access_token_encrypted)
+                            headers["Authorization"] = f"Bearer {access}"
+                            continue
+                        break
+                    if resp.status_code != 200:
+                        logger.warning(
+                            "[Commerce] Cafe24 products list failed mall=%s status=%s",
+                            mall_id,
+                            resp.status_code,
+                        )
+                        break
+                    data = resp.json() or {}
+                    products = data.get("products") or data.get("resource") or []
+                    if not products:
+                        break
+                    for p in products:
+                        no = p.get("product_no")
+                        if no is None:
+                            continue
+                        urls.append(f"{origin}/product/detail.html?product_no={no}")
+                        if len(urls) >= max_items:
+                            break
+                    if len(products) < limit:
+                        break
+                    offset += limit
+        except Exception as e:
+            logger.warning("[Commerce] Cafe24 products list error mall=%s: %s", mall_id, e)
+            return []
+
+        logger.info(
+            "[Commerce] Cafe24 API product URLs mall=%s count=%d", mall_id, len(urls)
+        )
+        return urls
+
     # ---------------- Rate limiting (per conversation) ----------------
 
     _rate_store: Dict[str, List[float]] = {}

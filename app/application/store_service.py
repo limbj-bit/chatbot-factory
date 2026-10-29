@@ -1663,16 +1663,16 @@ class StoreService:
                 urls, expand_stats = await self._expand_catalog_from_categories(
                     category_urls=category_urls,
                     seed_urls=urls,
-                    budget_seconds=28.0,
-                    max_categories=60,
-                    max_pages=20,
+                    budget_seconds=45.0,
+                    max_categories=80,
+                    max_pages=30,
                 )
                 if (
                     expand_stats.get("categories_visited", 0) < len(category_urls)
                     and len(urls) <= before
                 ):
                     expand_partial = True
-                elif expand_stats.get("categories_visited", 0) < min(len(category_urls), 60):
+                elif expand_stats.get("categories_visited", 0) < min(len(category_urls), 80):
                     expand_partial = True
 
             # Thin fallback only when still almost empty (avoid long deep crawl after rich sitemap).
@@ -1705,6 +1705,28 @@ class StoreService:
                     category_count,
                 )
 
+            # Cafe24 Admin API gap-fill when OAuth is connected (selling+display only).
+            api_added = 0
+            try:
+                from app.application.commerce_service import commerce_service
+
+                api_urls = await commerce_service.list_selling_product_detail_urls(
+                    session, mall_id, crawl_req.url
+                )
+                before_api = len(urls)
+                for u in api_urls:
+                    urls.append(u)
+                urls = self._dedupe_product_urls(urls)
+                api_added = max(0, len(urls) - before_api)
+                if api_added:
+                    logger.info(
+                        "[CatalogCrawl] Cafe24 API added %d new product URLs (total=%d)",
+                        api_added,
+                        len(urls),
+                    )
+            except Exception as e:
+                logger.warning("[CatalogCrawl] Cafe24 API enrich skipped: %s", e)
+
             urls = self._dedupe_product_urls(urls)
             self._catalog_cache_put(
                 mall_id,
@@ -1712,7 +1734,7 @@ class StoreService:
                 urls,
                 sitemap_count=sitemap_count,
                 category_count=category_count,
-                expanded=bool(category_urls),
+                expanded=bool(category_urls) or api_added > 0,
             )
 
         total_discovered = len(urls)

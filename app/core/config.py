@@ -49,7 +49,8 @@ class Settings(BaseSettings):
 
     AI_DEFAULT_PROVIDER: str = "groq"
     AI_FALLBACK_PROVIDER: str = "nvidia"
-    AI_VISION_PROVIDER: str = "gemini"
+    # Free vision preferred; Gemini remains last resort in get_vision_provider_chain()
+    AI_VISION_PROVIDER: str = "nvidia"
     # OpenRouter vision model used for claim image diagnosis (multi-model backup).
     OPENROUTER_VISION_MODEL: str = "openai/gpt-4o-mini"
 

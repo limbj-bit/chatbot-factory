@@ -1079,7 +1079,7 @@ async def get_dynamic_widget_script(
     appendMessage(text, "user");
 
     const botMsg = appendMessage("답변을 준비 중입니다...", "bot");
-    botMsg.innerHTML = "";
+    let gotToken = false;
 
     try {{
       const response = await fetch(config.apiBase + "/api/chat/stream", {{
@@ -1092,6 +1092,10 @@ async def get_dynamic_widget_script(
           customer_id: "guest"
         }}),
       }});
+      if (!response.ok) {{
+        botMsg.innerText = "상담 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+        return;
+      }}
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -1108,12 +1112,20 @@ async def get_dynamic_widget_script(
             if (raw === "[DONE]") continue;
             try {{
               const data = JSON.parse(raw);
+              if (data.error) {{
+                botMsg.innerText = "잠시 답변이 지연되고 있어요. 다시 한번 보내 주세요.";
+                gotToken = true;
+                continue;
+              }}
               if (data.replace) {{
                 fullText = data.replace;
+                gotToken = true;
                 botMsg.innerHTML = fullText.replace(/\\n/g, "<br>");
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
               }} else if (data.token) {{
+                if (!gotToken) botMsg.innerHTML = "";
                 fullText += data.token;
+                gotToken = true;
                 botMsg.innerHTML = fullText.replace(/\\n/g, "<br>");
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
               }}
@@ -1123,6 +1135,9 @@ async def get_dynamic_widget_script(
             }} catch (e) {{}}
           }}
         }}
+      }}
+      if (!gotToken || !String(fullText || "").trim()) {{
+        botMsg.innerText = "맞춤 안내를 위해 피부타입이나 관심 고민을 알려주세요.";
       }}
     }} catch (err) {{
       botMsg.innerText = "연결 오류가 발생했습니다. 다시 시도해 주세요.";
