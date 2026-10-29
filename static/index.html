@@ -713,7 +713,7 @@
 
       <!-- 6단계: 즉시 행동 버튼 (코드 발급 & 내 사진 업로드) -->
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:18px;padding:16px;background:#FFFFFF;border:1.5px solid var(--gold-border);border-radius:14px;">
-        <button class="btn" onclick="createMyTrialStore()">✨ 선택한 디자인으로 내 전용 챗봇 설치 코드 발급받기</button>
+        <button class="btn" id="createStoreBtn" onclick="createMyTrialStore()">✨ 선택한 디자인으로 내 전용 챗봇 설치 코드 발급받기</button>
         <label style="font-size:13px;color:var(--obsidian);font-weight:700;background:#FAF8F5;padding:11px 16px;border:1.5px dashed var(--gold-accent);border-radius:10px;cursor:pointer;">
           📸 내 사진/모델/로고 파일(JPG·PNG·GIF) 직접 올려서 적용하기:
           <input type="file" id="customAvatarFile" accept="image/*" onchange="previewCustomFile(this)" style="font-size:12px;" />
@@ -1314,6 +1314,13 @@
       }
 
       document.getElementById("targetMallId").value = createdStore.mall_id;
+  if (window._isEditingExisting) {
+    const box = document.getElementById("issuedResultBox");
+    if (box) { box.style.display = "block"; box.innerHTML = "<div style='padding:16px;background:#D1FAE5;border-radius:12px;color:#065F46;font-weight:700;'>변경 저장 완료! mall_id: " + createdStore.mall_id + " (임베드 스크립트 재설치 불필요)</div>"; }
+    window._isEditingExisting = false;
+    const _btn2 = document.getElementById("createStoreBtn"); if (_btn2) _btn2.innerText = "선택한 조건으로 전용 챗봇 설치 코드 발급받기";
+    return;
+  }
       const fullEmbedTag = `<script src="${window.location.origin}/api/widget/script?mall_id=${createdStore.mall_id}" async><\/script>`;
       lastIssuedSnippetText = fullEmbedTag;
       lastDirectChatUrl = `${window.location.origin}/chat/${createdStore.mall_id}`;
@@ -1499,6 +1506,8 @@
           const _qb = document.getElementById("quickButtonsInput"); if (_qb) _qb.value = data.quick_buttons.join(", ");
         }
         if (data.mall_id) { const _mi = document.getElementById("targetMallId"); if (_mi) _mi.value = data.mall_id; }
+    const _btn = document.getElementById("createStoreBtn"); if (_btn) _btn.innerText = "변경 저장 (기존 mall_id 업데이트)";
+    window._isEditingExisting = true;
         if (data.theme_color) { const _tc = document.getElementById("themeColor"); if (_tc) _tc.value = data.theme_color; }
         status.innerText = "✅ '" + data.store_name + "' 설정을 불러왔습니다. 수정 후 [생성]을 누르면 업데이트됩니다.";
       } catch (err) {
