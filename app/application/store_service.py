@@ -992,11 +992,11 @@ class StoreService:
                 continue
             seen.add(clean)
             result.append(clean)
-            if len(result) >= 200:
+            if len(result) >= 5000:
                 break
         return result
 
-    async def _deep_discover_product_urls(self, start_url: str, max_urls: int = 500) -> List[str]:
+    async def _deep_discover_product_urls(self, start_url: str, max_urls: int = 5000) -> List[str]:
         """BFS crawl from start_url: follow internal links and collect product URLs."""
         parsed_start = urlparse(start_url)
         host = parsed_start.netloc.lower()
@@ -1017,7 +1017,7 @@ class StoreService:
         )
         listing_signals = ("category", "list", "shop", "goods_list", "product_list")
         page_count = 0
-        max_pages = 30
+        max_pages = 100
         while queue and page_count < max_pages and len(product_urls) < max_urls:
             url = queue.pop(0)
             if url in visited:
@@ -1098,7 +1098,19 @@ class StoreService:
         is_sitemap = "sitemap" in (crawl_req.url or "").lower() or "<urlset" in (raw_html or "").lower() or "<sitemapindex" in (raw_html or "").lower()
 
         if is_sitemap:
-            locs = re.findall(r"<loc>\s*(.*?)\s*</loc>", raw_html, re.IGNORECASE)
+            # Check if sitemap index (contains sub-sitemaps)
+            sub_sitemaps = re.findall(r"<sitemap>\s*<loc>\s*(.*?)\s*</loc>", raw_html, re.IGNORECASE)
+            if sub_sitemaps:
+                all_locs = []
+                for sm_url in sub_sitemaps:
+                    try:
+                        sm_html = await self._fetch_html(sm_url.strip(), timeout=15.0)
+                        all_locs.extend(re.findall(r"<loc>\s*(.*?)\s*</loc>", sm_html, re.IGNORECASE))
+                    except Exception:
+                        pass
+                locs = all_locs if all_locs else re.findall(r"<loc>\s*(.*?)\s*</loc>", raw_html, re.IGNORECASE)
+            else:
+                locs = re.findall(r"<loc>\s*(.*?)\s*</loc>", raw_html, re.IGNORECASE)
             skip_signals = ("shopinfo", "member/", "board/", "category/", "cart", "login", "register", "account", "search", "sitemap", "javascript:", "mailto:", "tel:", "#")
             urls = []
             seen = set()
@@ -1145,7 +1157,7 @@ class StoreService:
             # Deep crawl: if listing page discovery is thin, crawl the whole site
             if not is_sitemap and len(urls) < 50:
                 try:
-                    deep_urls = await self._deep_discover_product_urls(crawl_req.url, max_urls=500)
+                    deep_urls = await self._deep_discover_product_urls(crawl_req.url, max_urls=5000)
                     for u in deep_urls:
                         if u not in urls:
                             urls.append(u)
