@@ -1317,8 +1317,7 @@
   if (window._isEditingExisting) {
     const box = document.getElementById("issuedResultBox");
     if (box) { box.style.display = "block"; box.innerHTML = "<div style='padding:16px;background:#D1FAE5;border-radius:12px;color:#065F46;font-weight:700;'>변경 저장 완료! mall_id: " + createdStore.mall_id + " (임베드 스크립트 재설치 불필요)</div>"; }
-    window._isEditingExisting = false;
-    const _btn2 = document.getElementById("createStoreBtn"); if (_btn2) _btn2.innerText = "선택한 조건으로 전용 챗봇 설치 코드 발급받기";
+    const _btn2 = document.getElementById("createStoreBtn"); if (_btn2) _btn2.innerText = "변경 저장 (기존 mall_id 업데이트)";
     return;
   }
       const fullEmbedTag = `<script src="${window.location.origin}/api/widget/script?mall_id=${createdStore.mall_id}" async><\/script>`;
