@@ -1070,6 +1070,44 @@
       triggerInstantPreview(true);
     }
 
+    // data: URIs (and long URLs) blow GET query limits ? script 414 ? widget vanishes.
+    // Saved stores: mall_id alone loads/compresses bot_avatar_url on the server.
+    const PREVIEW_AVATAR_QUERY_MAX = 1800;
+    function avatarUrlSafeForQuery(url) {
+      if (!url) return "";
+      if (String(url).startsWith("data:")) return "";
+      if (String(url).length > PREVIEW_AVATAR_QUERY_MAX) return "";
+      return String(url);
+    }
+
+    function mountPreviewWidgetScript(params, openWindow, allowRetryWithoutAvatar) {
+      const oldScript = document.getElementById("dynamic-preview-script");
+      if (oldScript) oldScript.remove();
+      document.querySelectorAll(".fresh-widget-launcher").forEach(el => el.remove());
+      document.querySelectorAll(".fresh-widget-window").forEach(el => el.remove());
+      const s = document.createElement("script");
+      s.id = "dynamic-preview-script";
+      s.src = "/api/widget/script?" + params.toString();
+      s.onload = () => {
+        populateShowroomIcons();
+        if (customPreviewDataUrl) {
+          applyCustomAvatarToLiveDom(customPreviewDataUrl);
+        }
+        if (openWindow) {
+          const win = document.querySelector(".fresh-widget-window");
+          if (win) win.style.display = "flex";
+        }
+      };
+      s.onerror = () => {
+        if (!allowRetryWithoutAvatar) return;
+        if (!params.has("preview_avatar_url")) return;
+        params.delete("preview_avatar_url");
+        params.set("t", String(Date.now()));
+        mountPreviewWidgetScript(params, openWindow, false);
+      };
+      document.body.appendChild(s);
+    }
+
     function triggerInstantPreview(openWindow = true) {
       const icon = document.getElementById("botIconStyle").value;
       const tpl = document.getElementById("chatTemplate").value;
@@ -1114,26 +1152,10 @@
         t: Date.now()
       });
       if (themeColor) params.set("preview_theme_color", themeColor);
-      if (customPreviewDataUrl) params.set("preview_avatar_url", customPreviewDataUrl);
+      const safeAvatar = avatarUrlSafeForQuery(customPreviewDataUrl);
+      if (safeAvatar) params.set("preview_avatar_url", safeAvatar);
 
-      const oldScript = document.getElementById("dynamic-preview-script");
-      if (oldScript) oldScript.remove();
-      document.querySelectorAll(".fresh-widget-launcher").forEach(el => el.remove());
-      document.querySelectorAll(".fresh-widget-window").forEach(el => el.remove());
-      const s = document.createElement("script");
-      s.id = "dynamic-preview-script";
-      s.src = "/api/widget/script?" + params.toString();
-      s.onload = () => {
-        populateShowroomIcons();
-        if (customPreviewDataUrl) {
-          applyCustomAvatarToLiveDom(customPreviewDataUrl);
-        }
-        if (openWindow) {
-          const win = document.querySelector(".fresh-widget-window");
-          if (win) win.style.display = "flex";
-        }
-      };
-      document.body.appendChild(s);
+      mountPreviewWidgetScript(params, openWindow, true);
     }
 
     let lastDirectChatUrl = "";
@@ -1663,6 +1685,7 @@
 
         restoreTemplateSelection(data.chat_template);
 
+        // Keep for live DOM polish only ? never stuff huge data: URIs into script query.
         customPreviewDataUrl = "";
         if (data.bot_avatar_url) {
           customPreviewDataUrl = data.bot_avatar_url;
@@ -1676,6 +1699,7 @@
         if (btn) btn.innerText = "변경 저장 (기존 mall_id 업데이트)";
         window._isEditingExisting = true;
 
+        // mall_id ? server serves compressed store avatar; query stays short.
         triggerInstantPreview(true);
         status.innerText = "'" + (data.store_name || mallId) + "' 설정을 불러왔고 미리보기에 반영했습니다.";
       } catch (err) {
