@@ -357,6 +357,8 @@ async def get_dynamic_widget_script(
     safe_email = contact_email.replace('"', '\\"')
     safe_hours = business_hours.replace('"', '\\"')
     safe_placeholder = input_placeholder.replace('"', '\\"')
+    safe_title = title.replace("\\", "\\\\").replace('"', '\\"')
+    safe_upload_guide = upload_guide.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
     safe_welcome_msg = welcome_msg.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
     safe_commerce_platform = commerce_platform.replace('"', '\\"')
     safe_commerce_badge = commerce_badge.replace('"', '\\"')
@@ -380,7 +382,7 @@ async def get_dynamic_widget_script(
 
   const config = {{
     mallId: "{mall_id}",
-    title: "{title}",
+    title: "{safe_title}",
     industry: "{industry}",
     primaryColor: "{theme_color}",
     botIconStyle: "{bot_icon_style}",
@@ -395,7 +397,7 @@ async def get_dynamic_widget_script(
     businessHours: "{safe_hours}",
     inputPlaceholder: "{safe_placeholder}",
     welcomeMessage: "{safe_welcome_msg}",
-    uploadGuide: "{upload_guide}",
+    uploadGuide: "{safe_upload_guide}",
     commercePlatform: "{safe_commerce_platform}",
     commerceBadge: "{safe_commerce_badge}",
     isExpired: {is_expired_js},
