@@ -53,11 +53,31 @@ class Settings(BaseSettings):
     AI_VISION_PROVIDER: str = "nvidia"
     # Per-provider models (task-tuned). Override via env without code changes.
     GROQ_TEXT_MODEL: str = "qwen/qwen3.8-27b"  # fast KR-capable chat
-    NVIDIA_TEXT_MODEL: str = "meta/llama-3.1-70b-instruct"
-    NVIDIA_VISION_MODEL: str = "microsoft/phi-3.5-vision-instruct"
+    # NVIDIA: Nemotron Super + Llama 3.3 (CSV pool RR). Single NVIDIA_TEXT_MODEL is legacy fallback.
+    NVIDIA_TEXT_MODELS: str = (
+        "nvidia/llama-3.3-nemotron-super-49b-v1.5,meta/llama-3.3-70b-instruct"
+    )
+    NVIDIA_TEXT_MODEL: str = "nvidia/llama-3.3-nemotron-super-49b-v1.5"
+    # Vision: Llama 3.2 VL pool RR (90B → 11B). Single NVIDIA_VISION_MODEL = legacy.
+    NVIDIA_VISION_MODELS: str = (
+        "meta/llama-3.2-90b-vision-instruct,meta/llama-3.2-11b-vision-instruct"
+    )
+    NVIDIA_VISION_MODEL: str = "meta/llama-3.2-90b-vision-instruct"
     MISTRAL_TEXT_MODEL: str = "mistral-large-latest"  # strong multilingual CS
-    OPENROUTER_TEXT_MODEL: str = "qwen/qwen-2.5-72b-instruct"  # chat quality (not vision)
-    OPENROUTER_VISION_MODEL: str = "openai/gpt-4o-mini"  # claim photo backup
+    # OpenRouter: rotate strong chat models (not vision mini). CSV pool RR.
+    OPENROUTER_TEXT_MODELS: str = (
+        "qwen/qwen-2.5-72b-instruct,"
+        "deepseek/deepseek-chat,"
+        "meta-llama/llama-3.3-70b-instruct"
+    )
+    OPENROUTER_TEXT_MODEL: str = "qwen/qwen-2.5-72b-instruct"
+    # Vision backup: Nemotron VL free → Llama VL → gpt-4o-mini
+    OPENROUTER_VISION_MODELS: str = (
+        "nvidia/nemotron-3.5-super-vl:free,"
+        "meta-llama/llama-3.2-11b-vision-instruct,"
+        "openai/gpt-4o-mini"
+    )
+    OPENROUTER_VISION_MODEL: str = "nvidia/nemotron-3.5-super-vl:free"
     GEMINI_TEXT_MODEL: str = "gemini-2.0-flash"  # paid last-resort chat+vision
 
     # Cafe24 Integration

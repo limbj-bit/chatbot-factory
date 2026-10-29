@@ -71,3 +71,77 @@ def test_vision_chain_nvidia_openrouter_then_gemini(monkeypatch):
     router = AIProviderRouter(mock_mode=False)
     chain = router.get_vision_provider_chain()
     assert chain == ["nvidia", "openrouter", "gemini"]
+
+
+def test_parse_model_pool_csv_and_single():
+    from app.infrastructure.ai.model_pool import parse_model_pool, rotate_from
+
+    assert parse_model_pool("a,b, c", "legacy") == ["a", "b", "c"]
+    assert parse_model_pool("", "solo") == ["solo"]
+    assert rotate_from(["a", "b", "c"], 1) == ["b", "c", "a"]
+
+
+def test_nvidia_openrouter_pools_wired_and_rotate(monkeypatch):
+    monkeypatch.setattr(settings, "MOCK_AI", False)
+    monkeypatch.setattr(settings, "APP_ENV", "production")
+    monkeypatch.setattr(settings, "GROQ_API_KEY", "g")
+    monkeypatch.setattr(settings, "NVIDIA_API_KEY", "n")
+    monkeypatch.setattr(settings, "OPENROUTER_API_KEY", "o")
+    monkeypatch.setattr(settings, "MISTRAL_API_KEY", None)
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", None)
+    monkeypatch.setattr(
+        settings,
+        "NVIDIA_TEXT_MODELS",
+        "nvidia/llama-3.3-nemotron-super-49b-v1.5,meta/llama-3.3-70b-instruct",
+    )
+    monkeypatch.setattr(
+        settings,
+        "OPENROUTER_TEXT_MODELS",
+        "qwen/qwen-2.5-72b-instruct,deepseek/deepseek-chat,meta-llama/llama-3.3-70b-instruct",
+    )
+
+    router = AIProviderRouter(mock_mode=False)
+    nvidia = router.providers["nvidia"]
+    openrouter = router.providers["openrouter"]
+    assert "nemotron" in nvidia.text_models[0]
+    assert len(nvidia.text_models) >= 2
+    assert len(openrouter.text_models) >= 2
+
+    n_starts = [nvidia._next_text_order()[0] for _ in range(4)]
+    o_starts = [openrouter._next_text_order()[0] for _ in range(6)]
+    assert len(set(n_starts)) >= 2
+    assert len(set(o_starts)) >= 2
+
+
+def test_nvidia_openrouter_vision_pools_wired_and_rotate(monkeypatch):
+    monkeypatch.setattr(settings, "MOCK_AI", False)
+    monkeypatch.setattr(settings, "APP_ENV", "production")
+    monkeypatch.setattr(settings, "GROQ_API_KEY", None)
+    monkeypatch.setattr(settings, "NVIDIA_API_KEY", "n")
+    monkeypatch.setattr(settings, "OPENROUTER_API_KEY", "o")
+    monkeypatch.setattr(settings, "MISTRAL_API_KEY", None)
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "paid")
+    monkeypatch.setattr(
+        settings,
+        "NVIDIA_VISION_MODELS",
+        "meta/llama-3.2-90b-vision-instruct,meta/llama-3.2-11b-vision-instruct",
+    )
+    monkeypatch.setattr(
+        settings,
+        "OPENROUTER_VISION_MODELS",
+        "nvidia/nemotron-3.5-super-vl:free,meta-llama/llama-3.2-11b-vision-instruct,openai/gpt-4o-mini",
+    )
+
+    router = AIProviderRouter(mock_mode=False)
+    nvidia = router.providers["nvidia"]
+    openrouter = router.providers["openrouter"]
+    assert "90b-vision" in nvidia.vision_models[0]
+    assert len(nvidia.vision_models) >= 2
+    assert "nemotron" in openrouter.vision_models[0] or "vl" in openrouter.vision_models[0]
+    assert len(openrouter.vision_models) >= 2
+
+    n_starts = [nvidia._next_vision_order()[0] for _ in range(4)]
+    o_starts = [openrouter._next_vision_order()[0] for _ in range(6)]
+    assert len(set(n_starts)) >= 2
+    assert len(set(o_starts)) >= 2
+    assert router.get_vision_provider_chain()[-1] == "gemini"

@@ -9,6 +9,7 @@ from app.infrastructure.ai.gemini import GeminiProvider
 from app.infrastructure.ai.groq import GroqProvider
 from app.infrastructure.ai.mistral import MistralProvider
 from app.infrastructure.ai.mock import MockAIProvider
+from app.infrastructure.ai.model_pool import parse_model_pool
 from app.infrastructure.ai.nvidia import NvidiaProvider
 from app.infrastructure.ai.openrouter import OpenRouterProvider
 
@@ -53,11 +54,17 @@ class AIProviderRouter(AIProviderPort):
                 default_model=settings.GROQ_TEXT_MODEL,
             )
         nvidia_key = settings.NVIDIA_API_KEY or settings.NVIDIA_NIM_API_KEY
+        nvidia_text_pool = parse_model_pool(
+            settings.NVIDIA_TEXT_MODELS, settings.NVIDIA_TEXT_MODEL
+        )
+        nvidia_vision_pool = parse_model_pool(
+            settings.NVIDIA_VISION_MODELS, settings.NVIDIA_VISION_MODEL
+        )
         if nvidia_key:
             self.providers["nvidia"] = NvidiaProvider(
                 api_key=nvidia_key,
-                default_model=settings.NVIDIA_TEXT_MODEL,
-                vision_model=settings.NVIDIA_VISION_MODEL,
+                text_models=nvidia_text_pool,
+                vision_models=nvidia_vision_pool,
             )
         if settings.GEMINI_API_KEY:
             self.providers["gemini"] = GeminiProvider(
@@ -69,21 +76,27 @@ class AIProviderRouter(AIProviderPort):
                 api_key=settings.MISTRAL_API_KEY,
                 default_model=settings.MISTRAL_TEXT_MODEL,
             )
+        openrouter_text_pool = parse_model_pool(
+            settings.OPENROUTER_TEXT_MODELS, settings.OPENROUTER_TEXT_MODEL
+        )
+        openrouter_vision_pool = parse_model_pool(
+            settings.OPENROUTER_VISION_MODELS, settings.OPENROUTER_VISION_MODEL
+        )
         if settings.OPENROUTER_API_KEY:
             self.providers["openrouter"] = OpenRouterProvider(
                 api_key=settings.OPENROUTER_API_KEY,
-                text_model=settings.OPENROUTER_TEXT_MODEL,
-                vision_model=settings.OPENROUTER_VISION_MODEL,
+                text_models=openrouter_text_pool,
+                vision_models=openrouter_vision_pool,
             )
         logger.info(
-            "AIProviderRouter live providers=%s models={groq:%s nvidia:%s/%s mistral:%s openrouter:%s/%s gemini:%s}",
+            "AIProviderRouter live providers=%s models={groq:%s nvidia_text:%s nvidia_vision:%s mistral:%s openrouter_text:%s openrouter_vision:%s gemini:%s}",
             list(self.providers.keys()),
             settings.GROQ_TEXT_MODEL,
-            settings.NVIDIA_TEXT_MODEL,
-            settings.NVIDIA_VISION_MODEL,
+            nvidia_text_pool,
+            nvidia_vision_pool,
             settings.MISTRAL_TEXT_MODEL,
-            settings.OPENROUTER_TEXT_MODEL,
-            settings.OPENROUTER_VISION_MODEL,
+            openrouter_text_pool,
+            openrouter_vision_pool,
             settings.GEMINI_TEXT_MODEL,
         )
 
