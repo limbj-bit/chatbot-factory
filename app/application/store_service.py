@@ -810,15 +810,24 @@ class StoreService:
                 resp.raise_for_status()
                 raw_html = resp.text
 
-        # Extract <title> or og:title
-        title_match = re.search(
+        # Prefer JSON-LD Product name, then last og:title (Cafe24: store name first, product name second)
+        jsonld_name = re.search(
+            r'"@type"\s*:\s*"Product"[^}]*?"name"\s*:\s*"([^"]{2,200})"',
+            raw_html,
+            re.IGNORECASE | re.DOTALL,
+        )
+        og_titles = re.findall(
             r'<meta\s+property=["\']og:title["\']\s+content=["\'](.*?)["\']',
             raw_html,
             re.IGNORECASE,
         )
-        if not title_match:
+        if jsonld_name:
+            title = html.unescape(jsonld_name.group(1).strip())
+        elif og_titles:
+            title = html.unescape(og_titles[-1].strip())
+        else:
             title_match = re.search(r"<title>(.*?)</title>", raw_html, re.IGNORECASE | re.DOTALL)
-        title = html.unescape(title_match.group(1).strip()) if title_match else crawl_req.url
+            title = html.unescape(title_match.group(1).strip()) if title_match else crawl_req.url
 
         # Extract price (og:price:amount, JSON-LD, Cafe24 JS vars, or "28,000원")
         price: Optional[int] = None
