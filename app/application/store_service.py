@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 import httpx
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.commerce_service import commerce_service
 from app.core.logging import logger
@@ -1054,6 +1054,15 @@ class StoreService:
                 logger.warning("[CatalogCrawl] Failed for %s: %s", u, e)
                 failed += 1
 
+        # Count total learned products for this mall (cumulative progress)
+        total_learned_res = await session.execute(
+            select(func.count()).select_from(StoreKnowledgeModel).where(
+                StoreKnowledgeModel.mall_id == mall_id,
+                StoreKnowledgeModel.doc_type == "crawled_url",
+            )
+        )
+        total_learned = total_learned_res.scalar() or 0
+
         if discovered == 0:
             notes = (
                 "상품 링크를 찾지 못했습니다. 카테고리/목록 페이지 URL을 넣거나, "
@@ -1062,17 +1071,22 @@ class StoreService:
                 "현재 자동 수집이 제한됩니다."
             )
         else:
+            remaining = max(0, discovered - total_learned)
             notes = (
-                "총 " + str(discovered) + "개 상품 링크를 발견했고, " +
-                str(len(learned_items)) + "개를 새로 학습했습니다. "
+                "이번 실행: " + str(len(learned_items)) + "개 새로 학습. "
+                "누적: " + str(total_learned) + "/" + str(discovered) + "개 학습 완료. "
                 "(중복 " + str(skipped) + "개 건너뜀, 실패 " + str(failed) + "개)"
             )
+            if remaining > 0:
+                notes += " → 계속 학습하려면 다시 버튼을 눌러주세요."
 
         return StoreCatalogCrawlResponse(
             discovered=discovered,
             learned=len(learned_items),
             skipped_duplicates=skipped,
             failed=failed,
+            total_products=discovered,
+            learned_total=total_learned,
             items=learned_items,
             notes=notes,
         )

@@ -128,10 +128,12 @@ class StoreKnowledgeResponse(BaseModel):
 
 
 class StoreCatalogCrawlResponse(BaseModel):
-    discovered: int = Field(description="발견된 상품 상세 URL 수")
-    learned: int = Field(description="실제로 지식베이스에 새로 저장된 상품 수")
+    discovered: int = Field(description="이번 실행에서 발견된 상품 상세 URL 수")
+    learned: int = Field(description="이번 실행에서 새로 저장된 상품 수")
     skipped_duplicates: int = Field(description="이미 학습되어 건너뛴 수")
     failed: int = Field(description="크롤 실패 수")
+    total_products: int = Field(default=0, description="사이트맵/목록의 전체 상품 URL 수")
+    learned_total: int = Field(default=0, description="누적 학습 완료 상품 수")
     items: List[StoreKnowledgeResponse] = Field(default_factory=list)
     notes: Optional[str] = Field(None, description="안내 메시지")
 
