@@ -1168,18 +1168,45 @@ class StoreService:
                     for u in home_urls:
                         if u not in urls:
                             urls.append(u)
-                    # Try common category pages
-                    for cat_path in ["/category/", "/shop/", "/goods/"]:
+                    # Extract category URLs from homepage
+                    cat_hrefs = re.findall(r'href\s*=\s*["\']([^"\']+category[^"\']*)["\']', home_html, re.IGNORECASE)
+                    cat_urls_to_visit = []
+                    seen_cats = set()
+                    for raw in cat_hrefs:
+                        raw = raw.strip()
+                        if raw.startswith("/"):
+                            raw = home_url.rstrip("/") + raw
+                        elif not raw.startswith("http"):
+                            raw = home_url.rstrip("/") + "/" + raw.lstrip("./")
+                        if raw not in seen_cats and parsed_dc.netloc in raw:
+                            seen_cats.add(raw)
+                            cat_urls_to_visit.append(raw)
+                    # Fetch each category page (up to 20) and extract product URLs
+                    for cat_url in cat_urls_to_visit[:20]:
                         try:
-                            cat_url = home_url.rstrip("/") + cat_path
                             cat_html = await self._fetch_html(cat_url, timeout=8.0)
                             cat_urls = self._discover_product_urls(cat_html, cat_url)
                             for u in cat_urls:
                                 if u not in urls:
                                     urls.append(u)
+                            # Try pagination for this category
+                            for pn in range(2, 6):
+                                try:
+                                    paginated = cat_url.split("?")[0].rstrip("/") + "?page=" + str(pn)
+                                    pag_html = await self._fetch_html(paginated, timeout=8.0)
+                                    pag_urls = self._discover_product_urls(pag_html, paginated)
+                                    added = 0
+                                    for u in pag_urls:
+                                        if u not in urls:
+                                            urls.append(u)
+                                            added += 1
+                                    if added == 0:
+                                        break
+                                except Exception:
+                                    break
                         except Exception:
                             pass
-                    logger.info("[CatalogCrawl] After deep crawl: %d total URLs", len(urls))
+                    logger.info("[CatalogCrawl] After deep crawl: %d total URLs (from sitemap + homepage + categories)", len(urls))
                 except Exception as e:
                     logger.warning("[CatalogCrawl] Deep crawl failed: %s", e)
             # Fallback: try sitemap.xml if discovery was thin
