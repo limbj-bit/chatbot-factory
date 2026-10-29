@@ -757,7 +757,7 @@ async def get_dynamic_widget_script(
 
   const initialBodyMessage = config.isExpired
     ? "⛔ <b>[서비스 이용기간 만료 안내]</b><br>무료 체험(또는 구독) 사용기한이 만료되어 AI 상담 및 사진 판독 기능이 일시 중단되었습니다.<br><br>스토어 관리자께서는 챗봇공장 관리자에게 기한 연장을 요청해 주시기 바랍니다."
-    : config.welcomeMessage.replace(/\\n/g, "<br>");
+    : config.welcomeMessage.replace(/\\\\n/g, "<br>");
 
   const disabledAttr = config.isExpired ? "disabled" : "";
   const inputPlaceholder = config.isExpired ? "사용기한이 만료되어 입력할 수 없습니다." : config.inputPlaceholder;
