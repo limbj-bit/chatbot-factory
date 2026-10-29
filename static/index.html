@@ -467,6 +467,12 @@
           <div class="field-desc">채팅창 맨 아래 이메일 옆에 표시되는 상담 가능 시간 안내입니다.</div>
           <input type="text" id="businessHours" value="평일 09:00~18:00" oninput="triggerInstantPreview();" placeholder="예: 평일 09:00~18:00 또는 365일 24시간" />
         </div>
+
+        <div class="field-card" style="grid-column: 1 / -1;">
+          <div class="field-title"><span>⑥ 챗봇 첫 인사말 (웰컴 메시지)</span><span class="field-tag opt">자동: 업종별 프리미엄 인사말</span></div>
+          <div class="field-desc">고객이 채팅창을 열었을 때 가장 먼저 보이는 인사말입니다. 비워두면 업종별 프리미엄 인사말이 자동 적용됩니다. 직접 작성하면 \n으로 줄바꿈 가능합니다.</div>
+          <textarea id="welcomeMessage" rows="4" style="width:100%;padding:10px 12px;border:1px solid #DCD7CD;border-radius:9px;font-size:13.5px;background:#FAF9F6;color:var(--obsidian);font-weight:600;box-sizing:border-box;resize:vertical;" oninput="this.dataset.manual='1'; triggerInstantPreview();" placeholder="비워두면 업종별 프리미엄 인사말 자동 적용"></textarea>
+        </div>
       </div>
 
       <!-- 2순위: 고객이 눈으로 보고 클릭하는 아이콘 & 템플릿 -->
@@ -1261,6 +1267,7 @@
           bot_icon_style,
           contact_email,
           business_hours,
+          welcome_message: document.getElementById("welcomeMessage").value.trim() || undefined,
           quick_buttons,
           allowed_domains,
           policy_config,
