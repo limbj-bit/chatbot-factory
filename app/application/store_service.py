@@ -1019,6 +1019,23 @@ class StoreService:
                     urls.append(loc)
         else:
             urls = self._discover_product_urls(raw_html, crawl_req.url)
+            # Pagination: if listing page, try fetching additional pages
+            if not is_sitemap and len(urls) > 0:
+                base = crawl_req.url.split("?")[0].rstrip("/")
+                for page_num in range(2, 11):
+                    try:
+                        page_url = base + "?page=" + str(page_num)
+                        page_html = await self._fetch_html(page_url, timeout=10.0)
+                        new_urls = self._discover_product_urls(page_html, page_url)
+                        added = 0
+                        for u in new_urls:
+                            if u not in urls:
+                                urls.append(u)
+                                added += 1
+                        if added == 0:
+                            break
+                    except Exception:
+                        break
             # Fallback: try sitemap.xml if discovery was thin
             if len(urls) < 3:
                 try:
