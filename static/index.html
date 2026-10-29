@@ -1022,16 +1022,7 @@
       triggerInstantPreview(true);
     }
 
-      const sel = document.getElementById("industry").value;
-      const customEl = document.getElementById("customIndustryInput");
-      if (sel === "__custom__") {
-        customEl.style.display = "block";
-        customEl.focus();
-      } else {
-        customEl.style.display = "none";
-      }
-      triggerInstantPreview(true);
-    }
+
 
     function updatePosStatusLabel() {
       const pos = document.getElementById("widgetPos").value;

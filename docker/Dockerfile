@@ -18,7 +18,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 COPY pyproject.toml README.md ./
 RUN uv pip install --system --no-cache ".[dev]" greenlet
 
-# Copy application source code
+# Copy application source code (cache-bust: rebuild on every deploy)
+ARG RENDER_GIT_COMMIT=unknown
+RUN echo "deploying commit=$RENDER_GIT_COMMIT"
 COPY app/ ./app/
 COPY static/ ./static/
 COPY docs/ ./docs/
