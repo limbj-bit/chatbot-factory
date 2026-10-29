@@ -1464,36 +1464,7 @@
       const status = document.getElementById("catalogStatus");
       await crawlCatalogBatch(mallId, url, maxProducts, tags, status, true);
     }
-      const mallId = document.getElementById("targetMallId").value.trim() || "showroom_preview";
-      const url = document.getElementById("catalogUrl").value.trim();
-      const maxProducts = parseInt(document.getElementById("catalogMax").value || "20", 10);
-      const tags = document.getElementById("catalogTags").value.trim();
-      if (!url) {
-        alert("목록/카테고리/홈/사이트맵 URL을 입력해 주세요.");
-        return;
-      }
-      const status = document.getElementById("catalogStatus");
-      status.innerText = "⏳ 전체 상품 자동 학습 중... (페이지당 최대 " + maxProducts + "개)";
-      try {
-        const res = await fetch("/api/stores/" + mallId + "/knowledge/crawl-catalog", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: url, max_products: maxProducts, tags: tags })
-        });
-        const data = await res.json();
-        if (res.ok) {
-          status.innerText = "✅ " + data.notes;
-          if (data.items && data.items.length > 0) {
-            const titles = data.items.map(x => x.title).slice(0, 5).join(", ");
-            status.innerText += " (예: " + titles + (data.items.length > 5 ? " ..." : "") + ")";
-          }
-        } else {
-          status.innerText = "⚠️ 전체 학습 실패: " + (data.detail || "알 수 없는 오류");
-        }
-      } catch (err) {
-        status.innerText = "⚠️ 전체 학습 실패: " + err;
-      }
-    }
+
     async function loadExistingStore() {
       const mallId = document.getElementById("loadMallId").value.trim();
       const status = document.getElementById("loadStatus");
