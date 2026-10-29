@@ -1016,7 +1016,12 @@
         customEl.style.display = "none";
         const wmEl = document.getElementById("welcomeMessage");
         if (wmEl && !wmEl.dataset.manual) {
-          wmEl.value = INDUSTRY_WELCOME[sel] || "";
+          let _msg = INDUSTRY_WELCOME[sel] || "";
+          const _bn = document.getElementById("botName").value.trim();
+          if (_bn && _msg.includes("AI 상담사입니다")) {
+            _msg = _msg.replace("AI 상담사입니다", "AI 상담사(" + _bn + ")입니다");
+          }
+          wmEl.value = _msg;
         }
       }
       triggerInstantPreview(true);

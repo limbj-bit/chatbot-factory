@@ -500,7 +500,10 @@ class StoreService:
             if request.theme_color:
                 existing_store.theme_color = request.theme_color
             if request.welcome_message:
-                existing_store.welcome_message = request.welcome_message
+                wm = request.welcome_message
+                if request.bot_name and request.bot_name.encode() not in wm.encode():
+                    wm = wm.replace("AI 상담사입니다", "AI 상담사(" + request.bot_name + ")입니다", 1)
+                existing_store.welcome_message = wm
             if request.contact_email:
                 existing_store.contact_email = request.contact_email
             if request.business_hours:
