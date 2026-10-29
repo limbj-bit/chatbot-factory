@@ -209,6 +209,7 @@ async def get_dynamic_widget_script(
     preview_industry: str = Query("", description="Instant preview industry override"),
     preview_email: str = Query("", description="Instant preview contact email override"),
     preview_hours: str = Query("", description="Instant preview business hours override"),
+    preview_welcome_message: str = Query("", description="Instant preview welcome message override"),
     preview_quick_buttons: str = Query("", description="Instant preview comma-separated quick buttons override"),
     preview_pos: str = Query("", description="Instant preview horizontal position (bottom_right or bottom_left)"),
     preview_bottom: int = Query(0, description="Instant preview bottom offset in px"),
@@ -271,7 +272,9 @@ async def get_dynamic_widget_script(
         else:
             quick_buttons = ind_defaults.get("quick_buttons", [])
 
-    if store and store.welcome_message and not preview_store_name and not preview_bot_name and not preview_industry:
+    if preview_welcome_message:
+    welcome_msg = preview_welcome_message.replace(chr(10), "\\n")
+elif store and store.welcome_message and not preview_store_name and not preview_bot_name and not preview_industry:
         welcome_msg = store.welcome_message.replace("\n", "\\n")
     elif industry in INDUSTRY_DEFAULTS and industry != "raw_materials":
         base_welcome = ind_defaults.get("welcome_message", "")
