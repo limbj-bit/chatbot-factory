@@ -17,16 +17,43 @@ if settings.DATABASE_URL.startswith("sqlite"):
 
 # SQLAlchemy's default Postgres dialect expects psycopg (psycopg3), which is
 # not installed. Normalise the URL so asyncpg is always used for Postgres.
+# asyncpg does not accept libpq-style params (sslmode, channel_binding, etc.)
+# as keyword arguments, so strip them from the URL and translate sslmode into
+# connect_args={"ssl": ...}.
+import re as _re
+
 _db_url = settings.DATABASE_URL
+_connect_args = {}
 if _db_url.startswith("postgresql://"):
     _db_url = _db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 elif _db_url.startswith("postgres://"):
     _db_url = _db_url.replace("postgres://", "postgresql+asyncpg://", 1)
 
+# Strip query params that asyncpg cannot handle (sslmode, channel_binding, etc.)
+if "?" in _db_url:
+    _base, _query = _db_url.split("?", 1)
+    _params = {}
+    for _pair in _query.split("&"):
+        if "=" in _pair:
+            _k, _v = _pair.split("=", 1)
+            if _k.lower() == "sslmode":
+                # asyncpg uses ssl= instead of sslmode=
+                if _v.lower() in ("require", "verify-ca", "verify-full"):
+                    _connect_args["ssl"] = "require"
+            elif _k.lower() == "channel_binding":
+                pass  # asyncpg does not support this; ignore
+            else:
+                _params[_k] = _v
+    if _params:
+        _db_url = _base + "?" + "&".join(f"{k}={v}" for k, v in _params.items())
+    else:
+        _db_url = _base
+
 engine = create_async_engine(
     _db_url,
     echo=False,
     future=True,
+    connect_args=_connect_args,
 )
 
 async_session_factory = async_sessionmaker(
