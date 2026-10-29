@@ -729,6 +729,13 @@
           <input type="file" id="customAvatarFile" accept="image/*" onchange="previewCustomFile(this)" style="font-size:12px;" />
         </label>
       </div>
+      <div class="field-card" style="margin-top:14px;border-top:3px solid #0284C7;">
+        <div class="field-title"><span>채팅창 헤더 로고 (상점 이름 배지)</span><span class="field-tag opt">선택</span></div>
+        <div class="field-desc">채팅창 왼쪽 위 파란 배지(상점이름) 자리에 로고를 넣습니다. 없으면 이름 텍스트를 유지합니다.</div>
+        <input type="file" id="customBrandLogoFile" accept="image/*" onchange="previewBrandLogoFile(this)" style="font-size:12px;width:100%;max-width:420px;" />
+        <button type="button" class="pos-btn" onclick="clearBrandLogo()" style="margin-top:8px;color:#64748B;">🗑️ 로고 제거 (이름으로)</button>
+      </div>
+
 
       <!-- Issued Snippet Box (Only shows the customer's own newly created store!) -->
       <div id="issuedResultBox" class="issued-box"></div>
@@ -755,12 +762,6 @@
             <input type="text" id="brandBadge" value="오뜨엘라" oninput="this.dataset.manual='1'; triggerInstantPreview();" placeholder="비워두면 쇼핑몰 이름 자동 적용" />
           </div>
                     <div class="field-card">
-            <div class="field-title"><span>채팅창 헤더 로고</span><span class="field-tag opt">선택</span></div>
-            <div class="field-desc">파란 배지(상점이름) 자리에 로고 이미지를 넣습니다. 없으면 이름 텍스트를 유지합니다. 비율은 유지한 채 배치됩니다.</div>
-            <input type="file" id="customBrandLogoFile" accept="image/*" onchange="previewBrandLogoFile(this)" style="font-size:12px;width:100%;" />
-            <button type="button" class="pos-btn" onclick="clearBrandLogo()" style="margin-top:8px;color:#64748B;">🗑️ 로고 제거 (이름으로)</button>
-          </div>
-<div class="field-card">
             <div class="field-title"><span>버튼 아래 작은 명찰 문구</span><span class="field-tag opt">자동: 챗봇이름+상담</span></div>
             <div class="field-desc">우측 하단 동그란 아이콘 밑 캡슐에 적히는 글씨입니다.</div>
             <input type="text" id="botLabel" value="엘라봇 상담" oninput="this.dataset.manual='1'; triggerInstantPreview();" placeholder="비워두면 'OO봇 상담' 자동 적용" />
