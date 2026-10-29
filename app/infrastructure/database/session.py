@@ -15,8 +15,16 @@ if settings.DATABASE_URL.startswith("sqlite"):
     if db_dir:
         os.makedirs(db_dir, exist_ok=True)
 
+# SQLAlchemy's default Postgres dialect expects psycopg (psycopg3), which is
+# not installed. Normalise the URL so asyncpg is always used for Postgres.
+_db_url = settings.DATABASE_URL
+if _db_url.startswith("postgresql://"):
+    _db_url = _db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif _db_url.startswith("postgres://"):
+    _db_url = _db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    _db_url,
     echo=False,
     future=True,
 )
@@ -32,6 +40,19 @@ async def init_db() -> None:
     """Create tables if they don't exist."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # Lightweight, idempotent migrations for columns added after initial deploy.
+    # create_all() does not ALTER existing tables (Render Postgres / local SQLite).
+    from sqlalchemy import text as _text
+
+    async with engine.begin() as conn:
+        for stmt in (
+            "ALTER TABLE messages ADD COLUMN detected_language VARCHAR(8)",
+            "ALTER TABLE messages ADD COLUMN translation_ko TEXT",
+        ):
+            try:
+                await conn.execute(_text(stmt))
+            except Exception:
+                pass  # column already exists
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

@@ -23,6 +23,29 @@ class AIProviderPort(ABC):
         """
         pass
 
+    async def translate_text(self, text: str, target_lang: str, source_lang: str = "auto") -> str:
+        """Translate `text` into `target_lang` (ISO code or name).
+
+        Default implementation delegates to generate_text with a strict
+        translation prompt, so providers only override if they have a native
+        translation endpoint. Returns the original text on failure.
+        """
+        if not text or not text.strip():
+            return text
+        lang_name = {"ko": "Korean", "en": "English", "ja": "Japanese", "zh": "Chinese"}.get(
+            target_lang.lower(), target_lang
+        )
+        prompt = (
+            f"Translate the following text into {lang_name}. "
+            "Output ONLY the translation, no explanations, no quotes, "
+            "preserve line breaks and meaning exactly.\n\n"
+            f"{text}"
+        )
+        try:
+            return (await self.generate_text(prompt)).strip()
+        except Exception:
+            return text
+
     @abstractmethod
     def stream_text(
         self,

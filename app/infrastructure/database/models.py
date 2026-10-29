@@ -140,6 +140,9 @@ class MessageModel(Base):
     content: Mapped[str] = mapped_column(Text)
     intent: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     latency_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # Owner-side translation support (foreign customer messages)
+    detected_language: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
+    translation_ko: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
