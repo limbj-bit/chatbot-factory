@@ -1282,13 +1282,7 @@ class StoreService:
         await session.execute(
             sql_delete(StoreKnowledgeModel).where(StoreKnowledgeModel.mall_id == mall_id)
         )
-        # Delete messages
-        try:
-            await session.execute(
-                sql_delete(MessageModel).where(MessageModel.mall_id == mall_id)
-            )
-        except Exception:
-            pass
+        # Messages are linked to sessions, not stores - skip message deletion
         # Delete store
         q = select(StoreModel).where(StoreModel.mall_id == mall_id)
         res = await session.execute(q)
