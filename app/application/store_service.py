@@ -806,6 +806,163 @@ class StoreService:
         )
         return await self.add_knowledge(session, mall_id, create_req, source_url=crawl_req.url)
 
+    async def _fetch_html(self, url: str, timeout: float = 10.0) -> str:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            resp = await client.get(
+                url,
+                headers={"User-Agent": "ChatbotFactoryBot/2.0 (+https://railway.app)"},
+            )
+            resp.raise_for_status()
+            return resp.text
+
+    def _discover_product_urls(self, html_text: str, base_url: str) -> List[str]:
+        parsed_base = urlparse(base_url)
+        host = parsed_base.netloc.lower()
+        if not host:
+            return []
+
+        hrefs = re.findall(r'href\s*=\s*["\']([^"\']+)["\']', html_text, re.IGNORECASE)
+        locs = re.findall(r"<loc>\s*(.*?)\s*</loc>", html_text, re.IGNORECASE)
+        candidates = hrefs + locs
+
+        product_signals = (
+            "product", "goods", "item", "detail", "view", "shop_view",
+            "/p/", "product_no", "productno", "goods_no", "goodsno",
+        )
+        skip_signals = (
+            "cart", "checkout", "login", "register", "account", "myshop",
+            "category", "search", "board", "notice", "faq", "policy",
+            "about", "contact", "sitemap", "javascript:", "mailto:", "tel:", "#",
+        )
+
+        seen = set()
+        result = []
+        for raw in candidates:
+            raw = raw.strip()
+            if not raw:
+                continue
+            if raw.startswith("//"):
+                raw = parsed_base.scheme + ":" + raw
+            elif raw.startswith("/"):
+                raw = parsed_base.scheme + "://" + host + raw
+            elif not raw.startswith("http"):
+                raw = parsed_base.scheme + "://" + host + "/" + raw.lstrip("./")
+            try:
+                p = urlparse(raw)
+            except Exception:
+                continue
+            if p.netloc.lower() != host:
+                continue
+            low = (p.path + "?" + p.query).lower()
+            if any(s in low for s in skip_signals):
+                continue
+            if not any(s in low for s in product_signals):
+                continue
+            clean = p._replace(fragment="").geturl()
+            if clean in seen:
+                continue
+            seen.add(clean)
+            result.append(clean)
+            if len(result) >= 200:
+                break
+        return result
+
+    async def crawl_store_catalog(
+        self,
+        session: AsyncSession,
+        mall_id: str,
+        crawl_req: "StoreCatalogCrawlRequest",
+    ) -> "StoreCatalogCrawlResponse":
+        from app.schemas.store import StoreCatalogCrawlResponse, StoreKnowledgeResponse
+
+        raw_html = crawl_req.raw_html_override
+        if not raw_html:
+            try:
+                raw_html = await self._fetch_html(crawl_req.url)
+            except Exception as e:
+                logger.warning("[CatalogCrawl] Failed to fetch %s: %s", crawl_req.url, e)
+                return StoreCatalogCrawlResponse(
+                    discovered=0,
+                    learned=0,
+                    skipped_duplicates=0,
+                    failed=0,
+                    items=[],
+                    notes="목록 페이지를 가져오지 못했습니다: " + str(e),
+                )
+
+        urls = self._discover_product_urls(raw_html, crawl_req.url)
+
+        if len(urls) < 3:
+            try:
+                parsed = urlparse(crawl_req.url)
+                sitemap_url = parsed.scheme + "://" + parsed.netloc + "/sitemap.xml"
+                sm_html = await self._fetch_html(sitemap_url)
+                for u in self._discover_product_urls(sm_html, sitemap_url):
+                    if u not in urls:
+                        urls.append(u)
+            except Exception:
+                pass
+
+        max_products = max(1, min(50, crawl_req.max_products or 20))
+        urls = urls[: max_products * 2]
+
+        existing_res = await session.execute(
+            select(StoreKnowledgeModel.source_url).where(
+                StoreKnowledgeModel.mall_id == mall_id
+            )
+        )
+        existing = {r[0] for r in existing_res.all() if r[0]}
+
+        learned_items = []
+        skipped = 0
+        failed = 0
+        discovered = len(urls)
+        for u in urls:
+            if len(learned_items) >= max_products:
+                break
+            if u in existing:
+                skipped += 1
+                continue
+            try:
+                html_text = await self._fetch_html(u)
+            except Exception as e:
+                logger.warning("[CatalogCrawl] Fetch failed for %s: %s", u, e)
+                failed += 1
+                continue
+            try:
+                from app.schemas.store import StoreKnowledgeCrawlRequest
+                single_req = StoreKnowledgeCrawlRequest(url=u, tags=crawl_req.tags)
+                # reuse the single-product crawler (fetches+extracts+saves)
+                resp = await self.crawl_and_learn_url(session, mall_id, single_req)
+                learned_items.append(resp)
+                existing.add(u)
+            except Exception as e:
+                logger.warning("[CatalogCrawl] Parse/save failed for %s: %s", u, e)
+                failed += 1
+
+        if discovered == 0:
+            notes = (
+                "상품 링크를 찾지 못했습니다. 카테고리/목록 페이지 URL을 넣거나, "
+                "사이트맵(sitemap.xml) 주소를 직접 입력해 주세요. "
+                "JavaScript로만 렌더링되는 스토어(쿠팡/네이버 스마트스토어)는 "
+                "현재 자동 수집이 제한됩니다."
+            )
+        else:
+            notes = (
+                "총 " + str(discovered) + "개 상품 링크를 발견했고, "
+                + str(len(learned_items)) + "개를 새로 학습했습니다. "
+                "(중복 " + str(skipped) + "개 건너뜀, 실패 " + str(failed) + "개)"
+            )
+
+        return StoreCatalogCrawlResponse(
+            discovered=discovered,
+            learned=len(learned_items),
+            skipped_duplicates=skipped,
+            failed=failed,
+            items=learned_items,
+            notes=notes,
+        )
+
     async def list_knowledge(
         self, session: AsyncSession, mall_id: str
     ) -> List[StoreKnowledgeResponse]:

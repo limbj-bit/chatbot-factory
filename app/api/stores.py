@@ -8,6 +8,8 @@ from app.core.config import settings
 from app.core.security import verify_admin_key
 from app.infrastructure.database.session import get_db
 from app.schemas.store import (
+    StoreCatalogCrawlRequest,
+    StoreCatalogCrawlResponse,
     StoreCreateRequest,
     StoreKnowledgeCrawlRequest,
     StoreKnowledgeCreateRequest,
@@ -108,6 +110,24 @@ async def crawl_store_product_url_endpoint(
         )
 
 
+@router.post(
+    "/{mall_id}/knowledge/crawl-catalog",
+    response_model=StoreCatalogCrawlResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def crawl_store_catalog_endpoint(
+    mall_id: str,
+    request: StoreCatalogCrawlRequest,
+    session: AsyncSession = Depends(get_db),
+):
+    """Discover and learn ALL products from a store listing/home/sitemap URL (platform-agnostic)."""
+    try:
+        return await store_service.crawl_store_catalog(session, mall_id, request)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to crawl catalog: {e}",
+        )
 @router.get("/{mall_id}/knowledge", response_model=List[StoreKnowledgeResponse])
 async def list_store_knowledge_endpoint(
     mall_id: str, session: AsyncSession = Depends(get_db)

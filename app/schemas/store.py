@@ -103,6 +103,16 @@ class StoreKnowledgeCrawlRequest(BaseModel):
     tags: Optional[str] = Field(None, description="추가할 추천 태그")
 
 
+class StoreCatalogCrawlRequest(BaseModel):
+    url: str = Field(..., description="상품 목록/카테고리/스토어 홈/사이트맵 URL")
+    max_products: int = Field(20, ge=1, le=50, description="한 번에 학습할 최대 상품 수 (1~50)")
+    tags: Optional[str] = Field(None, description="추가할 추천 태그")
+    raw_html_override: Optional[str] = Field(
+        None,
+        description="테스트 시 직접 주입할 HTML 본문 (생략 시 URL에서 직접 수집)",
+    )
+
+
 class StoreKnowledgeResponse(BaseModel):
     id: str
     mall_id: str
@@ -115,6 +125,15 @@ class StoreKnowledgeResponse(BaseModel):
     image_url: Optional[str] = None
     tags: Optional[str] = None
     created_at: str
+
+
+class StoreCatalogCrawlResponse(BaseModel):
+    discovered: int = Field(description="발견된 상품 상세 URL 수")
+    learned: int = Field(description="실제로 지식베이스에 새로 저장된 상품 수")
+    skipped_duplicates: int = Field(description="이미 학습되어 건너뛴 수")
+    failed: int = Field(description="크롤 실패 수")
+    items: List[StoreKnowledgeResponse] = Field(default_factory=list)
+    notes: Optional[str] = Field(None, description="안내 메시지")
 
 
 class StoreResponse(BaseModel):

@@ -220,6 +220,12 @@ async def get_dynamic_widget_script(
     store = await store_service.get_store_by_mall_id(session, mall_id)
 
     origin_or_referer = request.headers.get("origin") or request.headers.get("referer")
+    # The widget talks back to THIS backend (Render), not the host page origin.
+    backend_origin = str(request.base_url).rstrip("/")
+    # Render terminates TLS upstream; force https so the widget never
+    # talks to the backend over plain http (which would be blocked).
+    if backend_origin.startswith("http://"):
+        backend_origin = "https://" + backend_origin[len("http://"):]
     if not store_service.is_domain_allowed(store, origin_or_referer):
         blocked_js = f'console.warn("[ChatbotFactory] Unauthorized domain for mall_id={mall_id}. Allowed domains: {store.allowed_domains if store else ""}");'
         return Response(content=blocked_js, media_type="application/javascript")
@@ -395,7 +401,7 @@ async def get_dynamic_widget_script(
     expiryWarning: {expiry_warning_js},
     remainingDays: {remaining_days_js},
     statusMessage: "{safe_status_msg}",
-    apiBase: window.location.origin
+    apiBase: "{backend_origin}"
   }};
 
   const iconGraphicHtml = `{icon_graphic_html}`;
@@ -1052,4 +1058,8 @@ async def get_dynamic_widget_script(
   }});
 }})();
 """
-    return Response(content=js_content, media_type="application/javascript")
+    return Response(
+        content=js_content,
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"},
+    )
