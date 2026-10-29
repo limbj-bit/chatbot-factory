@@ -926,12 +926,14 @@ class StoreService:
         mall_id: str,
         crawl_req: "StoreCatalogCrawlRequest",
     ) -> "StoreCatalogCrawlResponse":
+        import asyncio as _asyncio
         from app.schemas.store import StoreCatalogCrawlResponse, StoreKnowledgeResponse
+        from app.schemas.store import StoreKnowledgeCrawlRequest
 
         raw_html = crawl_req.raw_html_override
         if not raw_html:
             try:
-                raw_html = await self._fetch_html(crawl_req.url)
+                raw_html = await self._fetch_html(crawl_req.url, timeout=15.0)
             except Exception as e:
                 logger.warning("[CatalogCrawl] Failed to fetch %s: %s", crawl_req.url, e)
                 return StoreCatalogCrawlResponse(
@@ -940,24 +942,54 @@ class StoreService:
                     skipped_duplicates=0,
                     failed=0,
                     items=[],
-                    notes="목록 페이지를 가져오지 못했습니다: " + str(e),
+                    notes="목록/사이트맵 페이지를 가져오지 못했습니다: " + str(e),
                 )
 
-        urls = self._discover_product_urls(raw_html, crawl_req.url)
+        # Detect sitemap vs listing page
+        is_sitemap = "sitemap" in (crawl_req.url or "").lower() or "<urlset" in (raw_html or "").lower() or "<sitemapindex" in (raw_html or "").lower()
 
-        if len(urls) < 3:
-            try:
-                parsed = urlparse(crawl_req.url)
-                sitemap_url = parsed.scheme + "://" + parsed.netloc + "/sitemap.xml"
-                sm_html = await self._fetch_html(sitemap_url)
-                for u in self._discover_product_urls(sm_html, sitemap_url):
-                    if u not in urls:
-                        urls.append(u)
-            except Exception:
-                pass
+        if is_sitemap:
+            locs = re.findall(r"<loc>\s*(.*?)\s*</loc>", raw_html, re.IGNORECASE)
+            skip_signals = ("shopinfo", "member/", "board/", "category/", "cart", "login", "register", "account", "search", "sitemap", "javascript:", "mailto:", "tel:", "#")
+            urls = []
+            seen = set()
+            for loc in locs:
+                loc = loc.strip()
+                if not loc or loc in seen:
+                    continue
+                seen.add(loc)
+                low = loc.lower()
+                if any(s in low for s in skip_signals):
+                    continue
+                # For sitemaps, keep product URLs (contain /product/) and skip the rest
+                if "/product/" in low:
+                    urls.append(loc)
+            # If no product URLs found, fall back to all non-skip URLs
+            if not urls:
+                for loc in locs:
+                    loc = loc.strip()
+                    if not loc or loc in urls:
+                        continue
+                    low = loc.lower()
+                    if any(s in low for s in skip_signals):
+                        continue
+                    urls.append(loc)
+        else:
+            urls = self._discover_product_urls(raw_html, crawl_req.url)
+            # Fallback: try sitemap.xml if discovery was thin
+            if len(urls) < 3:
+                try:
+                    parsed = urlparse(crawl_req.url)
+                    sitemap_url = parsed.scheme + "://" + parsed.netloc + "/sitemap.xml"
+                    sm_html = await self._fetch_html(sitemap_url, timeout=15.0)
+                    for u in self._discover_product_urls(sm_html, sitemap_url):
+                        if u not in urls:
+                            urls.append(u)
+                except Exception:
+                    pass
 
         max_products = max(1, min(50, crawl_req.max_products or 20))
-        urls = urls[: max_products * 2]
+        urls = urls[:max_products + 5]  # small buffer for dedup
 
         existing_res = await session.execute(
             select(StoreKnowledgeModel.source_url).where(
@@ -970,27 +1002,22 @@ class StoreService:
         skipped = 0
         failed = 0
         discovered = len(urls)
+        deadline = _asyncio.get_event_loop().time() + 55.0
         for u in urls:
             if len(learned_items) >= max_products:
+                break
+            if _asyncio.get_event_loop().time() > deadline:
                 break
             if u in existing:
                 skipped += 1
                 continue
             try:
-                html_text = await self._fetch_html(u)
-            except Exception as e:
-                logger.warning("[CatalogCrawl] Fetch failed for %s: %s", u, e)
-                failed += 1
-                continue
-            try:
-                from app.schemas.store import StoreKnowledgeCrawlRequest
                 single_req = StoreKnowledgeCrawlRequest(url=u, tags=crawl_req.tags)
-                # reuse the single-product crawler (fetches+extracts+saves)
                 resp = await self.crawl_and_learn_url(session, mall_id, single_req)
                 learned_items.append(resp)
                 existing.add(u)
             except Exception as e:
-                logger.warning("[CatalogCrawl] Parse/save failed for %s: %s", u, e)
+                logger.warning("[CatalogCrawl] Failed for %s: %s", u, e)
                 failed += 1
 
         if discovered == 0:
@@ -1002,8 +1029,8 @@ class StoreService:
             )
         else:
             notes = (
-                "총 " + str(discovered) + "개 상품 링크를 발견했고, "
-                + str(len(learned_items)) + "개를 새로 학습했습니다. "
+                "총 " + str(discovered) + "개 상품 링크를 발견했고, " +
+                str(len(learned_items)) + "개를 새로 학습했습니다. "
                 "(중복 " + str(skipped) + "개 건너뜀, 실패 " + str(failed) + "개)"
             )
 
