@@ -373,10 +373,8 @@ async def get_dynamic_widget_script(
   "use strict";
 
   // Remove any previous instance for live preview hot-reload
-  const oldLauncher = document.querySelector(".fresh-widget-launcher");
-  const oldWindow = document.querySelector(".fresh-widget-window");
-  if (oldLauncher) oldLauncher.remove();
-  if (oldWindow) oldWindow.remove();
+  document.querySelectorAll(".fresh-widget-launcher").forEach(el => el.remove());
+  document.querySelectorAll(".fresh-widget-window").forEach(el => el.remove());
 
   window.CHATBOT_FACTORY_SVGS = {presets_js};
 

@@ -1103,6 +1103,8 @@
 
       const oldScript = document.getElementById("dynamic-preview-script");
       if (oldScript) oldScript.remove();
+      document.querySelectorAll(".fresh-widget-launcher").forEach(el => el.remove());
+      document.querySelectorAll(".fresh-widget-window").forEach(el => el.remove());
       const s = document.createElement("script");
       s.id = "dynamic-preview-script";
       s.src = `/api/widget/script?${params.toString()}`;
@@ -1378,6 +1380,8 @@
       // Load actual saved store widget
       const oldScript = document.getElementById("dynamic-preview-script");
       if (oldScript) oldScript.remove();
+      document.querySelectorAll(".fresh-widget-launcher").forEach(el => el.remove());
+      document.querySelectorAll(".fresh-widget-window").forEach(el => el.remove());
       const s = document.createElement("script");
       s.id = "dynamic-preview-script";
       s.src = `/api/widget/script?mall_id=${encodeURIComponent(createdStore.mall_id)}&t=${Date.now()}`;
