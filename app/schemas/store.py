@@ -107,7 +107,7 @@ class StoreCatalogCrawlRequest(BaseModel):
     url: str = Field(..., description="상품 목록/카테고리/스토어 홈/사이트맵 URL")
     max_products: int = Field(10, ge=1, le=50, description="x")
     offset: int = Field(0, ge=0, description="x")
-    force_refresh: bool = Field(False, description="y")
+    force_refresh: bool = Field(True, description="y")
     tags: Optional[str] = Field(None, description="추가할 추천 태그")
     raw_html_override: Optional[str] = Field(
         None,
