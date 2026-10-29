@@ -20,7 +20,8 @@ RUN uv pip install --system --no-cache ".[dev]" greenlet
 
 # Copy application source code (cache-bust: rebuild on every deploy)
 ARG RENDER_GIT_COMMIT=unknown
-RUN echo "deploying commit=$RENDER_GIT_COMMIT"
+RUN echo "deploying commit=$RENDER_GIT_COMMIT" && rm -rf /tmp/.cache 2>/dev/null; true
+RUN echo "build-timestamp=$(date +%s%N 2>/dev/null || echo unknown)"
 COPY app/ ./app/
 COPY static/ ./static/
 COPY docs/ ./docs/
