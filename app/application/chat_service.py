@@ -68,6 +68,19 @@ RECOMMENDATION_KEYWORDS = [
     "뭐가",
 ]
 
+# Specific detail keywords - if present, the query is specific enough for RAG search
+SKIN_DETAIL_KEYWORDS = [
+    "건성", "지성", "복합성", "민감성", "중성", "피부타입",
+    "주름", "미백", "트러블", "보습", "모공", "기미", "진정", "탄력",
+    "보습", "건조", "여드름", "각질", "홍조", "색소", "칙칙", "리프팅",
+    "안티에이징", "노화", "탄력", "수분", "유분", "T존", "U존",
+    "성분", "전성분", "레티놀", "히알루론산", "비타민", "나이아신아마이드",
+    "세라마이드", "콜라겐", "펩타이드", "AHA", "BHA", "PHA", "CICA", "시카",
+    "사용법", "어떻게", "언제", "루틴", "순서", "아침", "저녁",
+    "가격", "얼마", "용량", "ml", "g", "mg",
+]
+
+
 
 class ChatService:
     """Application Service for chat orchestration, multi-tenant RAG, AI beauty/shopping counselor, quota gating, and SSE streaming."""
@@ -311,6 +324,15 @@ class ChatService:
         lines.append("- 바로 추천하지 말고, 필요한 정보를 1~2개 질문하세요.")
         lines.append("- 질문 예시: 피부타입(건성/지성/복합성/민감성)과 주요 고민(주름, 미백, 트러블, 보습 등)을 알려주시면 맞춤 추천해 드리겠습니다!")
         lines.append("- 고객이 이미 일부 정보를 제공했으면 (예: 건성인데) 나머지 정보만 질문하세요.")
+        lines.append(
+            "- 절대 규칙: 피부타입과 고민 중 하나라도 확인되지 않았다면, "
+            "'✨ [맞춤 추천]' 머리글이나 상품 카드 나열 형식으로 답변하지 마세요. "
+            "추천은 고객 정보가 충분히 쌓인 뒤에만 시작합니다."
+        )
+        lines.append(
+            "- 고객이 정보(예: 지성 피부예요, 뾰루지 고민이에요)를 모두 제공했다면, "
+            "이제야 상세 추천(추천 이유·성분·사용법·가격·구매 링크)을 시작하세요."
+        )
         lines.append("")
         lines.append("#### 6. 멀티턴 대화 기억")
         lines.append("- 이전 대화에서 고객이 언급한 피부타입, 고민, 선호도를 기억하세요.")
@@ -507,15 +529,33 @@ class ChatService:
                     "급하신 문의는 고객센터 게시판을 이용해 주시거나 내일 다시 이용해 주세요."
                 )
             else:
-                # 4. Search store-specific & default RAG knowledge
-                results = await self.rag.search_with_store_knowledge(
-                    session_db, mall_id, message_text, top_k=2
+                # 4. Build a combined view of the conversation: the current message
+                # plus recent user turns. Customers often answer the bot's intake
+                # question ("지성 피부예요, 트러블 고민이에요") in separate turns, so
+                # keyword detection must look at the whole dialogue, not just the
+                # latest message.
+                convo_text = message_text + " " + " ".join(
+                    h.get("content", "") for h in history if h.get("role") == "user"
                 )
+                # Specific enough for RAG search only when skin/concern details
+                # are present. Vague "추천해줘" must NOT trigger product cards —
+                # the counselor first asks for skin type/concern, then recommends.
+                is_specific_query = any(k in convo_text for k in SKIN_DETAIL_KEYWORDS)
                 is_counselor_query = any(k in message_text for k in RECOMMENDATION_KEYWORDS)
+
+                results = []
+                if is_specific_query:
+                    # 4b. Search store-specific & default RAG knowledge
+                    results = await self.rag.search_with_store_knowledge(
+                        session_db, mall_id, message_text, top_k=2
+                    )
 
                 if results:
                     intent = "ai_counselor_recommendation" if is_counselor_query else "rag_product_inquiry"
-                    recommended_products = self._build_product_cards(results)
+                    # Product cards are only attached when the customer has
+                    # shared enough detail — otherwise we'd recommend blindly.
+                    if is_specific_query:
+                        recommended_products = self._build_product_cards(results)
                     context = self.rag.assemble_context(results)
                     top_doc = results[0].document
                     system_prompt = self._build_store_system_prompt(store_obj, rag_context=context)
@@ -532,6 +572,8 @@ class ChatService:
                     else:
                         response_text = llm_reply
                 else:
+                    # Vague / intake phase: plain conversational CS with the
+                    # counselor guide (asks skin type & concern, no cards).
                     intent = "general_cs"
                     system_prompt = self._build_store_system_prompt(store_obj)
                     response_text = await self.ai_router.generate_text(
@@ -647,10 +689,17 @@ class ChatService:
             yield quota_msg
             return
 
-        # RAG context if applicable
-        results = await self.rag.search_with_store_knowledge(
-            session_db, mall_id, message_text, top_k=2
+        # RAG context only when the dialogue carries enough skin/concern detail.
+        # Vague intake-phase messages must not drag in product knowledge.
+        convo_text = message_text + " " + " ".join(
+            h.get("content", "") for h in history if h.get("role") == "user"
         )
+        is_specific_query = any(k in convo_text for k in SKIN_DETAIL_KEYWORDS)
+        results = []
+        if is_specific_query:
+            results = await self.rag.search_with_store_knowledge(
+                session_db, mall_id, message_text, top_k=2
+            )
         # Store-grounded system prompt; append learned RAG knowledge when we have it
         context = self.rag.assemble_context(results) if results else None
         system_prompt = self._build_store_system_prompt(store_obj, rag_context=context)

@@ -4,7 +4,7 @@ import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
 import httpx
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1145,11 +1145,17 @@ class StoreService:
         else:
             urls = self._discover_product_urls(raw_html, crawl_req.url)
             # Pagination: if listing page, try fetching additional pages
-            if not is_sitemap and len(urls) > 0:
-                base = crawl_req.url.split("?")[0].rstrip("/")
+            if len(urls) > 0:
+                parsed_pg = urlparse(crawl_req.url)
                 for page_num in range(2, 11):
                     try:
-                        page_url = base + "?page=" + str(page_num)
+                        pg_params = parse_qs(parsed_pg.query)
+                        pg_params.pop("page", None)
+                        pg_params["page"] = [str(page_num)]
+                        page_url = (
+                            parsed_pg.scheme + "://" + parsed_pg.netloc + parsed_pg.path
+                            + "?" + urlencode(pg_params, doseq=True)
+                        )
                         page_html = await self._fetch_html(page_url, timeout=10.0)
                         new_urls = self._discover_product_urls(page_html, page_url)
                         added = 0
@@ -1161,70 +1167,85 @@ class StoreService:
                             break
                     except Exception:
                         break
-            # Deep crawl: if using sitemap, also crawl homepage + category pages to find additional products
-            if is_sitemap:
-                try:
-                    parsed_dc = urlparse(crawl_req.url)
-                    home_url = parsed_dc.scheme + "://" + parsed_dc.netloc + "/"
-                    # Fetch homepage
-                    home_html = await self._fetch_html(home_url, timeout=10.0)
-                    home_urls = self._discover_product_urls(home_html, home_url)
-                    for u in home_urls:
+
+        # Deep crawl: crawl homepage + category pages to find products NOT in the
+        # sitemap (Cafe24 sitemaps often contain only a subset of the catalog).
+        # This block must run for the sitemap path too — it used to sit inside the
+        # else-branch behind `if is_sitemap:` which made it dead code.
+        if is_sitemap or len(urls) < 3:
+            try:
+                parsed_dc = urlparse(crawl_req.url)
+                home_url = parsed_dc.scheme + "://" + parsed_dc.netloc + "/"
+                # Fetch homepage
+                home_html = await self._fetch_html(home_url, timeout=10.0)
+                home_urls = self._discover_product_urls(home_html, home_url)
+                for u in home_urls:
+                    if u not in urls:
+                        urls.append(u)
+                # Extract category URLs from homepage
+                cat_hrefs = re.findall(r'href\s*=\s*["\']([^"\']+category[^"\']*)["\']', home_html, re.IGNORECASE)
+                cat_urls_to_visit = []
+                seen_cats = set()
+                for raw in cat_hrefs:
+                    raw = raw.strip()
+                    if raw.startswith("/"):
+                        raw = home_url.rstrip("/") + raw
+                    elif not raw.startswith("http"):
+                        raw = home_url.rstrip("/") + "/" + raw.lstrip("./")
+                    if raw not in seen_cats and parsed_dc.netloc in raw:
+                        seen_cats.add(raw)
+                        cat_urls_to_visit.append(raw)
+
+                async def _add_with_pagination(cat_url: str, max_pages: int = 12) -> None:
+                    """Fetch a category/listing page + its paginated pages, appending new product URLs."""
+                    first_html = await self._fetch_html(cat_url, timeout=8.0)
+                    for u in self._discover_product_urls(first_html, cat_url):
                         if u not in urls:
                             urls.append(u)
-                    # Extract category URLs from homepage
-                    cat_hrefs = re.findall(r'href\s*=\s*["\']([^"\']+category[^"\']*)["\']', home_html, re.IGNORECASE)
-                    cat_urls_to_visit = []
-                    seen_cats = set()
-                    for raw in cat_hrefs:
-                        raw = raw.strip()
-                        if raw.startswith("/"):
-                            raw = home_url.rstrip("/") + raw
-                        elif not raw.startswith("http"):
-                            raw = home_url.rstrip("/") + "/" + raw.lstrip("./")
-                        if raw not in seen_cats and parsed_dc.netloc in raw:
-                            seen_cats.add(raw)
-                            cat_urls_to_visit.append(raw)
-                    # Cafe24: extract cate_no values from homepage and fetch product listing pages
-                    cate_nos = set(re.findall(r'cate_no=(\d+)', home_html))
-                    for cn in list(cate_nos)[:40]:
+                    parsed_cat = urlparse(cat_url)
+                    no_progress = 0
+                    for pn in range(2, max_pages + 1):
                         try:
-                            cat_url = home_url.rstrip("/") + "/product/list.html?cate_no=" + cn
-                            cat_html = await self._fetch_html(cat_url, timeout=8.0)
-                            cat_urls = self._discover_product_urls(cat_html, cat_url)
-                            for u in cat_urls:
+                            cat_params = parse_qs(parsed_cat.query)
+                            cat_params.pop("page", None)
+                            cat_params["page"] = [str(pn)]
+                            paginated = (
+                                parsed_cat.scheme + "://" + parsed_cat.netloc + parsed_cat.path
+                                + "?" + urlencode(cat_params, doseq=True)
+                            )
+                            pag_html = await self._fetch_html(paginated, timeout=8.0)
+                            pag_urls = self._discover_product_urls(pag_html, paginated)
+                            added = 0
+                            for u in pag_urls:
                                 if u not in urls:
                                     urls.append(u)
-                        except Exception:
-                            pass
-                    # Fetch each category page (up to 20) and extract product URLs
-                    for cat_url in cat_urls_to_visit[:20]:
-                        try:
-                            cat_html = await self._fetch_html(cat_url, timeout=8.0)
-                            cat_urls = self._discover_product_urls(cat_html, cat_url)
-                            for u in cat_urls:
-                                if u not in urls:
-                                    urls.append(u)
-                            # Try pagination for this category
-                            for pn in range(2, 6):
-                                try:
-                                    paginated = cat_url.split("?")[0].rstrip("/") + "?page=" + str(pn)
-                                    pag_html = await self._fetch_html(paginated, timeout=8.0)
-                                    pag_urls = self._discover_product_urls(pag_html, paginated)
-                                    added = 0
-                                    for u in pag_urls:
-                                        if u not in urls:
-                                            urls.append(u)
-                                            added += 1
-                                    if added == 0:
-                                        break
-                                except Exception:
+                                    added += 1
+                            if added == 0:
+                                no_progress += 1
+                                if no_progress >= 2:
                                     break
+                            else:
+                                no_progress = 0
                         except Exception:
-                            pass
-                    logger.info("[CatalogCrawl] After deep crawl: %d total URLs (from sitemap + homepage + categories)", len(urls))
-                except Exception as e:
-                    logger.warning("[CatalogCrawl] Deep crawl failed: %s", e)
+                            break
+
+                # Cafe24: extract cate_no values from homepage and fetch product listing pages
+                cate_nos = set(re.findall(r'cate_no=(\d+)', home_html))
+                for cn in list(cate_nos)[:40]:
+                    try:
+                        cat_url = home_url.rstrip("/") + "/product/list.html?cate_no=" + cn
+                        await _add_with_pagination(cat_url, max_pages=12)
+                    except Exception:
+                        pass
+                # Fetch each category URL from homepage nav (up to 20) + pagination
+                for cat_url in cat_urls_to_visit[:20]:
+                    try:
+                        await _add_with_pagination(cat_url, max_pages=12)
+                    except Exception:
+                        pass
+                logger.info("[CatalogCrawl] After deep crawl: %d total URLs (from sitemap + homepage + categories)", len(urls))
+            except Exception as e:
+                logger.warning("[CatalogCrawl] Deep crawl failed: %s", e)
             # Fallback: try sitemap.xml if discovery was thin
             if len(urls) < 3:
                 try:
