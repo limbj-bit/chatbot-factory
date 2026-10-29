@@ -334,6 +334,12 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
 class StoreService:
     """Application Service for managing multi-tenant stores, trial periods, knowledge crawling, and security quotas."""
 
+    _CATALOG_CACHE_TTL_SEC = 2 * 3600
+
+    def __init__(self) -> None:
+        # mall_id|seed_url → {urls, created_at, sitemap_count, category_count}
+        self._catalog_url_cache: Dict[str, Dict[str, Any]] = {}
+
     @staticmethod
     def evaluate_subscription_status(
         store: StoreModel,
@@ -1193,6 +1199,197 @@ class StoreService:
                         queue.append(paginated)
         return product_urls[:max_urls]
 
+    @staticmethod
+    def _normalize_product_url(url: str) -> str:
+        """Collapse Cafe24 product URL variants to a stable dedupe key."""
+        raw = (url or "").strip()
+        if not raw:
+            return ""
+        try:
+            p = urlparse(raw)
+        except Exception:
+            return raw
+        if not p.netloc:
+            return raw
+        path = (p.path or "").rstrip("/")
+        host = p.netloc.lower()
+        m = re.search(r"/product/[^/]+/(\d+)$", path, re.IGNORECASE)
+        if m:
+            return f"{p.scheme}://{host}/product/_/{m.group(1)}"
+        qs = parse_qs(p.query)
+        for key in ("product_no", "productno", "goods_no", "goodsno"):
+            vals = qs.get(key)
+            if vals and vals[0]:
+                return f"{p.scheme}://{host}/product/_/{vals[0]}"
+        return f"{p.scheme}://{host}{path}" + (f"?{p.query}" if p.query else "")
+
+    @staticmethod
+    def _dedupe_product_urls(urls: List[str]) -> List[str]:
+        out: List[str] = []
+        seen: set = set()
+        for u in urls:
+            key = StoreService._normalize_product_url(u) or u
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(u)
+        return out
+
+    @staticmethod
+    def _catalog_cache_key(mall_id: str, seed_url: str) -> str:
+        p = urlparse((seed_url or "").strip())
+        seed = f"{p.scheme}://{p.netloc.lower()}{p.path}".rstrip("/")
+        if p.query:
+            seed += "?" + p.query
+        return f"{mall_id}|{seed}"
+
+    def _catalog_cache_get(self, mall_id: str, seed_url: str) -> Optional[Dict[str, Any]]:
+        key = self._catalog_cache_key(mall_id, seed_url)
+        entry = self._catalog_url_cache.get(key)
+        if not entry:
+            return None
+        age = (datetime.now(timezone.utc) - entry["created_at"]).total_seconds()
+        if age > self._CATALOG_CACHE_TTL_SEC:
+            self._catalog_url_cache.pop(key, None)
+            return None
+        return entry
+
+    def _catalog_cache_put(
+        self,
+        mall_id: str,
+        seed_url: str,
+        urls: List[str],
+        *,
+        sitemap_count: int = 0,
+        category_count: int = 0,
+        expanded: bool = False,
+    ) -> None:
+        key = self._catalog_cache_key(mall_id, seed_url)
+        self._catalog_url_cache[key] = {
+            "urls": list(urls),
+            "created_at": datetime.now(timezone.utc),
+            "sitemap_count": sitemap_count,
+            "category_count": category_count,
+            "expanded": expanded,
+        }
+
+    @staticmethod
+    def _extract_category_urls(html_or_xml: str, base_url: str) -> List[str]:
+        """Collect /category/ links from HTML or sitemap XML."""
+        parsed = urlparse(base_url)
+        host = (parsed.netloc or "").lower()
+        if not host:
+            return []
+        locs = re.findall(r"<loc>\s*(.*?)\s*</loc>", html_or_xml or "", re.IGNORECASE)
+        hrefs = re.findall(
+            r'href\s*=\s*["\']([^"\']+)["\']', html_or_xml or "", re.IGNORECASE
+        )
+        out: List[str] = []
+        seen: set = set()
+        for raw in locs + hrefs:
+            raw = (raw or "").strip()
+            if not raw:
+                continue
+            if raw.startswith("//"):
+                raw = (parsed.scheme or "https") + ":" + raw
+            elif raw.startswith("/"):
+                raw = f"{parsed.scheme}://{host}{raw}"
+            elif not raw.startswith("http"):
+                raw = f"{parsed.scheme}://{host}/{raw.lstrip('./')}"
+            try:
+                p = urlparse(raw)
+            except Exception:
+                continue
+            if p.netloc.lower() != host:
+                continue
+            low = (p.path or "").lower()
+            if "/category/" not in low:
+                continue
+            clean = p._replace(fragment="").geturl()
+            if clean in seen:
+                continue
+            seen.add(clean)
+            out.append(clean)
+        return out
+
+    async def _expand_catalog_from_categories(
+        self,
+        category_urls: List[str],
+        seed_urls: List[str],
+        budget_seconds: float = 28.0,
+        max_categories: int = 60,
+        max_pages: int = 20,
+    ) -> Tuple[List[str], Dict[str, int]]:
+        """Paginate category listing pages to grow product URL coverage past thin sitemaps."""
+        import time as _time
+
+        out = self._dedupe_product_urls(list(seed_urls))
+        seen_norm = {self._normalize_product_url(u) for u in out}
+        deadline = _time.monotonic() + max(5.0, budget_seconds)
+        cats_visited = 0
+        pages_fetched = 0
+
+        def _over() -> bool:
+            return _time.monotonic() >= deadline
+
+        for cat_url in category_urls[:max_categories]:
+            if _over():
+                break
+            cats_visited += 1
+            parsed_cat = urlparse(cat_url)
+            no_progress = 0
+            for pn in range(1, max_pages + 1):
+                if _over():
+                    break
+                try:
+                    if pn == 1:
+                        page_url = cat_url
+                    else:
+                        cat_params = parse_qs(parsed_cat.query)
+                        cat_params.pop("page", None)
+                        cat_params["page"] = [str(pn)]
+                        page_url = (
+                            parsed_cat.scheme
+                            + "://"
+                            + parsed_cat.netloc
+                            + parsed_cat.path
+                            + "?"
+                            + urlencode(cat_params, doseq=True)
+                        )
+                    page_html = await self._fetch_html(page_url, timeout=8.0)
+                    pages_fetched += 1
+                    added = 0
+                    for u in self._discover_product_urls(page_html, page_url):
+                        key = self._normalize_product_url(u)
+                        if key in seen_norm:
+                            continue
+                        seen_norm.add(key)
+                        out.append(u)
+                        added += 1
+                    if pn > 1 and added == 0:
+                        no_progress += 1
+                        if no_progress >= 2:
+                            break
+                    else:
+                        no_progress = 0
+                except Exception:
+                    break
+
+        stats = {
+            "categories_visited": cats_visited,
+            "pages_fetched": pages_fetched,
+            "product_urls": len(out),
+        }
+        logger.info(
+            "[CatalogCrawl] Category expand: seed=%d → %d (cats=%d pages=%d budget=%.1fs)",
+            len(seed_urls),
+            len(out),
+            cats_visited,
+            pages_fetched,
+            budget_seconds,
+        )
+        return out, stats
+
     async def _deep_crawl_product_urls(
         self,
         seed_url: str,
@@ -1206,7 +1403,6 @@ class StoreService:
         Caps categories/pages and stops when the wall-clock budget expires so
         catalog learning can still finish inside a single HTTP request.
         """
-        import asyncio as _asyncio
         import time as _time
 
         out = list(urls)
@@ -1316,153 +1512,251 @@ class StoreService:
         crawl_req: "StoreCatalogCrawlRequest",
         ) -> "StoreCatalogCrawlResponse":
         import asyncio as _asyncio
-        from app.schemas.store import StoreCatalogCrawlResponse, StoreKnowledgeResponse
+        from app.schemas.store import StoreCatalogCrawlResponse
         from app.schemas.store import StoreKnowledgeCrawlRequest
 
-        raw_html = crawl_req.raw_html_override
-        if not raw_html:
-            try:
-                raw_html = await self._fetch_html(crawl_req.url, timeout=15.0)
-            except Exception as e:
-                logger.warning("[CatalogCrawl] Failed to fetch %s: %s", crawl_req.url, e)
-                return StoreCatalogCrawlResponse(
-                    discovered=0,
-                    learned=0,
-                    skipped_duplicates=0,
-                    failed=0,
-                    items=[],
-                    notes="목록/사이트맵 페이지를 가져오지 못했습니다: " + str(e),
+        max_products = max(1, min(50, crawl_req.max_products or 20))
+        offset = max(0, crawl_req.offset or 0)
+        sitemap_count = 0
+        category_count = 0
+        used_cache = False
+        expand_partial = False
+
+        cached = None if offset == 0 else self._catalog_cache_get(mall_id, crawl_req.url)
+        if cached and cached.get("urls"):
+            urls = list(cached["urls"])
+            sitemap_count = int(cached.get("sitemap_count") or 0)
+            category_count = int(cached.get("category_count") or 0)
+            used_cache = True
+            logger.info(
+                "[CatalogCrawl] Cache hit mall=%s urls=%d offset=%d",
+                mall_id,
+                len(urls),
+                offset,
+            )
+        else:
+            if offset > 0:
+                logger.info(
+                    "[CatalogCrawl] Cache miss at offset=%d → rediscover then resume",
+                    offset,
                 )
 
-        # Detect sitemap vs listing page
-        is_sitemap = "sitemap" in (crawl_req.url or "").lower() or "<urlset" in (raw_html or "").lower() or "<sitemapindex" in (raw_html or "").lower()
+            raw_html = crawl_req.raw_html_override
+            if not raw_html:
+                try:
+                    raw_html = await self._fetch_html(crawl_req.url, timeout=15.0)
+                except Exception as e:
+                    logger.warning("[CatalogCrawl] Failed to fetch %s: %s", crawl_req.url, e)
+                    return StoreCatalogCrawlResponse(
+                        discovered=0,
+                        learned=0,
+                        skipped_duplicates=0,
+                        failed=0,
+                        items=[],
+                        notes="목록/사이트맵 페이지를 가져오지 못했습니다: " + str(e),
+                    )
 
-        if is_sitemap:
-            # Check if sitemap index (contains sub-sitemaps)
-            sub_sitemaps = re.findall(r"<sitemap>\s*<loc>\s*(.*?)\s*</loc>", raw_html, re.IGNORECASE)
-            if sub_sitemaps:
-                all_locs = []
-                for sm_url in sub_sitemaps:
-                    try:
-                        sm_html = await self._fetch_html(sm_url.strip(), timeout=15.0)
-                        all_locs.extend(re.findall(r"<loc>\s*(.*?)\s*</loc>", sm_html, re.IGNORECASE))
-                    except Exception:
-                        pass
-                locs = all_locs if all_locs else re.findall(r"<loc>\s*(.*?)\s*</loc>", raw_html, re.IGNORECASE)
-            else:
-                locs = re.findall(r"<loc>\s*(.*?)\s*</loc>", raw_html, re.IGNORECASE)
-            skip_signals = ("shopinfo", "member/", "board/", "category/", "cart", "login", "register", "account", "search", "sitemap", "javascript:", "mailto:", "tel:", "#")
-            urls = []
-            seen = set()
-            for loc in locs:
-                loc = loc.strip()
-                if not loc or loc in seen:
-                    continue
-                seen.add(loc)
-                low = loc.lower()
-                if any(s in low for s in skip_signals):
-                    continue
-                # For sitemaps, keep product URLs (contain /product/) and skip the rest
-                if "/product/" in low:
-                    urls.append(loc)
-            # If no product URLs found, fall back to all non-skip URLs
-            if not urls:
+            is_sitemap = (
+                "sitemap" in (crawl_req.url or "").lower()
+                or "<urlset" in (raw_html or "").lower()
+                or "<sitemapindex" in (raw_html or "").lower()
+            )
+            category_urls: List[str] = []
+            urls: List[str] = []
+
+            if is_sitemap:
+                sub_sitemaps = re.findall(
+                    r"<sitemap>\s*<loc>\s*(.*?)\s*</loc>", raw_html, re.IGNORECASE
+                )
+                if sub_sitemaps:
+                    all_locs: List[str] = []
+                    for sm_url in sub_sitemaps:
+                        try:
+                            sm_html = await self._fetch_html(sm_url.strip(), timeout=15.0)
+                            all_locs.extend(
+                                re.findall(r"<loc>\s*(.*?)\s*</loc>", sm_html, re.IGNORECASE)
+                            )
+                        except Exception:
+                            pass
+                    locs = all_locs or re.findall(
+                        r"<loc>\s*(.*?)\s*</loc>", raw_html, re.IGNORECASE
+                    )
+                else:
+                    locs = re.findall(r"<loc>\s*(.*?)\s*</loc>", raw_html, re.IGNORECASE)
+
+                category_urls = self._extract_category_urls(
+                    "\n".join(f"<loc>{x}</loc>" for x in locs), crawl_req.url
+                )
+                skip_signals = (
+                    "shopinfo",
+                    "member/",
+                    "board/",
+                    "category/",
+                    "cart",
+                    "login",
+                    "register",
+                    "account",
+                    "search",
+                    "sitemap",
+                    "javascript:",
+                    "mailto:",
+                    "tel:",
+                    "#",
+                )
+                seen: set = set()
                 for loc in locs:
                     loc = loc.strip()
-                    if not loc or loc in urls:
+                    if not loc or loc in seen:
                         continue
+                    seen.add(loc)
                     low = loc.lower()
                     if any(s in low for s in skip_signals):
                         continue
-                    urls.append(loc)
-        else:
-            urls = self._discover_product_urls(raw_html, crawl_req.url)
-            # Pagination: if listing page, try fetching additional pages
-            if len(urls) > 0:
-                parsed_pg = urlparse(crawl_req.url)
-                for page_num in range(2, 11):
-                    try:
-                        pg_params = parse_qs(parsed_pg.query)
-                        pg_params.pop("page", None)
-                        pg_params["page"] = [str(page_num)]
-                        page_url = (
-                            parsed_pg.scheme + "://" + parsed_pg.netloc + parsed_pg.path
-                            + "?" + urlencode(pg_params, doseq=True)
-                        )
-                        page_html = await self._fetch_html(page_url, timeout=10.0)
-                        new_urls = self._discover_product_urls(page_html, page_url)
-                        added = 0
-                        for u in new_urls:
-                            if u not in urls:
-                                urls.append(u)
-                                added += 1
-                        if added == 0:
+                    if "/product/" in low:
+                        urls.append(loc)
+                if not urls:
+                    for loc in locs:
+                        loc = loc.strip()
+                        if not loc or loc in urls:
+                            continue
+                        low = loc.lower()
+                        if any(s in low for s in skip_signals):
+                            continue
+                        urls.append(loc)
+            else:
+                urls = self._discover_product_urls(raw_html, crawl_req.url)
+                category_urls = self._extract_category_urls(raw_html, crawl_req.url)
+                if urls:
+                    parsed_pg = urlparse(crawl_req.url)
+                    for page_num in range(2, 11):
+                        try:
+                            pg_params = parse_qs(parsed_pg.query)
+                            pg_params.pop("page", None)
+                            pg_params["page"] = [str(page_num)]
+                            page_url = (
+                                parsed_pg.scheme
+                                + "://"
+                                + parsed_pg.netloc
+                                + parsed_pg.path
+                                + "?"
+                                + urlencode(pg_params, doseq=True)
+                            )
+                            page_html = await self._fetch_html(page_url, timeout=10.0)
+                            new_urls = self._discover_product_urls(page_html, page_url)
+                            added = 0
+                            for u in new_urls:
+                                if u not in urls:
+                                    urls.append(u)
+                                    added += 1
+                            if added == 0:
+                                break
+                        except Exception:
                             break
-                    except Exception:
-                        break
 
-        # Deep crawl ONLY when discovery is thin. A full sitemap (e.g. 100+ /product/
-        # URLs) must skip this — otherwise Render/browser time out before any learn.
-        max_products = max(1, min(50, crawl_req.max_products or 20))
-        need_deep = len(urls) < max(max_products, 3)
-        if need_deep:
-            urls = await self._deep_crawl_product_urls(
-                seed_url=crawl_req.url,
-                urls=urls,
-                budget_seconds=12.0,
-                max_categories=5,
-                max_pages=3,
-            )
-            if len(urls) < 3:
-                try:
-                    parsed = urlparse(crawl_req.url)
-                    sitemap_url = parsed.scheme + "://" + parsed.netloc + "/sitemap.xml"
-                    sm_html = await self._fetch_html(sitemap_url, timeout=15.0)
-                    for u in self._discover_product_urls(sm_html, sitemap_url):
-                        if u not in urls:
-                            urls.append(u)
-                except Exception:
-                    pass
-        else:
-            logger.info(
-                "[CatalogCrawl] Skip deep crawl: already have %d product URLs (need_deep=False)",
-                len(urls),
+            urls = self._dedupe_product_urls(urls)
+            sitemap_count = len(urls)
+            category_count = len(category_urls)
+
+            # Always expand via categories when present — Cafe24 sitemaps are often incomplete.
+            if category_urls:
+                before = len(urls)
+                urls, expand_stats = await self._expand_catalog_from_categories(
+                    category_urls=category_urls,
+                    seed_urls=urls,
+                    budget_seconds=28.0,
+                    max_categories=60,
+                    max_pages=20,
+                )
+                if (
+                    expand_stats.get("categories_visited", 0) < len(category_urls)
+                    and len(urls) <= before
+                ):
+                    expand_partial = True
+                elif expand_stats.get("categories_visited", 0) < min(len(category_urls), 60):
+                    expand_partial = True
+
+            # Thin fallback only when still almost empty (avoid long deep crawl after rich sitemap).
+            if len(urls) < max(max_products, 3):
+                urls = await self._deep_crawl_product_urls(
+                    seed_url=crawl_req.url,
+                    urls=urls,
+                    budget_seconds=12.0,
+                    max_categories=5,
+                    max_pages=3,
+                )
+                if len(urls) < 3:
+                    try:
+                        parsed = urlparse(crawl_req.url)
+                        sitemap_url = parsed.scheme + "://" + parsed.netloc + "/sitemap.xml"
+                        sm_html = await self._fetch_html(sitemap_url, timeout=15.0)
+                        for u in self._discover_product_urls(sm_html, sitemap_url):
+                            if self._normalize_product_url(u) not in {
+                                self._normalize_product_url(x) for x in urls
+                            }:
+                                urls.append(u)
+                        urls = self._dedupe_product_urls(urls)
+                    except Exception:
+                        pass
+            else:
+                logger.info(
+                    "[CatalogCrawl] Skip thin deep crawl: have %d URLs (sitemap=%d cats=%d)",
+                    len(urls),
+                    sitemap_count,
+                    category_count,
+                )
+
+            urls = self._dedupe_product_urls(urls)
+            self._catalog_cache_put(
+                mall_id,
+                crawl_req.url,
+                urls,
+                sitemap_count=sitemap_count,
+                category_count=category_count,
+                expanded=bool(category_urls),
             )
 
         total_discovered = len(urls)
-        offset = max(0, crawl_req.offset or 0)
-        batch_urls = urls[offset : offset + max_products + 5]
+        if offset > total_discovered:
+            offset = 0
 
         existing_res = await session.execute(
             select(StoreKnowledgeModel.source_url).where(
                 StoreKnowledgeModel.mall_id == mall_id
             )
         )
-        existing = {r[0] for r in existing_res.all() if r[0]}
+        existing_raw = {r[0] for r in existing_res.all() if r[0]}
+        existing_norm = {self._normalize_product_url(u) for u in existing_raw}
 
         learned_items = []
         skipped = 0
         failed = 0
-        discovered = len(batch_urls)
-        deadline = _asyncio.get_event_loop().time() + 45.0
         timed_out = False
-        for u in batch_urls:
+        cursor = offset
+        force_refresh = bool(getattr(crawl_req, "force_refresh", False))
+        learn_deadline = _asyncio.get_event_loop().time() + 40.0
+
+        for u in urls[offset:]:
             if len(learned_items) >= max_products:
                 break
-            if _asyncio.get_event_loop().time() > deadline:
+            if _asyncio.get_event_loop().time() > learn_deadline:
                 timed_out = True
                 break
-            if u in existing and not getattr(crawl_req, "force_refresh", False):
+            cursor += 1
+            norm = self._normalize_product_url(u)
+            if (u in existing_raw or norm in existing_norm) and not force_refresh:
                 skipped += 1
                 continue
             try:
                 single_req = StoreKnowledgeCrawlRequest(url=u, tags=crawl_req.tags)
                 resp = await self.crawl_and_learn_url(session, mall_id, single_req)
                 learned_items.append(resp)
-                existing.add(u)
+                existing_raw.add(u)
+                existing_norm.add(norm)
             except Exception as e:
                 logger.warning("[CatalogCrawl] Failed for %s: %s", u, e)
                 failed += 1
+
+        discovered = max(0, cursor - offset)
 
         total_learned_res = await session.execute(
             select(func.count()).select_from(StoreKnowledgeModel).where(
@@ -1472,8 +1766,19 @@ class StoreService:
         )
         total_learned = total_learned_res.scalar() or 0
 
-        next_offset = offset + max_products
+        next_offset = cursor
         has_more = next_offset < total_discovered
+
+        discovery_bit = ""
+        if not used_cache and (sitemap_count or category_count):
+            discovery_bit = (
+                f"발견 {total_discovered}개"
+                f"(사이트맵 상품 {sitemap_count}"
+                + (f"+카테고리 {category_count}개 확장" if category_count else "")
+                + "). "
+            )
+        elif used_cache:
+            discovery_bit = f"캐시된 발견 URL {total_discovered}개 사용. "
 
         if total_discovered == 0:
             notes = (
@@ -1484,32 +1789,23 @@ class StoreService:
             )
         elif not has_more:
             notes = (
-                "학습 완료! 누적 "
+                discovery_bit
+                + "학습 완료! 누적 "
                 + str(total_learned)
                 + "/"
                 + str(total_discovered)
-                + "개 상품 학습됨. "
-                "(이번 +"
+                + "개. (이번 +"
                 + str(len(learned_items))
-                + "개, 중복 "
+                + ", 중복 "
                 + str(skipped)
-                + "개, 실패 "
+                + ", 실패 "
                 + str(failed)
-                + "개)"
+                + ")"
             )
-            if failed > 0:
-                notes = (
-                    "학습 완료(일부 실패 "
-                    + str(failed)
-                    + "개). 누적 "
-                    + str(total_learned)
-                    + "/"
-                    + str(total_discovered)
-                    + "개."
-                )
         else:
             notes = (
-                "이번 배치 +"
+                discovery_bit
+                + "이번 배치 +"
                 + str(len(learned_items))
                 + "개. 누적 "
                 + str(total_learned)
@@ -1517,17 +1813,20 @@ class StoreService:
                 + str(total_discovered)
                 + " ("
                 + str(int(100 * total_learned / total_discovered) if total_discovered else 0)
-                + "%). "
-                "(중복 "
+                + "%). (중복 "
                 + str(skipped)
                 + ", 실패 "
                 + str(failed)
+                + ", next_offset="
+                + str(next_offset)
                 + ")"
             )
             if timed_out:
-                notes += " 시간 제한으로 배치를 짧게 끊었습니다 → 다음 배치로 이어갑니다."
+                notes += " 배치 시간 제한 → 이어서 학습하세요."
             else:
                 notes += " → 다음 배치 계속."
+            if expand_partial:
+                notes += " (카테고리 확장 일부만 완료 — offset=0 재시작 시 추가 확장 가능)"
 
         return StoreCatalogCrawlResponse(
             discovered=discovered,
@@ -1537,6 +1836,7 @@ class StoreService:
             total_products=total_discovered,
             learned_total=total_learned,
             has_more=has_more,
+            next_offset=next_offset,
             items=learned_items,
             notes=notes,
         )

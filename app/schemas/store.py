@@ -105,9 +105,12 @@ class StoreKnowledgeCrawlRequest(BaseModel):
 
 class StoreCatalogCrawlRequest(BaseModel):
     url: str = Field(..., description="상품 목록/카테고리/스토어 홈/사이트맵 URL")
-    max_products: int = Field(10, ge=1, le=50, description="x")
-    offset: int = Field(0, ge=0, description="x")
-    force_refresh: bool = Field(True, description="y")
+    max_products: int = Field(10, ge=1, le=50, description="이번 배치에서 새로 학습할 최대 상품 수")
+    offset: int = Field(0, ge=0, description="발견 URL 목록에서의 시작 위치 (이어하기)")
+    force_refresh: bool = Field(
+        False,
+        description="True면 이미 학습된 URL도 다시 크롤. 이어하기는 False 권장",
+    )
     tags: Optional[str] = Field(None, description="추가할 추천 태그")
     raw_html_override: Optional[str] = Field(
         None,
@@ -130,12 +133,13 @@ class StoreKnowledgeResponse(BaseModel):
 
 
 class StoreCatalogCrawlResponse(BaseModel):
-    discovered: int = Field(description="이번 실행에서 발견된 상품 상세 URL 수")
+    discovered: int = Field(description="이번 배치에서 처리 대상으로 잡은 URL 수")
     learned: int = Field(description="이번 실행에서 새로 저장된 상품 수")
     skipped_duplicates: int = Field(description="이미 학습되어 건너뛴 수")
     failed: int = Field(description="크롤 실패 수")
-    total_products: int = Field(default=0, description="x")
-    has_more: bool = Field(default=False, description="x")
+    total_products: int = Field(default=0, description="확장·정규화 후 전체 발견 URL 수")
+    has_more: bool = Field(default=False, description="다음 배치가 남았는지")
+    next_offset: int = Field(default=0, description="이어하기 시 사용할 다음 offset")
     learned_total: int = Field(default=0, description="누적 학습 완료 상품 수")
     items: List[StoreKnowledgeResponse] = Field(default_factory=list)
     notes: Optional[str] = Field(None, description="안내 메시지")

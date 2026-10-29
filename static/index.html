@@ -785,7 +785,8 @@
           <input type="text" id="catalogUrl" style="flex:2;min-width:240px;" placeholder="👉 스토어/목록/카테고리 URL 또는 sitemap.xml 주소" />
           <input type="number" id="catalogMax" style="flex:0 0 90px;" min="1" max="50" value="10" placeholder="최대 개수" />
           <input type="text" id="catalogTags" style="flex:1;min-width:120px;" placeholder="태그 (선택)" />
-          <button class="btn" style="padding:10px 20px;" onclick="crawlCatalog()">🏪 전체 상품 자동 학습</button>
+          <button class="btn" style="padding:10px 20px;" onclick="crawlCatalog(false)">전체 상품 자동 학습</button>
+          <button class="btn" style="padding:10px 20px;background:#64748B;" onclick="crawlCatalog(true)">이어서 학습</button>
         </div>
         <div id="catalogStatus" style="margin-top:10px;font-size:13.5px;font-weight:700;color:#1D4ED8;"></div>
       </div>
@@ -1435,21 +1436,59 @@
         document.getElementById("knowledgeStatus").innerText = `⚠️ URL 크롤링 실패 (외부 접속 제한 등)`;
       }
     }
-    async function crawlCatalogBatch(mallId, url, maxProducts, tags, status, autoContinue, offset, signal) {
+    function catalogProgressKey(mallId, url) {
+      return "catalog_progress:" + mallId + ":" + url;
+    }
+
+    function saveCatalogProgress(mallId, url, offset, total) {
+      try {
+        localStorage.setItem(catalogProgressKey(mallId, url), JSON.stringify({
+          offset: offset || 0,
+          total: total || 0,
+          savedAt: Date.now(),
+        }));
+      } catch (e) {}
+    }
+
+    function loadCatalogProgress(mallId, url) {
+      try {
+        const raw = localStorage.getItem(catalogProgressKey(mallId, url));
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function clearCatalogProgress(mallId, url) {
+      try { localStorage.removeItem(catalogProgressKey(mallId, url)); } catch (e) {}
+    }
+
+    async function crawlCatalogBatch(mallId, url, maxProducts, tags, status, autoContinue, offset) {
       const off = offset || 0;
       status.innerText = off === 0
-        ? "🔍 상품 URL 수집 후 이번 배치 " + maxProducts + "개 학습 시작..."
-        : "⏳ 배치 학습 중... (offset " + off + ", 최대 " + maxProducts + "개)";
+        ? "상품 URL 수집(사이트맵+카테고리 확장) 후 배치 " + maxProducts + "개 학습 시작..."
+        : "배치 학습 중... (offset " + off + ", 최대 " + maxProducts + "개)";
+
+      const controller = new AbortController();
+      // Per-request timeout only (not whole auto-continue chain)
+      const timer = setTimeout(function () { controller.abort(); }, 70000);
       try {
         const res = await fetch("/api/stores/" + mallId + "/knowledge/crawl-catalog", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: url, max_products: maxProducts, offset: off, tags: tags }),
-          signal: signal,
+          body: JSON.stringify({
+            url: url,
+            max_products: maxProducts,
+            offset: off,
+            tags: tags,
+            force_refresh: false,
+          }),
+          signal: controller.signal,
         });
         const data = await res.json();
         if (!res.ok) {
-          status.innerText = "⚠️ 학습 실패: " + (data.detail || "알 수 없는 오류");
+          status.innerText = "학습 실패: " + (data.detail || "알 수 없는 오류");
           return { done: true, ok: false };
         }
         const total = data.total_products || 0;
@@ -1457,10 +1496,20 @@
         const pct = total > 0 ? Math.round((learnedTotal / total) * 100) : 0;
         const batchLearned = data.learned || 0;
         const failed = data.failed || 0;
+        const nextOff = (typeof data.next_offset === "number")
+          ? data.next_offset
+          : (off + maxProducts);
 
         if (total === 0 && batchLearned === 0) {
-          status.innerText = "⚠️ " + (data.notes || "상품 URL을 찾지 못했습니다.");
+          status.innerText = (data.notes || "상품 URL을 찾지 못했습니다.");
+          clearCatalogProgress(mallId, url);
           return { done: true, ok: false };
+        }
+
+        if (data.has_more) {
+          saveCatalogProgress(mallId, url, nextOff, total);
+        } else {
+          clearCatalogProgress(mallId, url);
         }
 
         let line = (data.notes || "") + " | 진행률 " + learnedTotal + "/" + total + " (" + pct + "%)";
@@ -1472,30 +1521,34 @@
 
         if (autoContinue && data.has_more) {
           status.innerText = line + " → 다음 배치 자동 시작...";
-          await new Promise(function (r) { setTimeout(r, 800); });
+          await new Promise(function (r) { setTimeout(r, 600); });
           return await crawlCatalogBatch(
-            mallId, url, maxProducts, tags, status, true, off + maxProducts, signal
+            mallId, url, maxProducts, tags, status, true, nextOff
           );
         }
 
-        if (failed > 0) {
-          status.innerText = "✅ 학습 완료(일부 실패 " + failed + "개)! 누적 " + learnedTotal + "/" + total + "개.";
+        if (data.has_more) {
+          status.innerText = line + " → [이어서 학습]으로 계속할 수 있습니다.";
+        } else if (failed > 0) {
+          status.innerText = "학습 완료(일부 실패 " + failed + "개)! 누적 " + learnedTotal + "/" + total + "개.";
         } else {
-          status.innerText = "✅ 학습 완료! 총 " + learnedTotal + "개 상품 학습됨"
+          status.innerText = "학습 완료! 총 " + learnedTotal + "개 상품 학습됨"
             + (total > 0 ? " (발견 URL " + total + "개)" : "") + ".";
         }
-        return { done: true, ok: true };
+        return { done: true, ok: true, next_offset: nextOff, has_more: !!data.has_more };
       } catch (err) {
         if (err && err.name === "AbortError") {
-          status.innerText = "⚠️ 시간 초과로 중단됨. 다시 누르면 이어서 학습할 수 있습니다.";
+          status.innerText = "이번 배치 시간 초과. [이어서 학습]을 누르면 저장된 offset부터 계속합니다.";
         } else {
-          status.innerText = "⚠️ 학습 실패: " + err;
+          status.innerText = "학습 실패: " + err;
         }
         return { done: true, ok: false };
+      } finally {
+        clearTimeout(timer);
       }
     }
 
-    async function crawlCatalog() {
+    async function crawlCatalog(resume) {
       const mallId = document.getElementById("targetMallId").value.trim() || "showroom_preview";
       const url = document.getElementById("catalogUrl").value.trim();
       const maxProducts = parseInt(document.getElementById("catalogMax").value || "10", 10);
@@ -1505,13 +1558,17 @@
         return;
       }
       const status = document.getElementById("catalogStatus");
-      const controller = new AbortController();
-      const timer = setTimeout(function () { controller.abort(); }, 90000);
-      try {
-        await crawlCatalogBatch(mallId, url, maxProducts, tags, status, true, 0, controller.signal);
-      } finally {
-        clearTimeout(timer);
+      let startOffset = 0;
+      if (resume) {
+        const prog = loadCatalogProgress(mallId, url);
+        startOffset = (prog && prog.offset) ? prog.offset : 0;
+        if (startOffset === 0) {
+          status.innerText = "저장된 진행 위치가 없어 처음부터 시작합니다(카테고리 확장 포함).";
+        }
+      } else {
+        clearCatalogProgress(mallId, url);
       }
+      await crawlCatalogBatch(mallId, url, maxProducts, tags, status, true, startOffset);
     }
 
     async function loadExistingStore() {
