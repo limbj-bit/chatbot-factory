@@ -1991,8 +1991,22 @@ class StoreService:
         self, session: AsyncSession, mall_id: str
         ) -> Optional[StoreModel]:
         q = select(StoreModel).where(StoreModel.mall_id == mall_id)
-        res = await session.execute(q)
-        return res.scalar_one_or_none()
+        try:
+            res = await session.execute(q)
+            return res.scalar_one_or_none()
+        except Exception as e:
+            # Production drift: model has brand_logo_url but SQLite/Postgres
+            # never got the ALTER. Heal once, then retry the same lookup.
+            err = f"{type(e).__name__}: {e}"
+            if "brand_logo_url" not in err and "no such column" not in err.lower() and "does not exist" not in err.lower():
+                raise
+            logger.warning("[Store] schema drift on get_store (%s); applying lightweight migrations", err)
+            await session.rollback()
+            from app.infrastructure.database.session import apply_lightweight_migrations
+
+            await apply_lightweight_migrations()
+            res = await session.execute(q)
+            return res.scalar_one_or_none()
 
     async def list_stores(self, session: AsyncSession) -> List[StoreResponse]:
         q = select(StoreModel).order_by(StoreModel.created_at.desc())

@@ -96,6 +96,59 @@ async def serve_master_admin_console():
     return FileResponse(os.path.join(static_dir, "admin.html"))
 
 
+@app.get("/api/system/schema-status", tags=["System"])
+async def get_schema_status():
+    """Diagnose stores.brand_logo_url drift and self-heal lightweight ALTERs."""
+    from sqlalchemy import text
+    from app.infrastructure.database.session import apply_lightweight_migrations, async_session_factory
+
+    out: dict = {
+        "deploy_marker": "schema-heal-v1",
+        "ok": False,
+        "stores_columns": None,
+        "probe_error": None,
+        "migrate_ran": False,
+    }
+    async with async_session_factory() as session:
+        try:
+            try:
+                rows = (await session.execute(text("PRAGMA table_info(stores)"))).fetchall()
+                out["stores_columns"] = [r[1] for r in rows]
+            except Exception:
+                rows = (
+                    await session.execute(
+                        text(
+                            "SELECT column_name FROM information_schema.columns "
+                            "WHERE table_name = 'stores'"
+                        )
+                    )
+                ).fetchall()
+                out["stores_columns"] = [r[0] for r in rows]
+
+            await session.execute(text("SELECT brand_logo_url FROM stores LIMIT 1"))
+            out["ok"] = True
+        except Exception as e:
+            out["probe_error"] = f"{type(e).__name__}: {e}"
+            try:
+                await session.rollback()
+            except Exception:
+                pass
+            await apply_lightweight_migrations()
+            out["migrate_ran"] = True
+            try:
+                await session.execute(text("SELECT brand_logo_url FROM stores LIMIT 1"))
+                out["ok"] = True
+                out["probe_error_after_migrate"] = None
+                try:
+                    rows = (await session.execute(text("PRAGMA table_info(stores)"))).fetchall()
+                    out["stores_columns"] = [r[1] for r in rows]
+                except Exception:
+                    pass
+            except Exception as e2:
+                out["probe_error_after_migrate"] = f"{type(e2).__name__}: {e2}"
+    return out
+
+
 @app.get("/api/system/server-info", tags=["System"])
 async def get_server_integration_info(request: Request):
     """Return the server's permanent static outbound IPs (for Coupang Wing IP whitelist) and base callback URLs."""
