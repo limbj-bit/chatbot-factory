@@ -490,7 +490,7 @@ async def get_dynamic_widget_script(
         width: 64px; height: 70px;
       }}
       .fresh-cosbot-ring {{ width: 56px; height: 56px; }}
-      .fresh-msg {{ font-size: 13.5px; padding: 11px 14px; }}
+      .fresh-msg {{ font-size: 12.5px; padding: 10px 12px; }}
       .fresh-input {{ font-size: 14px; padding: 10px 14px; min-height: 55px; border-radius: 8px; }}
       .fresh-btn-send {{ width: 42px; height: 42px; }}
       .fresh-btn-send svg {{ width: 18px; height: 18px; }}
@@ -503,7 +503,7 @@ async def get_dynamic_widget_script(
         left: 4px !important;
         right: 4px !important;
       }}
-      .fresh-msg {{ font-size: 13px; }}
+      .fresh-msg {{ font-size: 12px; }}
     }}
     .fresh-widget-header {{
       background: linear-gradient(135deg, ${{config.primaryColor}} 0%, #2563EB 100%); color: #ffffff; padding: 15px 18px;
@@ -612,10 +612,10 @@ async def get_dynamic_widget_script(
       display: flex; align-items: center; justify-content: center; overflow: hidden;
     }}
     .fresh-bot-sq-avatar svg {{ width: 28px; height: 28px; }}
-    .fresh-bot-meta-name {{ font-size: 12.5px; font-weight: 700; color: #1E293B; }}
+    .fresh-bot-meta-name {{ font-size: 12px; font-weight: 700; color: #1E293B; }}
     .fresh-bot-meta-time {{ font-size: 11.5px; color: #94A3B8; }}
     .fresh-msg {{
-      max-width: 88%; padding: 13px 16px; border-radius: 14px; font-size: 14px; line-height: 1.55;
+      max-width: 88%; padding: 11px 14px; border-radius: 14px; font-size: 13px; line-height: 1.6;
       word-break: keep-all; overflow-wrap: break-word; white-space: pre-wrap;
     }}
     .fresh-msg.bot {{
@@ -625,9 +625,10 @@ async def get_dynamic_widget_script(
     .fresh-msg.user {{ background: ${{config.primaryColor}}; color: #FFFFFF; align-self: flex-end; border-bottom-right-radius: 4px; }}
     .fresh-cosraw-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 94%; margin-top: 2px; }}
     .fresh-cosraw-btn {{
-      background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 10px; padding: 11px 10px;
-      font-size: 13px; font-weight: 600; color: #1E293B; cursor: pointer; text-align: center;
+      background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 10px; padding: 9px 8px;
+      font-size: 12px; font-weight: 600; color: #1E293B; cursor: pointer; text-align: center;
       transition: all 0.15s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      white-space: pre-line; line-height: 1.35;
     }}
     .fresh-cosraw-btn:hover {{ border-color: #0284C7; background: #F0F9FF; color: #0284C7; }}
     .fresh-cosraw-btn.full-span {{ grid-column: 1 / -1; }}
