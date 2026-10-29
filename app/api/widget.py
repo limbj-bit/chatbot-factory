@@ -635,14 +635,15 @@ async def get_dynamic_widget_script(
     .fresh-input-row {{ display: flex; gap: 8px; align-items: center; }}
     .fresh-input {{
       flex: 1; border: 1.5px solid #0284C7; border-radius: 999px;
-      padding: 10px 16px; font-size: 13.5px; outline: none; color: #1E293B;
+      padding: 13px 20px; font-size: 15px; outline: none; color: #1E293B;
+      min-height: 46px; line-height: 1.4;
     }}
     .fresh-btn-send {{
-      width: 40px; height: 40px; border-radius: 50%; background: ${{config.primaryColor}}; color: #ffffff;
+      width: 46px; height: 46px; border-radius: 50%; background: ${{config.primaryColor}}; color: #ffffff;
       border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
     }}
-    .fresh-btn-send svg {{ width: 18px; height: 18px; fill: #FFFFFF; margin-left: 2px; }}
+    .fresh-btn-send svg {{ width: 20px; height: 20px; fill: #FFFFFF; margin-left: 2px; }}
     .fresh-upload-btn {{
       background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 8px; padding: 5px 10px;
       font-size: 11.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; color: #475569;
@@ -835,19 +836,19 @@ async def get_dynamic_widget_script(
         ${{templateQuickAreaHtml}}
       </div>
     </div>
-    <div class="fresh-contact-bar">
-      고객문의 <a href="mailto:${{config.contactEmail}}">${{config.contactEmail}}</a> &middot; ${{config.businessHours}}
-    </div>
     <div class="fresh-widget-footer">
       <input type="file" id="dyn-file" accept="image/*" style="display:none;" ${{disabledAttr}} />
-      <button class="fresh-upload-btn" id="dyn-upload-btn" ${{disabledAttr}}>${{config.uploadGuide}}</button>
       <div class="fresh-input-row">
         <input type="text" class="fresh-input" id="dyn-input" placeholder="${{inputPlaceholder}}" ${{disabledAttr}} />
         <button class="fresh-btn-send" id="dyn-send" ${{disabledAttr}} title="전송">
           <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
         </button>
       </div>
+      <div class="fresh-contact-bar" style="border-top:none; padding-top:4px;">
+        고객문의 <a href="mailto:${{config.contactEmail}}">${{config.contactEmail}}</a> &middot; ${{config.businessHours}}
+      </div>
     </div>
+  `;  </div>
   `;
 
   document.body.appendChild(launcher);
@@ -1017,9 +1018,11 @@ async def get_dynamic_widget_script(
     if (e.key === "Enter") sendMessage();
   }});
 
-  uploadBtn.addEventListener("click", () => {{
-    if (!config.isExpired) fileInput.click();
-  }});
+  if (uploadBtn) {{
+    uploadBtn.addEventListener("click", () => {{
+      if (!config.isExpired) fileInput.click();
+    }});
+  }}
   fileInput.addEventListener("change", async (e) => {{
     if (config.isExpired) return;
     const file = e.target.files[0];
