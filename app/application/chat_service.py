@@ -31,6 +31,9 @@ _INDUSTRY_KR = {
     "general": "종합몰",
 }
 
+# Matches a claim/refund window like "7일 이내" / "3일 이하" in an LLM reply.
+_CLAIM_DAY_RE = re.compile(r"(\d+)\s*일\s*(이내|이하|안에)")
+
 _STATUS_KOR = {
     OrderStatus.PAID: "결제 완료",
     OrderStatus.PREPARING: "상품 준비 중",
@@ -215,25 +218,56 @@ class ChatService:
         if store_obj.welcome_message:
             lines.append(f"- 인사말: {store_obj.welcome_message}")
 
-        # Per-mall claim policy (already clamped by policy engine elsewhere)
+        # Per-mall claim policy. The showroom writes the owner's overrides under
+        # policy_config.claim_policy; the top level holds industry defaults. The
+        # owner's explicit setting must win, else we'd quote a stale default.
         try:
             policy = json.loads(store_obj.policy_config_json or "{}")
         except Exception:
             policy = {}
-        max_days = policy.get("max_claim_days")
-        full_ratio = policy.get("full_refund_damage_ratio")
-        partial_ratio = policy.get("partial_refund_damage_ratio")
-        if any(v is not None for v in (max_days, full_ratio, partial_ratio)):
+        if not isinstance(policy, dict):
+            policy = {}
+        claim = policy.get("claim_policy")
+        claim = claim if isinstance(claim, dict) else {}
+        max_days = claim.get("max_claim_days", policy.get("max_claim_days"))
+        full_ratio = claim.get("full_refund_damage_ratio", policy.get("full_refund_damage_ratio"))
+        partial_ratio = claim.get(
+            "partial_refund_damage_ratio", policy.get("partial_refund_damage_ratio")
+        )
+        if any(isinstance(v, (int, float)) for v in (max_days, full_ratio, partial_ratio)):
             lines.append("")
             lines.append("## 반품/교환 정책 (고객 질문 시 그대로 안내)")
-            if max_days is not None:
+            if isinstance(max_days, (int, float)):
                 lines.append(
-                    f"- 접수 기한: 수령 후 {max_days}일 이내 (신선식품 특성상 기한 준수)"
+                    f"- 접수 기한: 수령 후 {int(max_days)}일 이내 (기한 경과 시 접수 불가)"
                 )
-            if full_ratio is not None:
-                lines.append(f"- 파손 {full_ratio}% 이상 → 전액 환불")
-            if partial_ratio is not None:
-                lines.append(f"- 파손 {partial_ratio}% 이상 {full_ratio if full_ratio is not None else ''}% 미만 → 부분 환불")
+            if isinstance(full_ratio, (int, float)):
+                lines.append(f"- 파손 {int(full_ratio)}% 이상 → 전액 환불")
+            if isinstance(partial_ratio, (int, float)):
+                bound = f"{int(partial_ratio)}% 이상"
+                if isinstance(full_ratio, (int, float)):
+                    bound += f" {int(full_ratio)}% 미만"
+                lines.append(f"- 파손 {bound} → 부분 환불 (손상 비율에 비례)")
+
+        # Shipping policy (entered by the owner; injected verbatim so the bot
+        # quotes real delivery terms instead of guessing).
+        ship = policy.get("shipping_policy")
+        ship = ship if isinstance(ship, dict) else {}
+        if ship:
+            lines.append("")
+            lines.append("## 배송 정책 (배송비/소요일 질문 시 그대로 안내)")
+            fee = ship.get("delivery_fee")
+            if isinstance(fee, (int, float)):
+                lines.append(f"- 기본 배송비: {int(fee):,}원")
+            free_over = ship.get("free_over_amount")
+            if isinstance(free_over, (int, float)):
+                lines.append(f"- 무료배송: {int(free_over):,}원 이상 구매 시")
+            days_txt = (ship.get("delivery_days") or "").strip()
+            if days_txt:
+                lines.append(f"- 배송 소요일: {days_txt}")
+            note_txt = (ship.get("note") or "").strip()
+            if note_txt:
+                lines.append(f"- 배송 유의사항: {note_txt}")
 
         if rag_context:
             lines.append("")
@@ -243,10 +277,70 @@ class ChatService:
             lines.append(rag_context)
 
         lines.append("")
+        lines.append("## 답변 규칙 (필수)")
         lines.append(
-            "답변은 두세 문장 이내의 간결한 한국어 존댓말로 하고, 필요 시 다음 단계(주문번호 안내 등)를 제시하세요."
+            "1. 위 '정책'과 '학습된 지식'에 적힌 숫자·금액·기간만 그대로 인용합니다. "
+            "절대로 임의로 배송비·기간·환불 비율을 만들거나 바꾸지 않습니다."
+        )
+        lines.append(
+            "2. 정책/지식에 없는 내용은 '잠시만요, 정확한 내용으로 확인 후 안내드리겠습니다'라고 "
+            "인정하고 고객센터 연결을 안내합니다. 아는 척하지 않습니다."
+        )
+        lines.append(
+            "3. 고객이 사용한 언어(일본어·영어·중국어 등)로 자연스럽게 답변합니다. "
+            "한국어로만 고정하지 않습니다."
+        )
+        lines.append(
+            "4. 답변은 두세 문장 이내의 간결한 존댓말로 하고, 필요 시 다음 단계"
+            "(주문번호 안내 등)를 제시합니다."
         )
         return "\n".join(lines)
+
+    @staticmethod
+    def _guardrail_fix_claim_window(reply: str, store_obj: Optional[StoreModel]) -> str:
+        """Post-hoc hallucination guard for the claim/refund window.
+
+        The prompt instructs the model to quote the policy verbatim, but an LLM
+        can still invent a plausible number. If the reply states a claim window
+        that contradicts the store's own policy, we re-anchor the whole sentence
+        to the authoritative window so the bot never misstates a refund deadline
+        (the single most dispute-prone fact in CS).
+        """
+        if store_obj is None or not reply:
+            return reply
+        try:
+            policy = json.loads(store_obj.policy_config_json or "{}")
+        except Exception:
+            return reply
+        if not isinstance(policy, dict):
+            return reply
+        claim = policy.get("claim_policy")
+        claim = claim if isinstance(claim, dict) else {}
+        max_days = claim.get("max_claim_days", policy.get("max_claim_days"))
+        if not isinstance(max_days, (int, float)):
+            return reply
+        correct = int(max_days)
+
+        m = _CLAIM_DAY_RE.search(reply)
+        if not m:
+            return reply
+        stated = int(m.group(1))
+        if stated == correct:
+            return reply  # already correct — leave the reply untouched
+
+        logger.warning(
+            f"[Chat][Guardrail] Claim-window mismatch for mall={store_obj.mall_id}: "
+            f"reply said {stated}d, policy says {correct}d. Re-anchoring."
+        )
+        # Replace every mismatched "N일 이내/이하" with the true policy window.
+        def _repl(mm: re.Match) -> str:
+            return f"{correct}일 {mm.group(2)}" if int(mm.group(1)) != correct else mm.group(0)
+
+        fixed = _CLAIM_DAY_RE.sub(_repl, reply)
+        return (
+            f"{fixed}\n"
+            f"※ 정확한 기준은 수령 후 {correct}일 이내 접수입니다. (스토어 정책 기준)"
+        )
 
     async def _load_history(
         self, session_db: AsyncSession, session_id: str, exclude_id: Optional[str] = None
@@ -367,6 +461,11 @@ class ChatService:
                     response_text = await self.ai_router.generate_text(
                         message_text, system_prompt=system_prompt, history=history
                     )
+
+        # 4.5 Hallucination guardrail: re-anchor any AI-stated claim window that
+        # contradicts the store's own refund policy (AI branches only).
+        if intent in ("general_cs", "rag_product_inquiry", "ai_counselor_recommendation"):
+            response_text = self._guardrail_fix_claim_window(response_text, store_obj)
 
         latency_ms = int((time.time() - start_time) * 1000)
 

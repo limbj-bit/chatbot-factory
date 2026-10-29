@@ -581,6 +581,40 @@
         </div>
       </details>
 
+      <!-- 4.6단계 (선택 옵션): 배송 정책 (한 번 입력하면 AI가 상담에서 자동 인용) -->
+      <details style="background:#FFFFFF;border:1.5px dashed #60A5FA;border-radius:14px;padding:0;margin-bottom:18px;">
+        <summary style="cursor:pointer;font-size:13px;font-weight:800;color:var(--obsidian);padding:14px 18px;list-style:none;outline:none;">
+          🚚 [선택] 배송 정책 설정 <span style="font-weight:500;font-size:12px;color:var(--text-muted);">(입력한 내용만 AI가 상담에서 정확히 안내 — 안 쓰면 상담 중 "확인 후 안내" 답변)</span>
+        </summary>
+        <div style="padding:0 18px 16px;">
+          <div style="font-size:12.5px;color:#1E3A8A;font-weight:700;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:10px 12px;margin-bottom:12px;">
+            💡 고객이 "배송비 얼마예요?", "몇 일 걸려요?" 물으면 AI가 <b>여기에 입력한 정책</b>을 그대로 안내합니다. 비워두면 모른다고 정직하게 답변(환각 방지)합니다.
+          </div>
+          <div class="form-grid" style="margin-bottom:0;">
+            <div class="field-card">
+              <div class="field-title"><span>기본 배송비</span><span class="field-tag opt">선택</span></div>
+              <div class="field-desc">예: 3,000 (원 단위 숫자만)</div>
+              <input type="number" id="shipFee" min="0" placeholder="예: 3000" />
+            </div>
+            <div class="field-card">
+              <div class="field-title"><span>무료배송 기준 금액</span><span class="field-tag opt">선택</span></div>
+              <div class="field-desc">이 금액 이상 구매 시 무료 (예: 50000)</div>
+              <input type="number" id="shipFreeOver" min="0" placeholder="예: 50000" />
+            </div>
+            <div class="field-card">
+              <div class="field-title"><span>배송 소요일</span><span class="field-tag opt">선택</span></div>
+              <div class="field-desc">예: 결제 후 1~2일 내 출고, 2~3일 배송</div>
+              <input type="text" id="shipDays" maxlength="60" placeholder="예: 결제 후 1~2일 출고, 2~3일 배송" />
+            </div>
+            <div class="field-card">
+              <div class="field-title"><span>배송 특이사항 안내문</span><span class="field-tag opt">선택</span></div>
+              <div class="field-desc">제주/도서산간 추가비, 주말/공휴일 출고 안함 등</div>
+              <input type="text" id="shipNote" maxlength="200" placeholder="예: 제주·도서산간은 3,000원 추가, 주말/공휴일 출고 없음" />
+            </div>
+          </div>
+        </div>
+      </details>
+
       <!-- 5단계 (선택 옵션): 실시간 주문·배송·A/S 자동 연동 (접혀 있음 — 필요할 때 펼치기) -->
       <div class="section-label">🔌 5단계 [선택 옵션]: 실시간 주문조회 · 배송추적 · 자동 A/S 연동 (쿠팡 / 스마트스토어 / 카페24 / 아임웹 API)</div>
       <details style="background:#FFFDF9;border:1.5px solid #F2DFB6;border-radius:16px;padding:0;margin-bottom:18px;">
@@ -1169,6 +1203,21 @@
       if (Object.keys(claim_policy).length > 0) {
         policy_config.claim_policy = claim_policy;
       }
+
+      // [선택] 배송 정책 — 입력한 것만 전송 (AI가 상담에서 정확히 인용, 없으면 "확인 후 안내")
+      const shipping_policy = {};
+      const shipFee = document.getElementById("shipFee").value;
+      if (shipFee !== "") shipping_policy.delivery_fee = parseInt(shipFee, 10);
+      const shipFreeOver = document.getElementById("shipFreeOver").value;
+      if (shipFreeOver !== "") shipping_policy.free_over_amount = parseInt(shipFreeOver, 10);
+      const shipDays = document.getElementById("shipDays").value.trim();
+      if (shipDays) shipping_policy.delivery_days = shipDays;
+      const shipNote = document.getElementById("shipNote").value.trim();
+      if (shipNote) shipping_policy.note = shipNote;
+      if (Object.keys(shipping_policy).length > 0) {
+        policy_config.shipping_policy = shipping_policy;
+      }
+
       if (commPlatform && commPlatform !== "none") {
         policy_config.commerce_api = {
           platform: commPlatform,

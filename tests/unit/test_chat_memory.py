@@ -134,6 +134,7 @@ async def test_gemini_maps_history_to_contents(monkeypatch):
 # ---------------------------------------------------------------------------
 class _FakeStore:
     def __init__(self, **kw):
+        self.mall_id = kw.get("mall_id", "fake_mall")
         self.store_name = kw.get("store_name", "루이셀")
         self.industry = kw.get("industry", "beauty")
         self.business_hours = kw.get("business_hours", "평일 10:00~17:00")
@@ -177,6 +178,85 @@ def test_store_prompt_handles_none_store_and_broken_policy():
     )
     assert "루이셀" in broken
     assert "반품/교환 정책" not in broken
+
+
+# ---------------------------------------------------------------------------
+# 3b. Shipping policy injection + owner-claim-override precedence
+# ---------------------------------------------------------------------------
+def test_store_prompt_injects_shipping_policy():
+    store = _FakeStore(
+        policy_config_json=json.dumps(
+            {
+                "claim_policy": {"max_claim_days": 7},
+                "shipping_policy": {
+                    "delivery_fee": 3000,
+                    "free_over_amount": 50000,
+                    "delivery_days": "결제 후 1~2일 출고",
+                    "note": "제주·도서산간 3,000원 추가",
+                },
+            },
+            ensure_ascii=False,
+        )
+    )
+    prompt = ChatService._build_store_system_prompt(store)
+    assert "기본 배송비: 3,000원" in prompt
+    assert "50,000원 이상" in prompt
+    assert "결제 후 1~2일 출고" in prompt
+    assert "제주·도서산간" in prompt
+    assert "수령 후 7일 이내" in prompt  # owner claim policy also surfaced
+
+
+def test_store_prompt_owner_claim_override_beats_top_level_default():
+    # The showroom writes the owner's setting under claim_policy; a stale
+    # industry default may sit at the top level. The owner's value must win.
+    store = _FakeStore(
+        policy_config_json=json.dumps(
+            {"max_claim_days": 2, "claim_policy": {"max_claim_days": 14}}
+        )
+    )
+    prompt = ChatService._build_store_system_prompt(store)
+    assert "14일" in prompt
+    assert "2일 이내" not in prompt
+
+
+def test_store_prompt_multilingual_and_antihallucination_directives():
+    prompt = ChatService._build_store_system_prompt(_FakeStore())
+    # free multilingual reply directive (LLM is already multilingual)
+    assert "언어" in prompt
+    # anti-hallucination: must quote only the listed policy numbers
+    assert "임의로" in prompt
+
+
+# ---------------------------------------------------------------------------
+# 3c. Hallucination guardrail (claim-window cross-check)
+# ---------------------------------------------------------------------------
+def _policy_store(max_days: int) -> _FakeStore:
+    return _FakeStore(
+        policy_config_json=json.dumps({"claim_policy": {"max_claim_days": max_days}})
+    )
+
+
+def test_guardrail_reanchors_wrong_claim_window():
+    reply = "파손 상품은 배송 후 3일 이내 접수 가능합니다."
+    fixed = ChatService._guardrail_fix_claim_window(reply, _policy_store(7))
+    assert "7일 이내" in fixed
+    assert "3일 이내" not in fixed.split("※")[0]
+    assert "스토어 정책 기준" in fixed  # transparent citation appended
+
+
+def test_guardrail_leaves_correct_reply_untouched():
+    reply = "수령 후 7일 이내에 신청해 주세요."
+    assert ChatService._guardrail_fix_claim_window(reply, _policy_store(7)) == reply
+
+
+def test_guardrail_noop_without_window_or_store():
+    # No window mentioned -> untouched
+    assert (
+        ChatService._guardrail_fix_claim_window("배송비는 3,000원입니다.", _policy_store(7))
+        == "배송비는 3,000원입니다."
+    )
+    # No store -> untouched
+    assert ChatService._guardrail_fix_claim_window("3일 이내", None) == "3일 이내"
 
 
 # ---------------------------------------------------------------------------
@@ -279,6 +359,26 @@ async def test_general_cs_gets_store_grounded_system_prompt(db_session):
     assert sp is not None
     assert "테스트 뷰티몰" in sp
     assert "7일" in sp  # claim policy injected from the store record
+
+
+@pytest.mark.asyncio
+async def test_guardrail_corrects_hallucinated_window_in_general_cs(db_session):
+    class _HallucinatingRouter(_RecordingRouter):
+        async def generate_text(self, prompt, system_prompt=None, history=None):
+            await super().generate_text(prompt, system_prompt, history)
+            return "반품은 수령 후 3일 이내에만 접수됩니다."
+
+    router = _HallucinatingRouter()
+    svc = ChatService(ai_router=router, rag=_EmptyRAG())
+    await _add_store(db_session)  # policy max_claim_days=7
+
+    _, reply, intent, _ = await svc.handle_message(
+        db_session, None, "cust-1", "반품 되나요?", mall_id="memory_test_mall"
+    )
+    assert intent == "general_cs"
+    # The hallucinated 3일 is re-anchored to the store's real 7일 policy
+    assert "7일 이내" in reply
+    assert "3일 이내" not in reply.split("※")[0]
 
 
 @pytest.mark.asyncio
