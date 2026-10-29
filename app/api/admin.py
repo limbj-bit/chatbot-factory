@@ -121,6 +121,20 @@ async def admin_update_store_subscription_endpoint(
     return updated
 
 
+@router.delete("/stores/{mall_id}")
+async def admin_delete_store_endpoint(
+    mall_id: str,
+    session: AsyncSession = Depends(get_db),
+    x_admin_key: str = Header(default="", alias="X-Admin-Key"),
+):
+    """Delete a store and all related knowledge/messages."""
+    if x_admin_key != settings.ADMIN_API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    ok = await store_service.delete_store(session, mall_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Store not found")
+    return {"deleted": True, "mall_id": mall_id}
+
 @router.get("/stores/{mall_id}/conversations")
 async def admin_list_conversations_endpoint(
     mall_id: str,

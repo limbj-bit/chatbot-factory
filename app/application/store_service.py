@@ -1275,7 +1275,32 @@ class StoreService:
             for d in docs
         ]
 
-    async def get_store_by_mall_id(
+        async def delete_store(self, session: AsyncSession, mall_id: str) -> bool:
+        """Delete a store and all related knowledge/messages."""
+        from sqlalchemy import delete as sql_delete
+        # Delete knowledge
+        await session.execute(
+            sql_delete(StoreKnowledgeModel).where(StoreKnowledgeModel.mall_id == mall_id)
+        )
+        # Delete messages
+        try:
+            await session.execute(
+                sql_delete(MessageModel).where(MessageModel.mall_id == mall_id)
+            )
+        except Exception:
+            pass
+        # Delete store
+        q = select(StoreModel).where(StoreModel.mall_id == mall_id)
+        res = await session.execute(q)
+        store = res.scalar_one_or_none()
+        if store:
+            await session.delete(store)
+            await session.commit()
+            return True
+        await session.commit()
+        return False
+
+async def get_store_by_mall_id(
         self, session: AsyncSession, mall_id: str
     ) -> Optional[StoreModel]:
         q = select(StoreModel).where(StoreModel.mall_id == mall_id)

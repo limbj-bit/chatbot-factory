@@ -282,6 +282,7 @@
               <button class="btn btn-green" onclick="updateSub('${s.mall_id}', { extend_days: 30, plan_type: 'active', is_active: true })">+30일 연장</button>
               <button class="btn btn-purple" onclick="updateSub('${s.mall_id}', { plan_type: 'unlimited', is_active: true })">무제한 VIP 변환</button>
               <button class="btn btn-red" onclick="updateSub('${s.mall_id}', { plan_type: 'suspended', is_active: false })">일시 정지</button>
+               <button class="btn" style="background:#991B1B;color:#FFFFFF;" onclick="deleteStore('${s.mall_id}')">삭제</button>
             </div>
           </div>
         `;
@@ -315,7 +316,21 @@
       });
     }
 
-    async function updateSub(mallId, payload) {
+    async function deleteStore(mallId) {
+       if (!confirm("정말 삭제하시겠습니까? mall_id: " + mallId + "\n모든 학습 데이터와 설정이 삭제됩니다.")) return;
+       const res = await fetch(`/api/admin/stores/${mallId}`, {
+         method: "DELETE",
+         headers: getAdminHeaders()
+       });
+       if (!res.ok) {
+         alert("삭제 실패: " + (await res.text()));
+         return;
+       }
+       alert("삭제 완료: " + mallId);
+       await loadAllStores();
+     }
+
+     async function updateSub(mallId, payload) {
       const res = await fetch(`/api/admin/stores/${mallId}/subscription`, {
         method: "PATCH",
         headers: getAdminHeaders(),
