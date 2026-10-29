@@ -294,9 +294,20 @@ async def get_dynamic_widget_script(
         safe_url = bot_avatar_url.replace('"', '\\"')
         icon_graphic_html = f'<img src="{safe_url}" alt="bot" class="fresh-bot-avatar-img" />'
     else:
-        svg_raw = FLATICON_PRESET_SVGS.get(bot_icon_style, FLATICON_PRESET_SVGS["flaticon_cute_robot"])
-        svg_single_line = " ".join(line.strip() for line in svg_raw.splitlines())
-        icon_graphic_html = svg_single_line
+        if bot_icon_style == "preset_beauty_model":
+            import base64 as _b64
+            try:
+                with open("static/presets/beauty_model.png", "rb") as _f:
+                    _img_b64 = _b64.b64encode(_f.read()).decode("ascii")
+                icon_graphic_html = '<img src="data:image/png;base64,' + _img_b64 + '" alt="bot" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />'
+            except Exception:
+                svg_raw = FLATICON_PRESET_SVGS.get(bot_icon_style, FLATICON_PRESET_SVGS["flaticon_cute_robot"])
+                svg_single_line = " ".join(line.strip() for line in svg_raw.splitlines())
+                icon_graphic_html = svg_single_line
+        else:
+            svg_raw = FLATICON_PRESET_SVGS.get(bot_icon_style, FLATICON_PRESET_SVGS["flaticon_cute_robot"])
+            svg_single_line = " ".join(line.strip() for line in svg_raw.splitlines())
+            icon_graphic_html = svg_single_line
 
     remaining_days = None
     is_expired = False
