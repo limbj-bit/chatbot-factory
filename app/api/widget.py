@@ -467,7 +467,7 @@ async def get_dynamic_widget_script(
 
     /* Base Chat Window */
     .fresh-widget-window {{
-      position: fixed; bottom: {win_bottom_px}px; {horiz_css} width: 520px; height: 700px;
+      position: fixed; bottom: {win_bottom_px}px; {horiz_css} width: 460px; height: 660px;
       max-width: calc(100vw - 32px); max-height: calc(100vh - {win_bottom_px + 20}px);
       background: #ffffff; border-radius: 22px;
       border: 1px solid rgba(197, 160, 89, 0.28);
@@ -475,6 +475,35 @@ async def get_dynamic_widget_script(
       display: none; flex-direction: column; z-index: 999999; overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
       transition: bottom 0.22s ease, left 0.22s ease, right 0.22s ease;
+    }}
+    /* Mobile optimization: full-width chat on small screens */
+    @media (max-width: 480px) {{
+      .fresh-widget-window {{
+        width: calc(100vw - 12px);
+        height: calc(100vh - 20px);
+        bottom: 6px;
+        left: 6px !important;
+        right: 6px !important;
+        border-radius: 16px;
+      }}
+      .fresh-widget-launcher.shape-cosbot_badge {{
+        width: 64px; height: 70px;
+      }}
+      .fresh-cosbot-ring {{ width: 56px; height: 56px; }}
+      .fresh-msg {{ font-size: 13.5px; padding: 11px 14px; }}
+      .fresh-input {{ font-size: 14px; padding: 11px 16px; min-height: 42px; }}
+      .fresh-btn-send {{ width: 42px; height: 42px; }}
+      .fresh-btn-send svg {{ width: 18px; height: 18px; }}
+      .fresh-cosraw-btn {{ font-size: 12.5px; padding: 9px 8px; }}
+      .fresh-contact-bar {{ font-size: 11px; }}
+    }}
+    @media (max-width: 360px) {{
+      .fresh-widget-window {{
+        width: calc(100vw - 8px);
+        left: 4px !important;
+        right: 4px !important;
+      }}
+      .fresh-msg {{ font-size: 13px; }}
     }}
     .fresh-widget-header {{
       background: linear-gradient(135deg, ${{config.primaryColor}} 0%, #2563EB 100%); color: #ffffff; padding: 15px 18px;
