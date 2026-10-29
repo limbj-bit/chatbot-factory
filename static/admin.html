@@ -147,6 +147,9 @@
     </div>
 
     <div id="authMessage" style="font-size:13px;color:#F87171;margin-bottom:10px;"></div>
+    <div style="margin-bottom:14px;display:flex;gap:10px;align-items:center;">
+      <input type="text" id="adminSearchInput" placeholder="검색: 스토어명, mall_id, 봇이름, 업종..." style="flex:1;padding:10px 14px;border:1.5px solid #DCD7CD;border-radius:9px;font-size:13.5px;" oninput="filterStores()" />
+    </div>
     <div id="adminStoreList"></div>
   </div>
 
@@ -219,6 +222,107 @@
       });
       if (!res.ok) {
         alert("권한 오류: 관리자 비밀키를 확인하세요.");
+        return;
+      }
+      await loadAllStores();
+    }
+
+    let allStoresCache = [];
+
+    async function loadAllStores() {
+      const msgEl = document.getElementById("authMessage");
+      const listEl = document.getElementById("adminStoreList");
+      msgEl.innerText = "";
+
+      const res = await fetch("/api/admin/stores", {
+        headers: getAdminHeaders()
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        msgEl.innerText = "관리자 비밀번호(X-Admin-Key)가 일치하지 않습니다! 접근이 차단되었습니다.";
+        listEl.innerHTML = "";
+        return;
+      }
+
+      const stores = await res.json();
+      allStoresCache = stores || [];
+      renderStoreList(allStoresCache);
+    }
+
+    function renderStoreList(stores) {
+      const listEl = document.getElementById("adminStoreList");
+      if (!stores.length) {
+        listEl.innerHTML = "<p style='color:#94A3B8;'>아직 생성된 스토어가 없습니다.</p>";
+        return;
+      }
+
+      listEl.innerHTML = stores.map(s => {
+        let pillClass = "status-ok";
+        if (s.is_expired) pillClass = "status-exp";
+        else if (s.expiry_warning) pillClass = "status-warn";
+
+        const fullScript = `<script src="${window.location.origin}/api/widget/script?mall_id=${s.mall_id}" async><\/script>`;
+        return `
+          <div class="store-card">
+            <div style="flex:1;min-width:280px;">
+              <strong style="font-size:15px;color:#1E293B;">[${s.brand_badge}] ${s.store_name}</strong>
+              <span style="color:#64748B;font-size:13px;">(몰ID: ${s.mall_id} / 봇이름: ${s.bot_name})</span>
+              <button class="btn" style="padding:4px 10px;font-size:11px;margin-left:6px;" onclick="copyMallId('${s.mall_id}')">ID 복사</button>
+              <span class="status-pill ${pillClass}">${s.status_message}</span>
+              <div style="font-size:12px;color:#475569;margin-top:6px;">
+                템플릿: <b>${s.chat_template}</b> | 아이콘: <b>${s.bot_icon_style}</b> (${s.launcher_shape}) |
+                일일 AI 쿼터: <b>${s.daily_quota_used} / ${s.daily_quota_limit}건</b> |
+                API 연동: <b>${s.commerce_api_Connected ? (s.commerce_platform + " (" + (s.commerce_store_uid || "연동됨") + ")") : "기본모드(미연동)"}</b> |
+                직통링크: <a href="/chat/${s.mall_id}" target="_blank" style="color:#B45309;font-weight:700;">/chat/${s.mall_id}</a>
+              </div>
+              <code>${fullScript.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="btn" onclick="updateSub('${s.mall_id}', { reset_days: 30, plan_type: 'active', is_active: true })">오늘부로 30일로 변환</button>
+              <button class="btn btn-green" onclick="updateSub('${s.mall_id}', { extend_days: 30, plan_type: 'active', is_active: true })">+30일 연장</button>
+              <button class="btn btn-purple" onclick="updateSub('${s.mall_id}', { plan_type: 'unlimited', is_active: true })">무제한 VIP 변환</button>
+              <button class="btn btn-red" onclick="updateSub('${s.mall_id}', { plan_type: 'suspended', is_active: false })">일시 정지</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function filterStores() {
+      const q = (document.getElementById("adminSearchInput").value || "").trim().toLowerCase();
+      if (!q) { renderStoreList(allStoresCache); return; }
+      const filtered = allStoresCache.filter(s =>
+        (s.store_name || "").toLowerCase().includes(q) ||
+        (s.mall_id || "").toLowerCase().includes(q) ||
+        (s.bot_name || "").toLowerCase().includes(q) ||
+        (s.brand_badge || "").toLowerCase().includes(q) ||
+        (s.industry || "").toLowerCase().includes(q)
+      );
+      renderStoreList(filtered);
+    }
+
+    function copyMallId(mallId) {
+      navigator.clipboard.writeText(mallId).then(() => {
+        alert("mall_id 복사됨: " + mallId);
+      }).catch(() => {
+        const ta = document.createElement("textarea");
+        ta.value = mallId;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        alert("mall_id 복사됨: " + mallId);
+      });
+    }
+
+    async function updateSub(mallId, payload) {
+      const res = await fetch(`/api/admin/stores/${mallId}/subscription`, {
+        method: "PATCH",
+        headers: getAdminHeaders(),
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        alert("권한 오류: 관리자 비밀번호를 확인하세요.");
         return;
       }
       await loadAllStores();
