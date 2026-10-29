@@ -1508,7 +1508,7 @@
         if (data.quick_buttons && data.quick_buttons.length) {
           const _qb = document.getElementById("quickButtonsInput"); if (_qb) _qb.value = data.quick_buttons.join(", ");
         }
-        if (data.mall_id) { const _mi = document.getElementById("targetMallId"); if (_mi) _mi.value = data.mall_id; }
+        if (data.mall_id) { const _mi = document.getElementById("targetMallId"); if (_mi) _mi.value = data.mall_id; const _mi2 = document.getElementById("mallId"); if (_mi2) _mi2.value = data.mall_id; }
     const _btn = document.getElementById("createStoreBtn"); if (_btn) _btn.innerText = "변경 저장 (기존 mall_id 업데이트)";
     window._isEditingExisting = true;
         if (data.theme_color) { const _tc = document.getElementById("themeColor"); if (_tc) _tc.value = data.theme_color; }
