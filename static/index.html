@@ -471,7 +471,7 @@
         <div class="field-card" style="grid-column: 1 / -1;">
           <div class="field-title"><span>⑥ 챗봇 첫 인사말 (웰컴 메시지)</span><span class="field-tag opt">자동: 업종별 프리미엄 인사말</span></div>
           <div class="field-desc">고객이 채팅창을 열었을 때 가장 먼저 보이는 인사말입니다. 비워두면 업종별 프리미엄 인사말이 자동 적용됩니다. 직접 작성하면 \n으로 줄바꿈 가능합니다.</div>
-          <textarea id="welcomeMessage" rows="4" style="width:100%;padding:10px 12px;border:1px solid #DCD7CD;border-radius:9px;font-size:13.5px;background:#FAF9F6;color:var(--obsidian);font-weight:600;box-sizing:border-box;resize:vertical;" oninput="this.dataset.manual='1'; triggerInstantPreview();" placeholder="비워두면 업종별 프리미엄 인사말 자동 적용"></textarea>
+          <textarea id="welcomeMessage" rows="4" oninput="this.dataset.manual='1'; triggerInstantPreview();" style="width:100%;padding:10px 12px;border:1px solid #DCD7CD;border-radius:9px;font-size:13.5px;background:#FAF9F6;color:var(--obsidian);font-weight:600;box-sizing:border-box;resize:vertical;" oninput="this.dataset.manual='1'; triggerInstantPreview();" placeholder="비워두면 업종별 프리미엄 인사말 자동 적용"></textarea>
         </div>
       </div>
 
@@ -987,7 +987,41 @@
       return sel;
     }
 
+    const INDUSTRY_WELCOME = {
+      beauty: "안녕하세요, 뷰티&코스메틱 AI 상담사입니다. ✨\n\n피부타입별 맞춤 전성분 상담, 용기 누유·파손 사진 진단, 사용 중 트러블 접수까지 — 뷰티 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      fresh_food: "안녕하세요, 식품 전문 AI 상담사입니다. 🍎\n\n신선도 유지법, 보관 방법, 배송 일정, 성분·알레르기 정보까지 — 식품 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      electronics: "안녕하세요, 전자/가전 AI 상담사입니다. ⚡\n\n제품 사용법, 고장 진단, A/S 접수, 배송·반품 안내까지 — 전자 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      fashion: "안녕하세요, 패션 AI 상담사입니다. 👗\n\n사이즈 추천, 코디 상담, 교환·반품 접수, 배송 조회까지 — 패션 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      pet_supplies: "안녕하세요, 반려동물 AI 상담사입니다. 🐶\n\n맞춤 사료·간식 추천, 건강 상담, 배송·교환 안내까지 — 펫 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      baby_kids: "안녕하세요, 유아동 AI 상담사입니다. 👶\n\n월령별 맞춤 상품 추천, KC 안전 인증 확인, 교환·환불 안내까지 — 유아동 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      sports_leisure: "안녕하세요, 스포츠·캠핑 AI 상담사입니다. ⛺\n\n장비 스펙·호환 문의, A/S 사진 진단, 빠른 배송 조회까지 — 스포츠 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      raw_materials: "안녕하세요, 원료/B2B AI 상담사입니다. 🧪\n\n성분 규격, COA/MSDS 조회, 원료 장터 이용, 제조사 등록까지 — B2B 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      medical_clinic: "안녕하세요, 병원·클리닉 AI 상담사입니다. 🏥\n\n진료과목 및 시술 안내, 초진·재진 예약 문의, 진료비·증명서 발급 안내까지 — 의료 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      education_academy: "안녕하세요, 교육·학원 AI 상담사입니다. 📚\n\n레벨별 커리큘럼 추천, 수강료·시간표 안내, 무료 체험 신청까지 — 교육 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      professional_legal: "안녕하세요, 전문직 AI 상담사입니다. ⚖️\n\n법률·세무·노무·컨설팅 상담 예약, 수임료 안내, 서류 발급 안내까지 — 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      interior_realestate: "안녕하세요, 인테리어·건축 AI 상담사입니다. 🏠\n\n무료 견적 산출, 현장 방문 예약, 자재·시공 안내, A/S 접수까지 — 건축 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      hotel_travel: "안녕하세요, 호텔·숙박 AI 상담사입니다. 🏨\n\n객실 예약, 요금 안내, 부대시설 이용, 불편 접수까지 — 숙박 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      it_corporate: "안녕하세요, IT/SaaS AI 상담사입니다. 🖥️\n\n서비스 이용 안내, 요금제 문의, 기술 지원, 도입 상담까지 — IT 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      restaurant_cafe: "안녕하세요, 레스토랑·카페 AI 상담사입니다. 🍽️\n\n메뉴 안내, 예약, 배달·포장 주문, 영업시간 문의까지 — F&B 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+      general: "안녕하세요, AI 상담사입니다. ✨\n\n상품 추천, 배송 조회, 반품·교환 안내, 사용법 상담까지 — AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
+    };
+
     function onIndustryChange() {
+      const sel = document.getElementById("industry").value;
+      const customEl = document.getElementById("customIndustryInput");
+      if (sel === "__custom__") {
+        customEl.style.display = "block";
+        customEl.focus();
+      } else {
+        customEl.style.display = "none";
+        const wmEl = document.getElementById("welcomeMessage");
+        if (wmEl && !wmEl.dataset.manual) {
+          wmEl.value = INDUSTRY_WELCOME[sel] || "";
+        }
+      }
+      triggerInstantPreview(true);
+    }
+
       const sel = document.getElementById("industry").value;
       const customEl = document.getElementById("customIndustryInput");
       if (sel === "__custom__") {
@@ -1509,7 +1543,15 @@
         status.innerText = "⚠️ 불러오기 실패: " + err;
       }
     }
-    window.addEventListener("DOMContentLoaded", () => {
+    (function() {
+  const wmEl = document.getElementById("welcomeMessage");
+  const indEl = document.getElementById("industry");
+  if (wmEl && indEl && !wmEl.value.trim()) {
+    wmEl.value = INDUSTRY_WELCOME[indEl.value] || "";
+  }
+})();
+
+window.addEventListener("DOMContentLoaded", () => {
       loadServerIntegrationInfo();
       triggerInstantPreview(false);
     });
