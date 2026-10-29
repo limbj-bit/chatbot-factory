@@ -47,7 +47,13 @@ DEFAULT_KNOWLEDGE_DOCS = [
             "보관 방법: 수령 즉시 꼭지를 떼지 않은 상태로 키친타월을 깐 밀폐용기에 담아 냉장(0~4℃) 보관하십시오.\n"
             "섭취 방법: 물에 30초 이상 담그지 말고 흐르는 물에 가볍게 씻어 즉시 드세요. 수령 후 2일 이내 섭취 권장."
         ),
-        metadata={"category": "fruit", "variety": "설향", "price": 24000, "purchase_url": "/products/strawberry"},
+        metadata={
+            "industry": "fresh_food",
+            "category": "fruit",
+            "variety": "설향",
+            "price": 24000,
+            "purchase_url": "/products/strawberry",
+        },
     ),
     RAGDocument(
         document_id="DOC-PROD-002",
@@ -59,7 +65,13 @@ DEFAULT_KNOWLEDGE_DOCS = [
             "보관 방법: 냉장고에 바로 넣지 마시고 통풍이 잘되는 서늘한 상온(15~20℃)에서 2~3일 후숙하여 붉은빛이 돌 때 드세요.\n"
             "주의: 냉장 보관 시 고유의 산미와 식감이 저하될 수 있습니다."
         ),
-        metadata={"category": "fruit", "variety": "대저", "price": 28000, "purchase_url": "/products/tomato"},
+        metadata={
+            "industry": "fresh_food",
+            "category": "fruit",
+            "variety": "대저",
+            "price": 28000,
+            "purchase_url": "/products/tomato",
+        },
     ),
     RAGDocument(
         document_id="DOC-POLICY-001",
@@ -73,7 +85,7 @@ DEFAULT_KNOWLEDGE_DOCS = [
             "3. 손상 비율이 10% 이상 30% 미만인 경우 해당 비율만큼 부분 환불 또는 적립금을 지급합니다.\n"
             "4. 사진이 흐리거나 손상 부위가 식별되지 않는 경우 재촬영을 요청드릴 수 있습니다."
         ),
-        metadata={"scope": "claims"},
+        metadata={"industry": "fresh_food", "scope": "claims"},
     ),
     RAGDocument(
         document_id="DOC-AS-ELEC-001",
@@ -147,12 +159,25 @@ class RAGEngine:
             return round(matches / (len(query_tokens) + 1), 2)
         return 0.0
 
-    def search(self, query: str, top_k: int = 2) -> List[RAGSearchResult]:
+    @staticmethod
+    def _doc_matches_industry(doc: RAGDocument, industry: Optional[str]) -> bool:
+        """True when default doc is allowed for this store industry (no cross-leak)."""
+        key = (industry or "").strip().lower()
+        if not key:
+            return False
+        meta = (doc.metadata.get("industry") or "").strip().lower()
+        return meta == key
+
+    def search(
+        self, query: str, top_k: int = 2, industry: Optional[str] = None
+    ) -> List[RAGSearchResult]:
         """Search default in-memory documents using token overlap & keyword relevance scoring."""
         query_tokens = set(query.lower().split())
         results: List[RAGSearchResult] = []
 
         for doc in self.documents:
+            if industry is not None and not self._doc_matches_industry(doc, industry):
+                continue
             score = self._score_doc(query, query_tokens, doc)
             if score > 0:
                 results.append(RAGSearchResult(document=doc, score=score))
@@ -161,13 +186,18 @@ class RAGEngine:
         return results[:top_k]
 
     async def search_with_store_knowledge(
-        self, session: AsyncSession, mall_id: str, query: str, top_k: int = 2
+        self,
+        session: AsyncSession,
+        mall_id: str,
+        query: str,
+        top_k: int = 2,
+        industry: Optional[str] = None,
     ) -> List[RAGSearchResult]:
-        """Search store-specific DB knowledge first (boosted score), falling back to default knowledge."""
+        """Store DB knowledge first. Default demo docs only if store has zero rows,
+        and only docs tagged for the same industry (prevents strawberry leaking into beauty)."""
         query_tokens = set(query.lower().split())
         results: List[RAGSearchResult] = []
 
-        # 1. Fetch store-specific knowledge from DB
         q = select(StoreKnowledgeModel).where(StoreKnowledgeModel.mall_id == mall_id)
         db_res = await session.execute(q)
         store_docs = db_res.scalars().all()
@@ -189,14 +219,16 @@ class RAGEngine:
             )
             score = self._score_doc(query, query_tokens, rag_doc)
             if score > 0:
-                # Boost store-specific knowledge
                 results.append(RAGSearchResult(document=rag_doc, score=round(score + 0.5, 2)))
 
-        # 2. Include default docs
-        for doc in self.documents:
-            score = self._score_doc(query, query_tokens, doc)
-            if score > 0:
-                results.append(RAGSearchResult(document=doc, score=score))
+        # Defaults only when this mall has no learned knowledge yet.
+        if not store_docs:
+            for doc in self.documents:
+                if not self._doc_matches_industry(doc, industry):
+                    continue
+                score = self._score_doc(query, query_tokens, doc)
+                if score > 0:
+                    results.append(RAGSearchResult(document=doc, score=score))
 
         results.sort(key=lambda r: r.score, reverse=True)
         return results[:top_k]

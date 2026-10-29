@@ -25,8 +25,8 @@ def test_deterministic_faq_lookup():
 def test_rag_search_and_context_assembly():
     rag = RAGEngine()
 
-    # Search for strawberry storage
-    results = rag.search("딸기 보관 방법")
+    # Search for strawberry storage (fresh_food default corpus)
+    results = rag.search("딸기 보관 방법", industry="fresh_food")
     assert len(results) > 0
     top_doc = results[0].document
     assert "설향 딸기" in top_doc.title
@@ -36,3 +36,13 @@ def test_rag_search_and_context_assembly():
     context = rag.assemble_context(results)
     assert "[문서 ID: DOC-PROD-001" in context
     assert "참고 공식 지식 베이스" in context
+
+
+def test_default_docs_isolated_by_industry():
+    rag = RAGEngine()
+    # Beauty must not surface fresh-food strawberry docs
+    beauty_hits = rag.search("딸기 보관 방법", industry="beauty")
+    assert all(r.document.metadata.get("industry") == "beauty" for r in beauty_hits)
+    # Fresh food can hit strawberry
+    fresh_hits = rag.search("딸기 보관", industry="fresh_food")
+    assert any("딸기" in r.document.title for r in fresh_hits)

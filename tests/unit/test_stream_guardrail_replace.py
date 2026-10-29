@@ -25,7 +25,7 @@ class _EmptyRAG:
     def lookup_deterministic_faq(self, message, exclude_keywords=None):
         return None
 
-    async def search_with_store_knowledge(self, session, mall_id, message, top_k=2):
+    async def search_with_store_knowledge(self, session, mall_id, message, top_k=2, industry=None):
         return []
 
     def assemble_context(self, results):
