@@ -1481,25 +1481,25 @@
         }
         const data = await res.json();
         // Populate STEP 1 fields
-        if (data.store_name) document.getElementById("storeName").value = data.store_name;
+        if (data.store_name) { const _sn = document.getElementById("storeName"); if (_sn) _sn.value = data.store_name; }
         if (data.industry) {
           const sel = document.getElementById("industry");
           if (sel) sel.value = data.industry;
         }
-        if (data.bot_name) document.getElementById("botName").value = data.bot_name;
-        if (data.brand_badge) document.getElementById("brandBadge").value = data.brand_badge;
-        if (data.header_title) document.getElementById("headerTitle").value = data.header_title;
-        if (data.contact_email) document.getElementById("contactEmail").value = data.contact_email;
-        if (data.business_hours) document.getElementById("businessHours").value = data.business_hours;
-        if (data.welcome_message) document.getElementById("welcomeMessage").value = data.welcome_message;
-        if (data.bot_label) document.getElementById("botLabel").value = data.bot_label;
-        if (data.chat_template) document.getElementById("chatTemplate").value = data.chat_template;
-        if (data.input_placeholder) document.getElementById("inputPlaceholder").value = data.input_placeholder;
+        if (data.bot_name) { const _bn = document.getElementById("botName"); if (_bn) _bn.value = data.bot_name; }
+        if (data.brand_badge) { const _bb = document.getElementById("brandBadge"); if (_bb) _bb.value = data.brand_badge; }
+        if (data.header_title) { const _ht = document.getElementById("headerTitle"); if (_ht) _ht.value = data.header_title; }
+        if (data.contact_email) { const _ce = document.getElementById("contactEmail"); if (_ce) _ce.value = data.contact_email; }
+        if (data.business_hours) { const _bh = document.getElementById("businessHours"); if (_bh) _bh.value = data.business_hours; }
+        if (data.welcome_message) { const _wm = document.getElementById("welcomeMessage"); if (_wm) _wm.value = data.welcome_message; }
+        if (data.bot_label) { const _bl = document.getElementById("botLabel"); if (_bl) _bl.value = data.bot_label; }
+        if (data.chat_template) { const _ct = document.getElementById("chatTemplate"); if (_ct) _ct.value = data.chat_template; }
+        if (data.input_placeholder) { const _ip = document.getElementById("inputPlaceholder"); if (_ip) _ip.value = data.input_placeholder; }
         if (data.quick_buttons && data.quick_buttons.length) {
-          document.getElementById("quickButtonsInput").value = data.quick_buttons.join(", ");
+          const _qb = document.getElementById("quickButtonsInput"); if (_qb) _qb.value = data.quick_buttons.join(", ");
         }
-        if (data.mall_id) document.getElementById("targetMallId").value = data.mall_id;
-        if (data.theme_color) document.getElementById("themeColor").value = data.theme_color;
+        if (data.mall_id) { const _mi = document.getElementById("targetMallId"); if (_mi) _mi.value = data.mall_id; }
+        if (data.theme_color) { const _tc = document.getElementById("themeColor"); if (_tc) _tc.value = data.theme_color; }
         status.innerText = "✅ '" + data.store_name + "' 설정을 불러왔습니다. 수정 후 [생성]을 누르면 업데이트됩니다.";
       } catch (err) {
         status.innerText = "⚠️ 불러오기 실패: " + err;
