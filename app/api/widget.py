@@ -1035,7 +1035,11 @@ async def get_dynamic_widget_script(
   let teaserTimer = null;
   let teaserIdx = 0;
   let teaserShows = 0;
-  const teaserMaxShows = 12;
+  // Keep teasers sparse: ~40s cycle, few shows per page visit.
+  const teaserMaxShows = 4;
+  const teaserFirstDelayMs = 12000;
+  const teaserVisibleMs = 4500;
+  const teaserGapMs = 32000;
   function hideTeaser() {{
     teaserBubble.classList.remove("visible");
   }}
@@ -1055,16 +1059,18 @@ async def get_dynamic_widget_script(
     const tick = () => {{
       if (chatWindow.style.display === "flex") {{
         hideTeaser();
-        teaserTimer = setTimeout(tick, 4000);
+        teaserTimer = setTimeout(tick, 8000);
         return;
       }}
+      if (teaserShows >= teaserMaxShows) return;
       showTeaserLine();
       teaserTimer = setTimeout(() => {{
         hideTeaser();
-        teaserTimer = setTimeout(tick, 3500);
-      }}, 6500);
+        if (teaserShows >= teaserMaxShows) return;
+        teaserTimer = setTimeout(tick, teaserGapMs);
+      }}, teaserVisibleMs);
     }};
-    teaserTimer = setTimeout(tick, 1800);
+    teaserTimer = setTimeout(tick, teaserFirstDelayMs);
   }}
   scheduleTeaserLoop();
   teaserBubble.addEventListener("click", () => {{
