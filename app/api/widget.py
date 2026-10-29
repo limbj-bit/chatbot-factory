@@ -357,6 +357,7 @@ async def get_dynamic_widget_script(
     safe_email = contact_email.replace('"', '\\"')
     safe_hours = business_hours.replace('"', '\\"')
     safe_placeholder = input_placeholder.replace('"', '\\"')
+    safe_welcome_msg = welcome_msg.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
     safe_commerce_platform = commerce_platform.replace('"', '\\"')
     safe_commerce_badge = commerce_badge.replace('"', '\\"')
     quick_buttons_js = json.dumps(quick_buttons, ensure_ascii=False)
@@ -393,7 +394,7 @@ async def get_dynamic_widget_script(
     contactEmail: "{safe_email}",
     businessHours: "{safe_hours}",
     inputPlaceholder: "{safe_placeholder}",
-    welcomeMessage: "{welcome_msg}",
+    welcomeMessage: "{safe_welcome_msg}",
     uploadGuide: "{upload_guide}",
     commercePlatform: "{safe_commerce_platform}",
     commerceBadge: "{safe_commerce_badge}",
