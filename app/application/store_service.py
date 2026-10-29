@@ -986,9 +986,11 @@ class StoreService:
             if p.netloc.lower() != host:
                 continue
             low = (p.path + "?" + p.query).lower()
-            if any(s in low for s in skip_signals):
+            has_product = any(s in low for s in product_signals)
+            has_skip = any(s in low for s in skip_signals)
+            if has_skip and not has_product:
                 continue
-            if not any(s in low for s in product_signals):
+            if not has_product:
                 continue
             clean = p._replace(fragment="").geturl()
             if clean in seen:
@@ -1051,10 +1053,12 @@ class StoreService:
                 if p.netloc.lower() != host:
                     continue
                 low = (p.path + "?" + p.query).lower()
-                if any(s in low for s in skip_signals):
+                has_product = any(s in low for s in product_signals)
+                has_skip = any(s in low for s in skip_signals)
+                if has_skip and not has_product:
                     continue
                 clean = p._replace(fragment="").geturl()
-                if any(s in low for s in product_signals):
+                if has_product:
                     if clean not in product_seen:
                         product_seen.add(clean)
                         product_urls.append(clean)
