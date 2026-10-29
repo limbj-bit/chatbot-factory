@@ -553,27 +553,27 @@
       <input type="hidden" id="widgetAvatarPx" value="76" />
       <div style="background:#FFFFFF;border:1.5px solid var(--stone-border);border-radius:14px;padding:14px 16px;margin-bottom:18px;">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <span style="font-size:13px;font-weight:800;color:var(--obsidian);margin-right:4px;">?? ?? ??:</span>
-          <button type="button" id="posBtnRight" class="pos-btn active" onclick="setWidgetSide('bottom_right')">?? ??? ?? (??)</button>
-          <button type="button" id="posBtnLeft" class="pos-btn" onclick="setWidgetSide('bottom_left')">?? ?? ??</button>
+          <span style="font-size:13px;font-weight:800;color:var(--obsidian);margin-right:4px;">↔️ 기본 방향:</span>
+          <button type="button" id="posBtnRight" class="pos-btn active" onclick="setWidgetSide('bottom_right')">↘️ 오른쪽 하단 (기본)</button>
+          <button type="button" id="posBtnLeft" class="pos-btn" onclick="setWidgetSide('bottom_left')">↙️ 왼쪽 하단</button>
         </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed #E8CA8C;">
-          <span style="font-size:13px;font-weight:800;color:var(--obsidian);margin-right:4px;">??? ?? ?? ?? (TOP ?? ?? ??):</span>
-          <button type="button" class="pos-btn" onclick="nudgeWidget(0, 30)">?? ?? ???</button>
-          <button type="button" class="pos-btn" onclick="nudgeWidget(0, -30)">?? ??? ???</button>
-          <button type="button" class="pos-btn" onclick="nudgeWidget(20, 0)">?? ????</button>
-          <button type="button" class="pos-btn" onclick="nudgeWidget(-20, 0)">?? ?????</button>
-          <button type="button" class="pos-btn" onclick="resetWidgetPos()" style="color:#64748B;">?? ?? ?? ???</button>
+          <span style="font-size:13px;font-weight:800;color:var(--obsidian);margin-right:4px;">🕹️ 미세 위치 이동 (TOP 버튼 겹침 방지):</span>
+          <button type="button" class="pos-btn" onclick="nudgeWidget(0, 30)">⬆️ 위로 올리기</button>
+          <button type="button" class="pos-btn" onclick="nudgeWidget(0, -30)">⬇️ 아래로 내리기</button>
+          <button type="button" class="pos-btn" onclick="nudgeWidget(20, 0)">⬅️ 안쪽으로</button>
+          <button type="button" class="pos-btn" onclick="nudgeWidget(-20, 0)">➡️ 바깝쪽으로</button>
+          <button type="button" class="pos-btn" onclick="resetWidgetPos()" style="color:#64748B;">🔄 기본 위치 초기화</button>
         </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed #E8CA8C;">
-          <span style="font-size:13px;font-weight:800;color:var(--obsidian);margin-right:4px;">??? ??? ??:</span>
-          <button type="button" class="pos-btn" onclick="nudgeAvatarSize(-4)">? ??</button>
-          <button type="button" class="pos-btn" onclick="nudgeAvatarSize(4)">? ??</button>
-          <button type="button" class="pos-btn" onclick="resetAvatarSize()" style="color:#64748B;">?? ??(76)</button>
-          <span id="avatarSizeText" style="font-size:12px;font-weight:700;color:#B45309;">?? ??? 76px</span>
+          <span style="font-size:13px;font-weight:800;color:var(--obsidian);margin-right:4px;">🖼️ 아바타 크기:</span>
+          <button type="button" class="pos-btn" onclick="nudgeAvatarSize(-4)">➖ 작게</button>
+          <button type="button" class="pos-btn" onclick="nudgeAvatarSize(4)">➕ 크게</button>
+          <button type="button" class="pos-btn" onclick="resetAvatarSize()" style="color:#64748B;">🔄 기본(76)</button>
+          <span id="avatarSizeText" style="font-size:12px;font-weight:700;color:#B45309;">현재 아바타 76px</span>
         </div>
         <div style="margin-top:10px;">
-          <span id="posStatusText" style="font-size:12px;font-weight:700;color:#B45309;">??: ??? ?? (?? ?? 24px � ? ?? 24px � ??? 76px)</span>
+          <span id="posStatusText" style="font-size:12px;font-weight:700;color:#B45309;">현재: 오른쪽 하단 (아래 여백 24px · 엽 여백 24px · 아바타 76px)</span>
         </div>
       </div>
 
@@ -1045,11 +1045,11 @@
       const b = document.getElementById("widgetBottomPx").value;
       const s = document.getElementById("widgetSidePx").value;
       const a = document.getElementById("widgetAvatarPx")?.value || "76";
-      const sideText = pos === "bottom_left" ? "?? ??" : "??? ??";
+      const sideText = pos === "bottom_left" ? "왼쪽 하단" : "오른쪽 하단";
       const el = document.getElementById("posStatusText");
-      if (el) el.innerText = `??: ${sideText} (?? ?? ${b}px � ? ?? ${s}px � ??? ${a}px)`;
+      if (el) el.innerText = `현재: ${sideText} (아래 여백 ${b}px · 엽 여백 ${s}px · 아바타 ${a}px)`;
       const aEl = document.getElementById("avatarSizeText");
-      if (aEl) aEl.innerText = `?? ??? ${a}px`;
+      if (aEl) aEl.innerText = `현재 아바타 ${a}px`;
     }
 
     function setWidgetSide(pos) {
