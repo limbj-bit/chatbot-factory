@@ -77,12 +77,18 @@ if os.path.exists(static_dir):
 
 @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 async def serve_root_showroom():
-    return FileResponse(os.path.join(static_dir, "index.html"))
+    return FileResponse(
+        os.path.join(static_dir, "index.html"),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"},
+    )
 
 
 @app.get("/showroom", include_in_schema=False)
 async def serve_customer_showroom():
-    return FileResponse(os.path.join(static_dir, "index.html"))
+    return FileResponse(
+        os.path.join(static_dir, "index.html"),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"},
+    )
 
 
 @app.get("/admin", include_in_schema=False)
