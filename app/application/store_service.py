@@ -889,7 +889,10 @@ class StoreService:
         cleaned = re.sub(r"<(script|style|noscript).*?>.*?</\1>", " ", raw_html, flags=re.IGNORECASE | re.DOTALL)
         cleaned = re.sub(r"<[^>]+>", " ", cleaned)
         cleaned = html.unescape(re.sub(r"\s+", " ", cleaned)).strip()
-        summary_content = cleaned[:2000] if cleaned else title
+        for _n in ['브랜드소개', '제품구매', '특가판매', '알뜰장터', '제품소개서', '이벤트', '공지사항', '문의하기', '회사소개', '로그인', 'About SHOP', '기능별', '탄력/주름개선', '수분/보습', '민감/진정', '영양', '미백/톤업', '지성/트러블', '모공/피지', '기미/잡티', '라인별', '스킨케어', '클린징', '마사지 오일', '세럼/에센스/앰플', '크림', '바디', '모델링팩/마스크', '이너뷰티', '메이크업/자외선 차단', '덴탈/두피', '소모품', '오뜨엘라', '전신마사지젤', 'Event Community', '상품 리뷰', 'FAQ', 'Join Order', '현재 위치', '홈 SHOP', '배송비', '용량', '추천메일 보내기', '상품조르기', '대량구매문의', '기본 정보', '상품명', '리뷰', '관련상품', '배송비', '용량']:
+            cleaned = cleaned.replace(_n, " ")
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        summary_content = (title + ". " + cleaned[:600]) if cleaned else title
 
         create_req = StoreKnowledgeCreateRequest(
             doc_type="crawled_url",
@@ -900,6 +903,36 @@ class StoreService:
             image_url=image_url,
             tags=crawl_req.tags,
         )
+        # Update existing entry if same URL already learned
+        existing_res = await session.execute(
+            select(StoreKnowledgeModel).where(
+                StoreKnowledgeModel.mall_id == mall_id,
+                StoreKnowledgeModel.source_url == crawl_req.url,
+            )
+        )
+        existing_doc = existing_res.scalar_one_or_none()
+        if existing_doc:
+            existing_doc.title = create_req.title[:256]
+            existing_doc.content = create_req.content
+            existing_doc.price = create_req.price
+            existing_doc.purchase_url = create_req.purchase_url or crawl_req.url
+            existing_doc.image_url = create_req.image_url
+            existing_doc.tags = create_req.tags
+            await session.commit()
+            await session.refresh(existing_doc)
+            return StoreKnowledgeResponse(
+            id=existing_doc.id,
+            mall_id=existing_doc.mall_id,
+            doc_type=existing_doc.doc_type,
+            title=existing_doc.title,
+            content=existing_doc.content,
+            source_url=existing_doc.source_url,
+            price=existing_doc.price,
+            purchase_url=existing_doc.purchase_url,
+            image_url=existing_doc.image_url,
+            tags=existing_doc.tags,
+            created_at=existing_doc.created_at.isoformat(),
+            )
         return await self.add_knowledge(session, mall_id, create_req, source_url=crawl_req.url)
 
     async def _fetch_html(self, url: str, timeout: float = 10.0) -> str:
@@ -1153,7 +1186,7 @@ class StoreService:
                 break
             if _asyncio.get_event_loop().time() > deadline:
                 break
-            if u in existing:
+            if u in existing and not getattr(crawl_req, "force_refresh", False):
                 skipped += 1
                 continue
             try:
