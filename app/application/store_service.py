@@ -28,7 +28,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "flaticon_cute_robot",
         "bot_label": "코스봇 상담",
         "bot_name": "코스봇",
-        "welcome_message": "안녕하세요. 코스라프리의 AI 상담사 '코스봇' 입니다. 🧪\n어떤 원료나 서비스가 궁금하신가요?",
+        "welcome_message": "안녕하세요, 원료/B2B AI 상담사입니다. 🧪\n\n성분 규격, COA/MSDS 조회, 원료 장터 이용, 제조사 등록까지 — B2B 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "🧪 성분 규격 & 공급사",
             "🥕 원료 장터 이용 문의",
@@ -68,7 +68,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "flaticon_shopping_bag",
         "bot_label": "패션봇 상담",
         "bot_name": "스타일봇",
-        "welcome_message": "안녕하세요! 패션&의류 CS 고객센터입니다. 👗\n사이즈 추천, 맞교환 신청, 원단 오염/봉제 불량 사진 판독을 도와드립니다.",
+        "welcome_message": "안녕하세요, 패션 AI 상담사입니다. 👗\n\n사이즈 추천, 코디 상담, 교환·반품 접수, 배송 조회까지 — 패션 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "📐 체형별 사이즈 추천받기",
             "🔄 무료 사이즈 맞교환 신청",
@@ -89,7 +89,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "flaticon_fresh_leaf",
         "bot_label": "신선봇 상담",
         "bot_name": "신선봇",
-        "welcome_message": "안녕하세요! 식품·건강기능식품 AI 고객센터입니다. 🍎\n배송 조회, 보관법 및 신선도 변질/파손 사진 접수를 도와드립니다.",
+        "welcome_message": "안녕하세요, 식품 전문 AI 상담사입니다. 🍎\n\n신선도 유지법, 보관 방법, 배송 일정, 성분·알레르기 정보까지 — 식품 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "🍎 식품 보관법 & 섭취 안내",
             "📸 변질/파손 사진 환불 접수",
@@ -111,7 +111,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "flaticon_cute_robot",
         "bot_label": "테크봇 상담",
         "bot_name": "테크봇",
-        "welcome_message": "안녕하세요! 리빙·가전·디지털 지능형 A/S 고객센터입니다. ⚡\n기기 작동 불량 자가진단, 고장 부위 사진 판독, 무상 A/S 수리 및 교환 접수를 도와드립니다.",
+        "welcome_message": "안녕하세요, 전자/가전 AI 상담사입니다. ⚡\n\n제품 사용법, 고장 진단, A/S 접수, 배송·반품 안내까지 — 전자 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "⚡ 전원/작동 불량 자가진단",
             "🔧 고장/파손 사진 A/S 판독",
@@ -133,7 +133,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "flaticon_cute_puppy",
         "bot_label": "펫봇 상담",
         "bot_name": "멍냥봇",
-        "welcome_message": "안녕하세요! 반려동물 맞춤 케어 고객센터입니다. 🐶🐾\n우리 아이 연령/알러지별 사료·간식 추천, 사이즈 교환 및 파손 접수를 도와드립니다.",
+        "welcome_message": "안녕하세요, 반려동물 AI 상담사입니다. 🐶\n\n맞춤 사료·간식 추천, 건강 상담, 배송·교환 안내까지 — 펫 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "🐶 알러지/연령별 사료 추천",
             "📐 하네스/의류 사이즈 문의",
@@ -151,7 +151,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "flaticon_yellow_talk",
         "bot_label": "키즈봇 상담",
         "bot_name": "베베봇",
-        "welcome_message": "안녕하세요! 유아동·출산·완구 안심 고객센터입니다. 👶🍼\n개월수별 맞춤 용품 추천, KC 안전인증 확인 및 교환/환불 접수를 도와드립니다.",
+        "welcome_message": "안녕하세요, 유아동 AI 상담사입니다. 👶\n\n월령별 맞춤 상품 추천, KC 안전 인증 확인, 교환·환불 안내까지 — 유아동 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "👶 개월수별 맞춤 용품 추천",
             "🛡️ KC 안전인증 & 소재 확인",
@@ -169,7 +169,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "flaticon_shield_as",
         "bot_label": "레저봇 상담",
         "bot_name": "캠핑봇",
-        "welcome_message": "안녕하세요! 스포츠·캠핑·아웃도어 고객센터입니다. ⛺⛳\n장비 스펙/호환 문의, 폴대·스킨 A/S 사진 진단 및 빠른 배송 조회를 도와드립니다.",
+        "welcome_message": "안녕하세요, 스포츠·캠핑 AI 상담사입니다. ⛺\n\n장비 스펙·호환 문의, A/S 사진 진단, 빠른 배송 조회까지 — 스포츠 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "⛺ 캠핑/스포츠 장비 스펙 문의",
             "🔧 장비 파손/A/S 사진 판독",
@@ -187,7 +187,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "flaticon_derma_doctor",
         "bot_label": "진료/예약 상담",
         "bot_name": "메디봇",
-        "welcome_message": "안녕하세요! 병원·클리닉 AI 진료 안내 데스크입니다. 🏥✨\n진료과목 및 시술 안내, 초진/재진 예약 문의, 오시는 길 및 증명서 발급 안내를 도와드립니다.",
+        "welcome_message": "안녕하세요, 병원·클리닉 AI 상담사입니다. 🏥\n\n진료과목 및 시술 안내, 초진·재진 예약 문의, 진료비·증명서 발급 안내까지 — 의료 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "📅 진료/시술 예약 및 변경",
             "💉 주요 클리닉 & 비급여 안내",
@@ -205,7 +205,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "preset_sage_book",
         "bot_label": "입학/수강 상담",
         "bot_name": "에듀봇",
-        "welcome_message": "안녕하세요! 교육·학원·온라인 클래스 AI 입학상담실입니다. 📚🎓\n레벨별 커리큘럼 추천, 수강료 및 시간표 안내, 무료 체험수업 신청을 도와드립니다.",
+        "welcome_message": "안녕하세요, 교육·학원 AI 상담사입니다. 📚\n\n레벨별 커리큘럼 추천, 수강료·시간표 안내, 무료 체험 신청까지 — 교육 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "🎓 수준별 맞춤 강의/반 추천",
             "🗓️ 개강 일정 & 시간표 조회",
@@ -223,7 +223,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "flaticon_luxury_crown",
         "bot_label": "전문가 상담예약",
         "bot_name": "로앤봇",
-        "welcome_message": "안녕하세요! 법률·세무·노무·컨설팅 전문 AI 비서입니다. ⚖️💼\n사건/업무 분야별 1:1 전문가 상담 예약, 필수 준비서류 및 수임 절차를 안내해 드립니다.",
+        "welcome_message": "안녕하세요, 전문직 AI 상담사입니다. ⚖️\n\n법률·세무·노무·컨설팅 상담 예약, 수임료 안내, 서류 발급 안내까지 — 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "⚖️ 1:1 전문가 상담 예약하기",
             "📋 분야별 필요 서류 안내",
@@ -241,7 +241,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "flaticon_cat_butler",
         "bot_label": "견적/시공 상담",
         "bot_name": "하우징봇",
-        "welcome_message": "안녕하세요! 인테리어·건축·부동산 AI 컨시어지입니다. 🏠✨\n평수별 가견적 산출, 포트폴리오 안내, 무료 방문 실측 예약 및 시공 후 A/S 접수를 도와드립니다.",
+        "welcome_message": "안녕하세요, 인테리어·건축 AI 상담사입니다. 🏠\n\n무료 견적 산출, 현장 방문 예약, 자재·시공 안내, A/S 접수까지 — 건축 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "📐 평수/공간별 무료 견적 문의",
             "🗓️ 방문 실측 & 상담 예약",
@@ -259,7 +259,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "flaticon_cat_butler",
         "bot_label": "컨시어지 상담",
         "bot_name": "스테이봇",
-        "welcome_message": "안녕하세요! 호텔·펜션·스튜디오 AI 컨시어지입니다. 🏨🌴\n실시간 객실/스튜디오 예약 확인, 체크인·부대시설 안내, 주변 맛집 및 환불 규정을 안내해 드립니다.",
+        "welcome_message": "안녕하세요, 호텔·숙박 AI 상담사입니다. 🏨\n\n객실 예약, 요금 안내, 부대시설 이용, 불편 접수까지 — 숙박 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "🛏️ 객실/공간 예약 & 잔여 조회",
             "🕒 체크인/아웃 & 인원 규정",
@@ -277,7 +277,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "flaticon_smart_ai",
         "bot_label": "도입/제휴 상담",
         "bot_name": "비즈봇",
-        "welcome_message": "안녕하세요! 기업 공식 홈페이지·IT 솔루션 AI 매니저입니다. 🖥️🚀\n서비스 도입 및 요금제 안내, 기업 맞춤형 구축 견적, 기술 지원 및 제휴 문의를 도와드립니다.",
+        "welcome_message": "안녕하세요, IT/SaaS AI 상담사입니다. 🖥️\n\n서비스 이용 안내, 요금제 문의, 기술 지원, 도입 상담까지 — IT 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "🚀 솔루션 도입 & 무료 데모 신청",
             "💳 엔터프라이즈 요금제 안내",
@@ -295,7 +295,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "flaticon_bubble_bot",
         "bot_label": "예약/가맹 상담",
         "bot_name": "푸드봇",
-        "welcome_message": "안녕하세요! 레스토랑·카페·프랜차이즈 AI 매니저입니다. 🍽️☕\n단체석 및 룸 예약, 시그니처 메뉴/알러지 안내, 주차 정보 및 가맹 창업을 상담해 드립니다.",
+        "welcome_message": "안녕하세요, 레스토랑·카페 AI 상담사입니다. 🍽️\n\n메뉴 안내, 예약, 배달·포장 주문, 영업시간 문의까지 — F&B 전문 AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "🍽️ 단체석 / 룸 예약 문의",
             "📋 시그니처 메뉴 & 알러지 안내",
@@ -313,7 +313,7 @@ INDUSTRY_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "bot_icon_style": "flaticon_bubble_bot",
         "bot_label": "AI 상담톡",
         "bot_name": "상담봇",
-        "welcome_message": "안녕하세요! 공식 홈페이지 AI 상담 도우미입니다. 💬\n서비스 이용 안내, 예약/견적 문의, 자주 묻는 질문 및 담당자 연결을 빠르고 정확하게 도와드립니다.",
+        "welcome_message": "안녕하세요, AI 상담사입니다. ✨\n\n상품 추천, 배송 조회, 반품·교환 안내, 사용법 상담까지 — AI가 빠르고 정확하게 도와드립니다.\n\n궁금한 점을 편하게 말씀해 주세요. 😊",
         "quick_buttons": [
             "📌 주요 서비스 & 이용 안내",
             "💰 비용 / 견적 / 요금 문의",
