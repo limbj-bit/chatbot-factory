@@ -105,7 +105,7 @@ class StoreKnowledgeCrawlRequest(BaseModel):
 
 class StoreCatalogCrawlRequest(BaseModel):
     url: str = Field(..., description="상품 목록/카테고리/스토어 홈/사이트맵 URL")
-    max_products: int = Field(20, ge=1, le=50, description="한 번에 학습할 최대 상품 수 (1~50)")
+    max_products: int = Field(10, ge=1, le=50, description="한 번에 학습할 최대 상품 수 (1~50, 기본 10)")
     tags: Optional[str] = Field(None, description="추가할 추천 태그")
     raw_html_override: Optional[str] = Field(
         None,

@@ -820,8 +820,9 @@ class StoreService:
             title_match = re.search(r"<title>(.*?)</title>", raw_html, re.IGNORECASE | re.DOTALL)
         title = html.unescape(title_match.group(1).strip()) if title_match else crawl_req.url
 
-        # Extract price (e.g., 28,000원 or og:price:amount)
+        # Extract price (og:price:amount, JSON-LD, Cafe24 JS vars, or "28,000원")
         price: Optional[int] = None
+        # 1) OpenGraph / meta
         price_meta = re.search(
             r'property=["\'](?:product:price:amount|og:price:amount)["\']\s+content=["\']([0-9,]+)["\']',
             raw_html,
@@ -829,10 +830,43 @@ class StoreService:
         )
         if price_meta:
             price = int(price_meta.group(1).replace(",", ""))
-        else:
+        # 2) JSON-LD Product offers.price
+        if price is None:
+            jsonld_price = re.search(
+                r'"@type"\s*:\s*"Product"[^}]*?"price"\s*:\s*"?([0-9,]+)"?',
+                raw_html,
+                re.IGNORECASE | re.DOTALL,
+            )
+            if jsonld_price:
+                try:
+                    price = int(jsonld_price.group(1).replace(",", ""))
+                except ValueError:
+                    pass
+        # 3) Cafe24 JS: var product_price = "28000" or EC_PRODUCT_INFO
+        if price is None:
+            cafe24_price = re.search(
+                r'(?:product_price|productPrice|sale_price|salePrice)\s*[=:]\s*["\']?([0-9,]+)',
+                raw_html,
+                re.IGNORECASE,
+            )
+            if cafe24_price:
+                try:
+                    price = int(cafe24_price.group(1).replace(",", ""))
+                except ValueError:
+                    pass
+        # 4) Fallback: "28,000원" in body text
+        if price is None:
             krw_match = re.search(r"([0-9]{1,3}(?:,[0-9]{3})+)\s*원", raw_html)
             if krw_match:
                 price = int(krw_match.group(1).replace(",", ""))
+        # 5) Fallback: "28000원" (no comma)
+        if price is None:
+            krw_match2 = re.search(r"([0-9]{4,})\s*원", raw_html)
+            if krw_match2:
+                try:
+                    price = int(krw_match2.group(1))
+                except ValueError:
+                    pass
 
         # Extract og:image
         img_match = re.search(
