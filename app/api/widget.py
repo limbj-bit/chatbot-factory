@@ -877,7 +877,6 @@ async def get_dynamic_widget_script(
         고객문의 <a href="mailto:${{config.contactEmail}}">${{config.contactEmail}}</a> &middot; ${{config.businessHours}}
       </div>
     </div>
-  `;  </div>
   `;
 
   document.body.appendChild(launcher);
