@@ -397,6 +397,18 @@ async def get_dynamic_widget_script(
     side_px = max(10, min(220, side_px))
     win_bottom_px = bottom_px + 92
     horiz_css = f"left: {side_px}px; right: auto;" if widget_pos == "bottom_left" else f"right: {side_px}px; left: auto;"
+    # Teaser bubble sits inward from the launcher (toward page center).
+    teaser_horiz_css = (
+        f"left: {side_px + 82}px; right: auto;"
+        if widget_pos == "bottom_left"
+        else f"right: {side_px + 82}px; left: auto;"
+    )
+    teaser_tail_side = "left" if widget_pos == "bottom_left" else "right"
+
+    from app.domain.teaser_prompts import get_teaser_prompts
+
+    teaser_prompts = [] if is_expired else get_teaser_prompts(industry, bot_name)
+    teaser_prompts_js = json.dumps(teaser_prompts, ensure_ascii=False)
 
     is_expired_js = "true" if is_expired else "false"
     expiry_warning_js = "true" if expiry_warning else "false"
@@ -437,6 +449,7 @@ async def get_dynamic_widget_script(
   // Remove any previous instance for live preview hot-reload
   document.querySelectorAll(".fresh-widget-launcher").forEach(el => el.remove());
   document.querySelectorAll(".fresh-widget-window").forEach(el => el.remove());
+  document.querySelectorAll(".fresh-teaser-bubble").forEach(el => el.remove());
 
   window.CHATBOT_FACTORY_SVGS = {presets_js};
 
@@ -453,6 +466,7 @@ async def get_dynamic_widget_script(
     headerTitle: "{safe_header_title}",
     chatTemplate: "{chat_template}",
     quickButtons: {quick_buttons_js},
+    teaserPrompts: {teaser_prompts_js},
     contactEmail: "{safe_email}",
     businessHours: "{safe_hours}",
     inputPlaceholder: "{safe_placeholder}",
@@ -527,6 +541,55 @@ async def get_dynamic_widget_script(
     }}
     .fresh-widget-launcher.shape-pill svg {{ width: 38px; height: 38px; }}
     .fresh-bot-avatar-img {{ width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }}
+
+    /* Closed-chat teaser bubble (rotating industry prompts) */
+    .fresh-teaser-bubble {{
+      position: fixed;
+      bottom: {bottom_px + 78}px;
+      {teaser_horiz_css}
+      max-width: min(230px, calc(100vw - 110px));
+      background: #FFFFFF;
+      color: #1E293B;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 16px;
+      padding: 10px 14px;
+      font-size: 12.5px;
+      font-weight: 700;
+      line-height: 1.45;
+      letter-spacing: -0.2px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.16);
+      z-index: 999998;
+      cursor: pointer;
+      opacity: 0;
+      transform: translateY(6px) scale(0.96);
+      pointer-events: none;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+    }}
+    .fresh-teaser-bubble.visible {{
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }}
+    .fresh-teaser-bubble::after {{
+      content: "";
+      position: absolute;
+      bottom: 14px;
+      {teaser_tail_side}: -6px;
+      width: 12px; height: 12px;
+      background: #FFFFFF;
+      border-{teaser_tail_side}: 1px solid rgba(15, 23, 42, 0.08);
+      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+      transform: rotate(45deg);
+    }}
+    @media (max-width: 480px) {{
+      .fresh-teaser-bubble {{
+        max-width: min(190px, calc(100vw - 96px));
+        font-size: 12px;
+        padding: 9px 12px;
+        bottom: {bottom_px + 72}px;
+      }}
+    }}
 
     /* Base Chat Window */
     .fresh-widget-window {{
@@ -957,6 +1020,11 @@ async def get_dynamic_widget_script(
   document.body.appendChild(launcher);
   document.body.appendChild(chatWindow);
 
+  const teaserBubble = document.createElement("div");
+  teaserBubble.className = "fresh-teaser-bubble";
+  teaserBubble.setAttribute("role", "status");
+  document.body.appendChild(teaserBubble);
+
   const messagesContainer = chatWindow.querySelector("#dyn-messages");
   const userInput = chatWindow.querySelector("#dyn-input");
   const sendBtn = chatWindow.querySelector("#dyn-send");
@@ -964,11 +1032,60 @@ async def get_dynamic_widget_script(
   const uploadBtn = chatWindow.querySelector("#dyn-upload-btn");
   const closeBtn = chatWindow.querySelector("#dyn-close");
 
+  let teaserTimer = null;
+  let teaserIdx = 0;
+  let teaserShows = 0;
+  const teaserMaxShows = 12;
+  function hideTeaser() {{
+    teaserBubble.classList.remove("visible");
+  }}
+  function showTeaserLine() {{
+    const lines = config.teaserPrompts || [];
+    if (config.isExpired || !lines.length) return;
+    if (chatWindow.style.display === "flex") return;
+    if (teaserShows >= teaserMaxShows) return;
+    teaserBubble.textContent = lines[teaserIdx % lines.length];
+    teaserIdx += 1;
+    teaserShows += 1;
+    teaserBubble.classList.add("visible");
+  }}
+  function scheduleTeaserLoop() {{
+    if (teaserTimer) clearTimeout(teaserTimer);
+    if (config.isExpired || !(config.teaserPrompts || []).length) return;
+    const tick = () => {{
+      if (chatWindow.style.display === "flex") {{
+        hideTeaser();
+        teaserTimer = setTimeout(tick, 4000);
+        return;
+      }}
+      showTeaserLine();
+      teaserTimer = setTimeout(() => {{
+        hideTeaser();
+        teaserTimer = setTimeout(tick, 3500);
+      }}, 6500);
+    }};
+    teaserTimer = setTimeout(tick, 1800);
+  }}
+  scheduleTeaserLoop();
+  teaserBubble.addEventListener("click", () => {{
+    hideTeaser();
+    chatWindow.style.display = "flex";
+    if (!config.isExpired) userInput.focus();
+  }});
+
   launcher.addEventListener("click", () => {{
     chatWindow.style.display = chatWindow.style.display === "flex" ? "none" : "flex";
-    if (chatWindow.style.display === "flex" && !config.isExpired) userInput.focus();
+    if (chatWindow.style.display === "flex") {{
+      hideTeaser();
+      if (!config.isExpired) userInput.focus();
+    }} else {{
+      scheduleTeaserLoop();
+    }}
   }});
-  closeBtn.addEventListener("click", () => {{ chatWindow.style.display = "none"; }});
+  closeBtn.addEventListener("click", () => {{
+    chatWindow.style.display = "none";
+    scheduleTeaserLoop();
+  }});
 
   chatWindow.querySelectorAll("[data-q]").forEach(btn => {{
     btn.addEventListener("click", () => {{
