@@ -63,25 +63,39 @@ async_session_factory = async_sessionmaker(
 )
 
 
-async def init_db() -> None:
-    """Create tables if they don't exist."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    # Lightweight, idempotent migrations for columns added after initial deploy.
-    # create_all() does not ALTER existing tables (Render Postgres / local SQLite).
+# Columns added after initial create_all(). Each statement MUST run in its own
+# transaction: on Postgres, one failed ALTER aborts the whole transaction and
+# later adds (e.g. brand_logo_url) never apply if earlier columns already exist.
+LIGHTWEIGHT_ALTERS = (
+    "ALTER TABLE messages ADD COLUMN detected_language VARCHAR(8)",
+    "ALTER TABLE messages ADD COLUMN translation_ko TEXT",
+    "ALTER TABLE sessions ADD COLUMN mall_id VARCHAR(64) DEFAULT 'demo_mall'",
+    "ALTER TABLE stores ADD COLUMN brand_logo_url TEXT",
+)
+
+
+async def apply_lightweight_migrations(target_engine=None) -> None:
+    """Idempotent ALTER TABLE adds. One transaction per statement; log skips."""
+    import logging
     from sqlalchemy import text as _text
 
-    async with engine.begin() as conn:
-        for stmt in (
-            "ALTER TABLE messages ADD COLUMN detected_language VARCHAR(8)",
-            "ALTER TABLE messages ADD COLUMN translation_ko TEXT",
-            "ALTER TABLE sessions ADD COLUMN mall_id VARCHAR(64) DEFAULT 'demo_mall'",
-            "ALTER TABLE stores ADD COLUMN brand_logo_url TEXT",
-        ):
-            try:
+    eng = target_engine if target_engine is not None else engine
+    log = logging.getLogger(__name__)
+    for stmt in LIGHTWEIGHT_ALTERS:
+        try:
+            async with eng.begin() as conn:
                 await conn.execute(_text(stmt))
-            except Exception:
-                pass  # column already exists
+            log.info("schema migrate applied: %s", stmt)
+        except Exception as e:
+            # Expected when column already exists; still log so silent drift is visible.
+            log.info("schema migrate skip: %s (%s: %s)", stmt, type(e).__name__, e)
+
+
+async def init_db() -> None:
+    """Create tables if they don't exist, then apply lightweight column adds."""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    await apply_lightweight_migrations(engine)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
