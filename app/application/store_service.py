@@ -1031,7 +1031,10 @@ class StoreService:
                 except Exception:
                     pass
 
+        total_discovered = len(urls)
+        offset = max(0, crawl_req.offset or 0)
         max_products = max(1, min(50, crawl_req.max_products or 20))
+        urls = urls[offset:]
         urls = urls[:max_products + 5]  # small buffer for dedup
 
         existing_res = await session.execute(
@@ -1080,10 +1083,10 @@ class StoreService:
                 "현재 자동 수집이 제한됩니다."
             )
         else:
-            remaining = max(0, discovered - total_learned)
+            remaining = max(0, total_discovered - total_learned)
             notes = (
                 "이번 실행: " + str(len(learned_items)) + "개 새로 학습. "
-                "누적: " + str(total_learned) + "/" + str(discovered) + "개 학습 완료. "
+                "누적: " + str(total_learned) + "/" + str(total_discovered) + "개 학습 완료. "
                 "(중복 " + str(skipped) + "개 건너뜀, 실패 " + str(failed) + "개)"
             )
             if remaining > 0:
@@ -1094,8 +1097,9 @@ class StoreService:
             learned=len(learned_items),
             skipped_duplicates=skipped,
             failed=failed,
-            total_products=discovered,
+            total_products=total_discovered,
             learned_total=total_learned,
+            has_more=(offset + len(urls)) < total_discovered,
             items=learned_items,
             notes=notes,
         )

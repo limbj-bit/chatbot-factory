@@ -1419,13 +1419,13 @@
         document.getElementById("knowledgeStatus").innerText = `⚠️ URL 크롤링 실패 (외부 접속 제한 등)`;
       }
     }
-    async function crawlCatalogBatch(mallId, url, maxProducts, tags, status, autoContinue) {
+    async function crawlCatalogBatch(mallId, url, maxProducts, tags, status, autoContinue, offset) {
       status.innerText = "⏳ 전체 상품 자동 학습 중... (이번 배치 최대 " + maxProducts + "개)";
       try {
         const res = await fetch("/api/stores/" + mallId + "/knowledge/crawl-catalog", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: url, max_products: maxProducts, tags: tags })
+          body: JSON.stringify({ url: url, max_products: maxProducts, offset: offset || 0, tags: tags })
         });
         const data = await res.json();
         if (res.ok) {
@@ -1437,10 +1437,10 @@
             const titles = data.items.map(x => x.title).slice(0, 3).join(", ");
             status.innerText += " (예: " + titles + (data.items.length > 3 ? " ..." : "") + ")";
           }
-          if (autoContinue && total > 0 && learned < total && data.learned > 0) {
+          if (autoContinue && data.has_more && data.learned > 0) {
             status.innerText += " → 다음 배치 자동 시작...";
             await new Promise(r => setTimeout(r, 1500));
-            await crawlCatalogBatch(mallId, url, maxProducts, tags, status, true);
+            await crawlCatalogBatch(mallId, url, maxProducts, tags, status, true, (offset || 0) + maxProducts);
           } else if (total > 0 && learned >= total) {
             status.innerText = "🎉 전체 학습 완료! " + learned + "/" + total + "개 상품 학습됨.";
           }
