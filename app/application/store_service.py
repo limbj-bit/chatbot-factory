@@ -1193,6 +1193,122 @@ class StoreService:
                         queue.append(paginated)
         return product_urls[:max_urls]
 
+    async def _deep_crawl_product_urls(
+        self,
+        seed_url: str,
+        urls: List[str],
+        budget_seconds: float = 12.0,
+        max_categories: int = 5,
+        max_pages: int = 3,
+    ) -> List[str]:
+        """Budgeted homepage/category crawl used only when discovery is thin.
+
+        Caps categories/pages and stops when the wall-clock budget expires so
+        catalog learning can still finish inside a single HTTP request.
+        """
+        import asyncio as _asyncio
+        import time as _time
+
+        out = list(urls)
+        seen = set(out)
+        deadline = _time.monotonic() + max(3.0, budget_seconds)
+
+        def _over_budget() -> bool:
+            return _time.monotonic() >= deadline
+
+        try:
+            parsed_dc = urlparse(seed_url)
+            home_url = parsed_dc.scheme + "://" + parsed_dc.netloc + "/"
+            home_html = await self._fetch_html(home_url, timeout=8.0)
+            for u in self._discover_product_urls(home_html, home_url):
+                if u not in seen:
+                    seen.add(u)
+                    out.append(u)
+
+            cat_hrefs = re.findall(
+                r'href\s*=\s*["\']([^"\']+category[^"\']*)["\']', home_html, re.IGNORECASE
+            )
+            cat_urls_to_visit: List[str] = []
+            seen_cats: set = set()
+            for raw in cat_hrefs:
+                raw = raw.strip()
+                if raw.startswith("/"):
+                    raw = home_url.rstrip("/") + raw
+                elif not raw.startswith("http"):
+                    raw = home_url.rstrip("/") + "/" + raw.lstrip("./")
+                if raw not in seen_cats and parsed_dc.netloc in raw:
+                    seen_cats.add(raw)
+                    cat_urls_to_visit.append(raw)
+
+            async def _add_with_pagination(cat_url: str) -> None:
+                if _over_budget():
+                    return
+                first_html = await self._fetch_html(cat_url, timeout=6.0)
+                for u in self._discover_product_urls(first_html, cat_url):
+                    if u not in seen:
+                        seen.add(u)
+                        out.append(u)
+                parsed_cat = urlparse(cat_url)
+                no_progress = 0
+                for pn in range(2, max_pages + 1):
+                    if _over_budget():
+                        return
+                    try:
+                        cat_params = parse_qs(parsed_cat.query)
+                        cat_params.pop("page", None)
+                        cat_params["page"] = [str(pn)]
+                        paginated = (
+                            parsed_cat.scheme
+                            + "://"
+                            + parsed_cat.netloc
+                            + parsed_cat.path
+                            + "?"
+                            + urlencode(cat_params, doseq=True)
+                        )
+                        pag_html = await self._fetch_html(paginated, timeout=6.0)
+                        added = 0
+                        for u in self._discover_product_urls(pag_html, paginated):
+                            if u not in seen:
+                                seen.add(u)
+                                out.append(u)
+                                added += 1
+                        if added == 0:
+                            no_progress += 1
+                            if no_progress >= 2:
+                                break
+                        else:
+                            no_progress = 0
+                    except Exception:
+                        break
+
+            cate_nos = list(set(re.findall(r"cate_no=(\d+)", home_html)))[:max_categories]
+            for cn in cate_nos:
+                if _over_budget():
+                    break
+                try:
+                    cat_url = home_url.rstrip("/") + "/product/list.html?cate_no=" + cn
+                    await _add_with_pagination(cat_url)
+                except Exception:
+                    pass
+
+            for cat_url in cat_urls_to_visit[:max_categories]:
+                if _over_budget():
+                    break
+                try:
+                    await _add_with_pagination(cat_url)
+                except Exception:
+                    pass
+
+            logger.info(
+                "[CatalogCrawl] Deep crawl finished: %d URLs (budget=%.1fs remaining=%.1fs)",
+                len(out),
+                budget_seconds,
+                max(0.0, deadline - _time.monotonic()),
+            )
+        except Exception as e:
+            logger.warning("[CatalogCrawl] Deep crawl failed: %s", e)
+        return out
+
     async def crawl_store_catalog(
         self,
         session: AsyncSession,
@@ -1285,85 +1401,18 @@ class StoreService:
                     except Exception:
                         break
 
-        # Deep crawl: crawl homepage + category pages to find products NOT in the
-        # sitemap (Cafe24 sitemaps often contain only a subset of the catalog).
-        # This block must run for the sitemap path too — it used to sit inside the
-        # else-branch behind `if is_sitemap:` which made it dead code.
-        if is_sitemap or len(urls) < 3:
-            try:
-                parsed_dc = urlparse(crawl_req.url)
-                home_url = parsed_dc.scheme + "://" + parsed_dc.netloc + "/"
-                # Fetch homepage
-                home_html = await self._fetch_html(home_url, timeout=10.0)
-                home_urls = self._discover_product_urls(home_html, home_url)
-                for u in home_urls:
-                    if u not in urls:
-                        urls.append(u)
-                # Extract category URLs from homepage
-                cat_hrefs = re.findall(r'href\s*=\s*["\']([^"\']+category[^"\']*)["\']', home_html, re.IGNORECASE)
-                cat_urls_to_visit = []
-                seen_cats = set()
-                for raw in cat_hrefs:
-                    raw = raw.strip()
-                    if raw.startswith("/"):
-                        raw = home_url.rstrip("/") + raw
-                    elif not raw.startswith("http"):
-                        raw = home_url.rstrip("/") + "/" + raw.lstrip("./")
-                    if raw not in seen_cats and parsed_dc.netloc in raw:
-                        seen_cats.add(raw)
-                        cat_urls_to_visit.append(raw)
-
-                async def _add_with_pagination(cat_url: str, max_pages: int = 12) -> None:
-                    """Fetch a category/listing page + its paginated pages, appending new product URLs."""
-                    first_html = await self._fetch_html(cat_url, timeout=8.0)
-                    for u in self._discover_product_urls(first_html, cat_url):
-                        if u not in urls:
-                            urls.append(u)
-                    parsed_cat = urlparse(cat_url)
-                    no_progress = 0
-                    for pn in range(2, max_pages + 1):
-                        try:
-                            cat_params = parse_qs(parsed_cat.query)
-                            cat_params.pop("page", None)
-                            cat_params["page"] = [str(pn)]
-                            paginated = (
-                                parsed_cat.scheme + "://" + parsed_cat.netloc + parsed_cat.path
-                                + "?" + urlencode(cat_params, doseq=True)
-                            )
-                            pag_html = await self._fetch_html(paginated, timeout=8.0)
-                            pag_urls = self._discover_product_urls(pag_html, paginated)
-                            added = 0
-                            for u in pag_urls:
-                                if u not in urls:
-                                    urls.append(u)
-                                    added += 1
-                            if added == 0:
-                                no_progress += 1
-                                if no_progress >= 2:
-                                    break
-                            else:
-                                no_progress = 0
-                        except Exception:
-                            break
-
-                # Cafe24: extract cate_no values from homepage and fetch product listing pages
-                cate_nos = set(re.findall(r'cate_no=(\d+)', home_html))
-                for cn in list(cate_nos)[:40]:
-                    try:
-                        cat_url = home_url.rstrip("/") + "/product/list.html?cate_no=" + cn
-                        await _add_with_pagination(cat_url, max_pages=12)
-                    except Exception:
-                        pass
-                # Fetch each category URL from homepage nav (up to 20) + pagination
-                for cat_url in cat_urls_to_visit[:20]:
-                    try:
-                        await _add_with_pagination(cat_url, max_pages=12)
-                    except Exception:
-                        pass
-                logger.info("[CatalogCrawl] After deep crawl: %d total URLs (from sitemap + homepage + categories)", len(urls))
-            except Exception as e:
-                logger.warning("[CatalogCrawl] Deep crawl failed: %s", e)
-            # Fallback: try sitemap.xml if discovery was thin
+        # Deep crawl ONLY when discovery is thin. A full sitemap (e.g. 100+ /product/
+        # URLs) must skip this — otherwise Render/browser time out before any learn.
+        max_products = max(1, min(50, crawl_req.max_products or 20))
+        need_deep = len(urls) < max(max_products, 3)
+        if need_deep:
+            urls = await self._deep_crawl_product_urls(
+                seed_url=crawl_req.url,
+                urls=urls,
+                budget_seconds=12.0,
+                max_categories=5,
+                max_pages=3,
+            )
             if len(urls) < 3:
                 try:
                     parsed = urlparse(crawl_req.url)
@@ -1374,12 +1423,15 @@ class StoreService:
                             urls.append(u)
                 except Exception:
                     pass
+        else:
+            logger.info(
+                "[CatalogCrawl] Skip deep crawl: already have %d product URLs (need_deep=False)",
+                len(urls),
+            )
 
         total_discovered = len(urls)
         offset = max(0, crawl_req.offset or 0)
-        max_products = max(1, min(50, crawl_req.max_products or 20))
-        urls = urls[offset:]
-        urls = urls[:max_products + 5]  # small buffer for dedup
+        batch_urls = urls[offset : offset + max_products + 5]
 
         existing_res = await session.execute(
             select(StoreKnowledgeModel.source_url).where(
@@ -1391,12 +1443,14 @@ class StoreService:
         learned_items = []
         skipped = 0
         failed = 0
-        discovered = len(urls)
-        deadline = _asyncio.get_event_loop().time() + 55.0
-        for u in urls:
+        discovered = len(batch_urls)
+        deadline = _asyncio.get_event_loop().time() + 45.0
+        timed_out = False
+        for u in batch_urls:
             if len(learned_items) >= max_products:
                 break
             if _asyncio.get_event_loop().time() > deadline:
+                timed_out = True
                 break
             if u in existing and not getattr(crawl_req, "force_refresh", False):
                 skipped += 1
@@ -1410,7 +1464,6 @@ class StoreService:
                 logger.warning("[CatalogCrawl] Failed for %s: %s", u, e)
                 failed += 1
 
-        # Count total learned products for this mall (cumulative progress)
         total_learned_res = await session.execute(
             select(func.count()).select_from(StoreKnowledgeModel).where(
                 StoreKnowledgeModel.mall_id == mall_id,
@@ -1419,22 +1472,62 @@ class StoreService:
         )
         total_learned = total_learned_res.scalar() or 0
 
-        if discovered == 0:
+        next_offset = offset + max_products
+        has_more = next_offset < total_discovered
+
+        if total_discovered == 0:
             notes = (
                 "상품 링크를 찾지 못했습니다. 카테고리/목록 페이지 URL을 넣거나, "
                 "사이트맵(sitemap.xml) 주소를 직접 입력해 주세요. "
                 "JavaScript로만 렌더링되는 스토어(쿠팡/네이버 스마트스토어)는 "
                 "현재 자동 수집이 제한됩니다."
             )
-        else:
-            remaining = max(0, total_discovered - total_learned)
+        elif not has_more:
             notes = (
-                "이번 실행: " + str(len(learned_items)) + "개 새로 학습. "
-                "누적: " + str(total_learned) + "/" + str(total_discovered) + "개 학습 완료. "
-                "(중복 " + str(skipped) + "개 건너뜀, 실패 " + str(failed) + "개)"
+                "학습 완료! 누적 "
+                + str(total_learned)
+                + "/"
+                + str(total_discovered)
+                + "개 상품 학습됨. "
+                "(이번 +"
+                + str(len(learned_items))
+                + "개, 중복 "
+                + str(skipped)
+                + "개, 실패 "
+                + str(failed)
+                + "개)"
             )
-            if remaining > 0:
-                notes += " → 계속 학습하려면 다시 버튼을 눌러주세요."
+            if failed > 0:
+                notes = (
+                    "학습 완료(일부 실패 "
+                    + str(failed)
+                    + "개). 누적 "
+                    + str(total_learned)
+                    + "/"
+                    + str(total_discovered)
+                    + "개."
+                )
+        else:
+            notes = (
+                "이번 배치 +"
+                + str(len(learned_items))
+                + "개. 누적 "
+                + str(total_learned)
+                + "/"
+                + str(total_discovered)
+                + " ("
+                + str(int(100 * total_learned / total_discovered) if total_discovered else 0)
+                + "%). "
+                "(중복 "
+                + str(skipped)
+                + ", 실패 "
+                + str(failed)
+                + ")"
+            )
+            if timed_out:
+                notes += " 시간 제한으로 배치를 짧게 끊었습니다 → 다음 배치로 이어갑니다."
+            else:
+                notes += " → 다음 배치 계속."
 
         return StoreCatalogCrawlResponse(
             discovered=discovered,
@@ -1443,7 +1536,7 @@ class StoreService:
             failed=failed,
             total_products=total_discovered,
             learned_total=total_learned,
-            has_more=(offset + len(urls)) < total_discovered,
+            has_more=has_more,
             items=learned_items,
             notes=notes,
         )
