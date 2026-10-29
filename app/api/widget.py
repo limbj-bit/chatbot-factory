@@ -271,10 +271,9 @@ async def get_dynamic_widget_script(
             ]
         else:
             quick_buttons = ind_defaults.get("quick_buttons", [])
-
     if preview_welcome_message:
-    welcome_msg = preview_welcome_message.replace(chr(10), "\\n")
-elif store and store.welcome_message and not preview_store_name and not preview_bot_name and not preview_industry:
+        welcome_msg = preview_welcome_message.replace(chr(10), "\\n")
+    elif store and store.welcome_message and not preview_store_name and not preview_bot_name and not preview_industry:
         welcome_msg = store.welcome_message.replace("\n", "\\n")
     elif industry in INDUSTRY_DEFAULTS and industry != "raw_materials":
         base_welcome = ind_defaults.get("welcome_message", "")
