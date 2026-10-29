@@ -1020,7 +1020,7 @@ class StoreService:
         )
         listing_signals = ("category", "list", "shop", "goods_list", "product_list")
         page_count = 0
-        max_pages = 100
+        max_pages = 20
         while queue and page_count < max_pages and len(product_urls) < max_urls:
             url = queue.pop(0)
             if url in visited:
@@ -1028,7 +1028,7 @@ class StoreService:
             visited.add(url)
             page_count += 1
             try:
-                html = await self._fetch_html(url, timeout=10.0)
+                html = await self._fetch_html(url, timeout=5.0)
             except Exception:
                 continue
             # Extract product URLs from this page
@@ -1157,13 +1157,29 @@ class StoreService:
                             break
                     except Exception:
                         break
-            # Deep crawl: if listing page discovery is thin, crawl the whole site
-            if not is_sitemap and len(urls) < 50:
+            # Deep crawl: if using sitemap, also crawl homepage + category pages to find additional products
+            if is_sitemap:
                 try:
-                    deep_urls = await self._deep_discover_product_urls(crawl_req.url, max_urls=5000)
-                    for u in deep_urls:
+                    parsed_dc = urlparse(crawl_req.url)
+                    home_url = parsed_dc.scheme + "://" + parsed_dc.netloc + "/"
+                    # Fetch homepage
+                    home_html = await self._fetch_html(home_url, timeout=10.0)
+                    home_urls = self._discover_product_urls(home_html, home_url)
+                    for u in home_urls:
                         if u not in urls:
                             urls.append(u)
+                    # Try common category pages
+                    for cat_path in ["/category/", "/shop/", "/goods/"]:
+                        try:
+                            cat_url = home_url.rstrip("/") + cat_path
+                            cat_html = await self._fetch_html(cat_url, timeout=8.0)
+                            cat_urls = self._discover_product_urls(cat_html, cat_url)
+                            for u in cat_urls:
+                                if u not in urls:
+                                    urls.append(u)
+                        except Exception:
+                            pass
+                    logger.info("[CatalogCrawl] After deep crawl: %d total URLs", len(urls))
                 except Exception as e:
                     logger.warning("[CatalogCrawl] Deep crawl failed: %s", e)
             # Fallback: try sitemap.xml if discovery was thin

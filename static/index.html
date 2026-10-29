@@ -1457,8 +1457,8 @@
             status.innerText += " → 다음 배치 자동 시작...";
             await new Promise(r => setTimeout(r, 1500));
             await crawlCatalogBatch(mallId, url, maxProducts, tags, status, true, (offset || 0) + maxProducts);
-          } else if (total > 0 && learned >= total) {
-            status.innerText = "🎉 전체 학습 완료! " + learned + "/" + total + "개 상품 학습됨.";
+          } else if (data.learned === 0) {
+            status.innerText = "✅ 학습 완료! �\x9d " + learned + "\xea\xb0\x9c \xec\x83\x81\xed\x92\x88 \xed\x95\x99\xec\x8a\xb5\xeb\x90\xa8. (\xec\x82\xac\xec\x9d\xb4\xed\x8a\xb8\xeb\xa7\xb5\xec\x97\x90 " + total + "\xea\xb0\x9c URL \xeb\xb0\x9c\xea\xb2\xac)";
           }
         } else {
           status.innerText = "⚠️ 전체 학습 실패: " + (data.detail || "알 수 없는 오류");
