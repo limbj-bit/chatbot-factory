@@ -394,8 +394,22 @@
       </p>
     </div>
     <div class="studio-body">
-    
+
+    <!-- 기존 스토어 불러오기 (AS/수정용) -->
+    <div class="factory-box" style="border:2px solid #2563EB;background:#EFF6FF;">
+      <h3>🔧 기존 스토어 불러오기 / 수정 (AS · 재분양 없이 내용만 변경)</h3>
+      <div class="field-desc" style="font-size:12.5px;margin-bottom:10px;">
+        이미 발급받은 <b>mall_id</b>(예: shop_de651f29)를 입력하고 <b>[불러오기]</b>를 누르면 기존 설정이 폼에 채워집니다. 수정 후 STEP 1의 [생성]을 누르면 <b>같은 mall_id로 업데이트</b>됩니다 (embed 스크립트 재설치 불필요).
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <input type="text" id="loadMallId" style="flex:2;min-width:240px;" placeholder="👉 기존 mall_id 입력 (예: shop_de651f29)" />
+        <button class="btn" style="padding:10px 20px;" onclick="loadExistingStore()">🔍 기존 설정 불러오기</button>
+      </div>
+      <div id="loadStatus" style="margin-top:10px;font-size:13.5px;font-weight:700;color:#1D4ED8;"></div>
+    </div>
+
     <div class="factory-box">
+
       <h3>🎨 STEP 1. 우리 쇼핑몰 챗봇 만들기 (아래 ①~④번 확인 후 아이콘·템플릿만 고르세요!)</h3>
       
       <!-- 1순위: 고객이 직접 적어야 할 핵심 4가지 -->
@@ -1416,6 +1430,46 @@
         }
       } catch (err) {
         status.innerText = "⚠️ 전체 학습 실패: " + err;
+      }
+    }
+    async function loadExistingStore() {
+      const mallId = document.getElementById("loadMallId").value.trim();
+      const status = document.getElementById("loadStatus");
+      if (!mallId) {
+        alert("mall_id를 입력해 주세요.");
+        return;
+      }
+      status.innerText = "⏳ 기존 설정을 불러오는 중...";
+      try {
+        const res = await fetch("/api/stores/" + mallId);
+        if (!res.ok) {
+          status.innerText = "⚠️ 스토어를 찾을 수 없습니다 (mall_id 확인)";
+          return;
+        }
+        const data = await res.json();
+        // Populate STEP 1 fields
+        if (data.store_name) document.getElementById("storeName").value = data.store_name;
+        if (data.industry) {
+          const sel = document.getElementById("industry");
+          if (sel) sel.value = data.industry;
+        }
+        if (data.bot_name) document.getElementById("botName").value = data.bot_name;
+        if (data.brand_badge) document.getElementById("brandBadge").value = data.brand_badge;
+        if (data.header_title) document.getElementById("headerTitle").value = data.header_title;
+        if (data.contact_email) document.getElementById("contactEmail").value = data.contact_email;
+        if (data.business_hours) document.getElementById("businessHours").value = data.business_hours;
+        if (data.welcome_message) document.getElementById("welcomeMessage").value = data.welcome_message;
+        if (data.bot_label) document.getElementById("botLabel").value = data.bot_label;
+        if (data.chat_template) document.getElementById("chatTemplate").value = data.chat_template;
+        if (data.input_placeholder) document.getElementById("inputPlaceholder").value = data.input_placeholder;
+        if (data.quick_buttons && data.quick_buttons.length) {
+          document.getElementById("quickButtonsInput").value = data.quick_buttons.join(", ");
+        }
+        if (data.mall_id) document.getElementById("targetMallId").value = data.mall_id;
+        if (data.theme_color) document.getElementById("themeColor").value = data.theme_color;
+        status.innerText = "✅ '" + data.store_name + "' 설정을 불러왔습니다. 수정 후 [생성]을 누르면 업데이트됩니다.";
+      } catch (err) {
+        status.innerText = "⚠️ 불러오기 실패: " + err;
       }
     }
     window.addEventListener("DOMContentLoaded", () => {

@@ -467,7 +467,7 @@ async def get_dynamic_widget_script(
 
     /* Base Chat Window */
     .fresh-widget-window {{
-      position: fixed; bottom: {win_bottom_px}px; {horiz_css} width: 460px; height: 660px;
+      position: fixed; bottom: {win_bottom_px}px; {horiz_css} width: 520px; height: 700px;
       max-width: calc(100vw - 32px); max-height: calc(100vh - {win_bottom_px + 20}px);
       background: #ffffff; border-radius: 22px;
       border: 1px solid rgba(197, 160, 89, 0.28);
