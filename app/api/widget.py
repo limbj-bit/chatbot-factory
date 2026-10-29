@@ -243,7 +243,7 @@ async def get_dynamic_widget_script(
     header_title = (store.header_title if store and store.header_title else "고객상담센터")
     chat_template = preview_template or (store.chat_template if store and store.chat_template else "cosraw_grid")
     contact_email = preview_email or (store.contact_email if store and store.contact_email else ind_defaults.get("contact_email", "contact@cosrawfree.com"))
-    business_hours = preview_hours or (store.business_hours if store and store.business_hours else "평일 09:00~18:00")
+    business_hours = preview_hours or (store.business_hours if store and store.business_hours else "365일 24시간")
     input_placeholder = (
         store.input_placeholder
         if store and store.input_placeholder and not preview_industry

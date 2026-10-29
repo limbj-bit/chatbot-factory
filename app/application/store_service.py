@@ -473,7 +473,7 @@ class StoreService:
             chat_template=store.chat_template or "cosraw_grid",
             quick_buttons=q_buttons,
             contact_email=store.contact_email or "contact@cosrawfree.com",
-            business_hours=store.business_hours or "평일 09:00~18:00",
+            business_hours=store.business_hours or "365일 24시간",
             input_placeholder=store.input_placeholder or "궁금한 성분명이나 질문을 입력하세요...",
             bot_avatar_url=store.bot_avatar_url,
             commerce_platform=comm_platform,
@@ -576,7 +576,7 @@ class StoreService:
         else:
             quick_buttons = industry_info.get("quick_buttons", [])
         contact_email = request.contact_email or industry_info.get("contact_email", "contact@cosrawfree.com")
-        business_hours = request.business_hours or "평일 09:00~18:00"
+        business_hours = request.business_hours or "365일 24시간"
         input_placeholder = request.input_placeholder or industry_info.get(
             "input_placeholder", "궁금한 성분명(예: 레티놀)이나 질문을 입력하세요..."
         )

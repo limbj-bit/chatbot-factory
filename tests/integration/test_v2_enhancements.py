@@ -303,7 +303,7 @@ async def test_phase6_bot_name_16_icons_and_10_chat_window_templates():
                     "header_title": "고객상담센터",
                     "chat_template": tpl,
                     "contact_email": "contact@cosrawfree.com",
-                    "business_hours": "평일 09:00~18:00",
+                    "business_hours": "365일 24시간",
                 },
             )
             assert res.status_code == 201

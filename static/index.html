@@ -465,7 +465,7 @@
         <div class="field-card">
           <div class="field-title"><span>⑤ 고객센터 상담 운영시간</span><span class="field-tag">직접입력</span></div>
           <div class="field-desc">채팅창 맨 아래 이메일 옆에 표시되는 상담 가능 시간 안내입니다.</div>
-          <input type="text" id="businessHours" value="평일 09:00~18:00" oninput="triggerInstantPreview();" placeholder="예: 평일 09:00~18:00 또는 365일 24시간" />
+          <input type="text" id="businessHours" value="365일 24시간" oninput="triggerInstantPreview();" placeholder="예: 365일 24시간 또는 365일 24시간" />
         </div>
 
         <div class="field-card" style="grid-column: 1 / -1;">
@@ -1074,7 +1074,7 @@
       const badge = document.getElementById("brandBadge").value.trim() || storeName.slice(0, 8);
       const industry = getSelectedIndustryValue();
       const email = document.getElementById("contactEmail").value.trim() || "help@mycompany.com";
-      const hours = document.getElementById("businessHours").value.trim() || "평일 09:00~18:00";
+      const hours = document.getElementById("businessHours").value.trim() || "365일 24시간";
       const qbRaw = document.getElementById("quickButtonsInput").value.trim();
       const pos = document.getElementById("widgetPos").value || "bottom_right";
       const bottomPx = document.getElementById("widgetBottomPx").value || "24";
@@ -1219,7 +1219,7 @@
       const bot_label = document.getElementById("botLabel").value.trim() || `${bot_name} 상담`;
       const bot_icon_style = document.getElementById("botIconStyle").value;
       const contact_email = document.getElementById("contactEmail").value.trim() || "contact@cosrawfree.com";
-      const business_hours = document.getElementById("businessHours").value.trim() || "평일 09:00~18:00";
+      const business_hours = document.getElementById("businessHours").value.trim() || "365일 24시간";
       const allowed_domains = document.getElementById("allowedDomains").value.trim() || undefined;
       const qbRaw = document.getElementById("quickButtonsInput").value.trim();
       const quick_buttons = qbRaw ? qbRaw.split(",").map(x => x.trim()).filter(Boolean) : undefined;

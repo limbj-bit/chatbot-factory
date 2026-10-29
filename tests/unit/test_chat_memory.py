@@ -313,7 +313,7 @@ async def _add_store(session, mall_id="memory_test_mall"):
         mall_id=mall_id,
         store_name="테스트 뷰티몰",
         industry="beauty",
-        business_hours="평일 09:00~18:00",
+        business_hours="365일 24시간",
         contact_email="cs@test.co.kr",
         policy_config_json='{"max_claim_days":7}',
     )

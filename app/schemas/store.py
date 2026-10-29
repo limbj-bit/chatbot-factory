@@ -51,7 +51,7 @@ class StoreCreateRequest(BaseModel):
         description="채팅창 첫 화면 2x2+1 빠른 질문 버튼 리스트 (생략 시 업종별 5개 버튼 자동 세팅)",
     )
     contact_email: Optional[str] = Field(None, description="하단 안내바 고객문의 이메일 (예: contact@cosrawfree.com)")
-    business_hours: Optional[str] = Field(None, description="하단 안내바 운영시간 (예: 평일 09:00~18:00)")
+    business_hours: Optional[str] = Field(None, description="하단 안내바 운영시간 (예: 365일 24시간)")
     input_placeholder: Optional[str] = Field(
         None,
         description="하단 입력창 안내 문구 (예: 궁금한 성분명(예: 레티놀)이나 질문을 입력하세요...)",
@@ -166,7 +166,7 @@ class StoreResponse(BaseModel):
     chat_template: str = "cosraw_grid"
     quick_buttons: List[str] = Field(default_factory=list)
     contact_email: str = "help@store.co.kr"
-    business_hours: str = "평일 09:00~18:00"
+    business_hours: str = "365일 24시간"
     input_placeholder: str = "궁금한 상품명이나 질문을 입력하세요..."
     bot_avatar_url: Optional[str] = None
     commerce_platform: Optional[str] = None
