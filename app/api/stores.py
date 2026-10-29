@@ -150,7 +150,12 @@ async def upload_store_bot_avatar_endpoint(
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_db),
 ):
-    """Upload a custom Flaticon PNG/GIF/SVG/WebP icon file to use as the store's bot launcher and chat avatar."""
+    """Upload a custom PNG/GIF/JPEG/WebP icon; always stored as a tiny compressed data-URI."""
+    from app.infrastructure.avatar_compress import (
+        bytes_to_data_uri,
+        compress_avatar_bytes,
+    )
+
     raw_bytes = await file.read()
     if len(raw_bytes) > 10 * 1024 * 1024:
         raise HTTPException(
@@ -158,19 +163,13 @@ async def upload_store_bot_avatar_endpoint(
             detail="Avatar image file must be under 10MB.",
         )
     try:
-        from PIL import Image
-        import io
-        img = Image.open(io.BytesIO(raw_bytes))
-        img = img.convert("RGBA")
-        img = img.resize((64, 64), Image.LANCZOS)
-        buf = io.BytesIO()
-        img.save(buf, format="PNG", optimize=True)
-        raw_bytes = buf.getvalue()
-        mime = "image/png"
-    except Exception:
-        mime = file.content_type or "image/png"
-    b64_str = base64.b64encode(raw_bytes).decode("ascii")
-    data_uri = "data:" + mime + ";base64," + b64_str
+        data, mime = compress_avatar_bytes(raw_bytes)
+        data_uri = bytes_to_data_uri(data, mime)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Avatar image could not be processed. Use JPG/PNG under 10MB. ({exc})",
+        ) from exc
 
     updated = await store_service.update_subscription(
         session,

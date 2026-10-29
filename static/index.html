@@ -1341,15 +1341,25 @@
       let createdStore = await createRes.json();
 
       const avatarInput = document.getElementById("customAvatarFile");
-      if (avatarInput.files && avatarInput.files[0]) {
+      async function uploadAvatarBlob(blob, filename) {
         const fd = new FormData();
-        fd.append("file", avatarInput.files[0]);
+        fd.append("file", blob, filename || "avatar.png");
         const upRes = await fetch(`/api/stores/${createdStore.mall_id}/avatar`, {
           method: "POST",
           body: fd
         });
         if (upRes.ok) createdStore = await upRes.json();
+        return upRes.ok;
+      }
+      if (avatarInput.files && avatarInput.files[0]) {
+        await uploadAvatarBlob(avatarInput.files[0], avatarInput.files[0].name);
         avatarInput.value = "";
+      } else if (customPreviewDataUrl && customPreviewDataUrl.indexOf("data:") === 0) {
+        // Re-sync / recompress saved preview so the live mall gets a tiny avatar.
+        try {
+          const blob = await (await fetch(customPreviewDataUrl)).blob();
+          await uploadAvatarBlob(blob, "avatar-resync.png");
+        } catch (e) { /* keep existing server avatar */ }
       }
 
       document.getElementById("targetMallId").value = createdStore.mall_id;
@@ -1357,6 +1367,7 @@
     const box = document.getElementById("issuedResultBox");
     if (box) { box.style.display = "block"; box.innerHTML = "<div style='padding:16px;background:#D1FAE5;border-radius:12px;color:#065F46;font-weight:700;'>변경 저장 완료! mall_id: " + createdStore.mall_id + " (임베드 스크립트 재설치 불필요)</div>"; }
     const _btn2 = document.getElementById("createStoreBtn"); if (_btn2) _btn2.innerText = "변경 저장 (기존 mall_id 업데이트)";
+    triggerInstantPreview(true);
     return;
   }
       const fullEmbedTag = `<script src="${window.location.origin}/api/widget/script?mall_id=${createdStore.mall_id}" async><\/script>`;

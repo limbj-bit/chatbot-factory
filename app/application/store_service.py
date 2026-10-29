@@ -533,7 +533,17 @@ class StoreService:
             if request.input_placeholder:
                 existing_store.input_placeholder = request.input_placeholder
             if request.bot_avatar_url:
-                existing_store.bot_avatar_url = request.bot_avatar_url
+                from app.infrastructure.avatar_compress import (
+                    HARD_RECOMPRESS_ABOVE,
+                    compress_avatar_data_uri,
+                )
+
+                av = request.bot_avatar_url
+                if av.startswith("data:") and len(av) > HARD_RECOMPRESS_ABOVE:
+                    av = compress_avatar_data_uri(av, force=True) or av
+                existing_store.bot_avatar_url = av
+                if not request.bot_icon_style:
+                    existing_store.bot_icon_style = "custom_upload"
             if request.allowed_domains is not None:
                 existing_store.allowed_domains = request.allowed_domains
             if request.webhook_url is not None:
@@ -589,8 +599,18 @@ class StoreService:
         input_placeholder = request.input_placeholder or industry_info.get(
             "input_placeholder", "궁금한 성분명(예: 레티놀)이나 질문을 입력하세요..."
         )
+        saved_avatar_url = None
         if request.bot_avatar_url:
+            from app.infrastructure.avatar_compress import (
+                HARD_RECOMPRESS_ABOVE,
+                compress_avatar_data_uri,
+            )
+
             bot_icon_style = "custom_upload"
+            av = request.bot_avatar_url
+            if av.startswith("data:") and len(av) > HARD_RECOMPRESS_ABOVE:
+                av = compress_avatar_data_uri(av, force=True) or av
+            saved_avatar_url = av
 
         merged_policy = industry_info["default_policy"].copy()
         if request.policy_config:
@@ -635,7 +655,7 @@ class StoreService:
             contact_email=contact_email,
             business_hours=business_hours,
             input_placeholder=input_placeholder,
-            bot_avatar_url=request.bot_avatar_url,
+            bot_avatar_url=saved_avatar_url,
         )
         session.add(store)
         await session.commit()
@@ -735,9 +755,20 @@ class StoreService:
             store.input_placeholder = update_req.input_placeholder
 
         if update_req.bot_avatar_url is not None:
-            store.bot_avatar_url = update_req.bot_avatar_url
-            if update_req.bot_avatar_url and not update_req.bot_icon_style:
-                store.bot_icon_style = "custom_upload"
+            from app.infrastructure.avatar_compress import (
+                HARD_RECOMPRESS_ABOVE,
+                compress_avatar_data_uri,
+            )
+
+            av = update_req.bot_avatar_url
+            if av == "":
+                store.bot_avatar_url = None
+            else:
+                if av.startswith("data:") and len(av) > HARD_RECOMPRESS_ABOVE:
+                    av = compress_avatar_data_uri(av, force=True) or av
+                store.bot_avatar_url = av
+                if not update_req.bot_icon_style:
+                    store.bot_icon_style = "custom_upload"
 
         if update_req.reset_days is not None:
             store.trial_days = update_req.reset_days

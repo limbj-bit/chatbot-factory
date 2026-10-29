@@ -304,25 +304,30 @@ async def get_dynamic_widget_script(
         ):
             bot_avatar_url = store.bot_avatar_url
 
-    # Defense-in-depth: legacy rows may hold giant data URIs (an unresized
-    # upload can exceed 9MB and bloats the widget script to ~9MB, wrecking
-    # page load on the customer's mall). Re-encode oversized avatars to a
-    # 64x64 PNG on the fly so the widget always stays small.
-    if bot_avatar_url.startswith("data:") and len(bot_avatar_url) > 200_000:
-        try:
-            import base64 as _b64_big
-            import io as _io_big
-            from PIL import Image as _PILImage
+    # Legacy rows may hold multi-MB data URIs. Compress for the script and
+    # persist the tiny copy so the live mall never falls back to the robot SVG.
+    if bot_avatar_url.startswith("data:") and len(bot_avatar_url) > 20_000:
+        from app.infrastructure.avatar_compress import compress_avatar_data_uri
 
-            _comma = bot_avatar_url.find(",")
-            _raw = _b64_big.b64decode(bot_avatar_url[_comma + 1:])
-            _img = _PILImage.open(_io_big.BytesIO(_raw)).convert("RGBA").resize((64, 64), _PILImage.LANCZOS)
-            _buf = _io_big.BytesIO()
-            _img.save(_buf, format="PNG", optimize=True)
-            bot_avatar_url = "data:image/png;base64," + _b64_big.b64encode(_buf.getvalue()).decode("ascii")
-        except Exception:
-            # Un-decodable blob: fall back to the preset icon instead of shipping megabytes
-            bot_avatar_url = ""
+        compressed = compress_avatar_data_uri(bot_avatar_url, force=True)
+        if compressed:
+            if (
+                store is not None
+                and store.bot_avatar_url
+                and len(store.bot_avatar_url) > len(compressed) + 1000
+            ):
+                store.bot_avatar_url = compressed
+                try:
+                    await session.commit()
+                except Exception:
+                    await session.rollback()
+            bot_avatar_url = compressed
+        else:
+            # Keep trying a tinier encode; only then drop to preset SVG.
+            compressed = compress_avatar_data_uri(
+                bot_avatar_url, force=True, target_px=48
+            )
+            bot_avatar_url = compressed or ""
 
     if bot_avatar_url:
         safe_url = bot_avatar_url.replace('"', '\\"')

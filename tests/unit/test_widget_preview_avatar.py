@@ -14,7 +14,11 @@ async def init_db_fixture():
 @pytest.mark.asyncio
 async def test_widget_script_avatar_preview_rules():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        avatar = "data:image/png;base64,aaaPREVIEW"
+        # Valid tiny 1x1 PNG so create/widget paths keep the avatar as-is.
+        avatar = (
+            "data:image/png;base64,"
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        )
         res = await client.post(
             "/api/stores",
             json={
@@ -40,7 +44,10 @@ async def test_widget_script_avatar_preview_rules():
         assert r1.status_code == 200
         assert avatar in r1.text
 
-        preview_av = "data:image/png;base64,bbbEXPLICIT"
+        preview_av = (
+            "data:image/png;base64,"
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
         r2 = await client.get(
             "/api/widget/script",
             params={
