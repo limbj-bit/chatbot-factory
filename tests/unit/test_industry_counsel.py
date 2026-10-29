@@ -1,5 +1,24 @@
 """Industry-specific counselor keywords + persona depth."""
-from app.application.chat_service import ChatService, _counsel_keywords
+from app.application.chat_service import ChatService, _INDUSTRY_COUNSEL, _counsel_keywords
+from app.core.industry import normalize_industry_key
+from app.application.store_service import INDUSTRY_DEFAULTS
+
+
+def test_normalize_industry_aliases():
+    assert normalize_industry_key("pet") == "pet_supplies"
+    assert normalize_industry_key("pet_supplies") == "pet_supplies"
+    assert normalize_industry_key("kids") == "baby_kids"
+    assert normalize_industry_key("clinic") == "medical_clinic"
+    assert normalize_industry_key("saas") == "it_corporate"
+    assert normalize_industry_key("  Beauty ") == "beauty"
+    assert normalize_industry_key("unknown_xyz") == "general"
+
+
+def test_counsel_covers_all_industry_defaults_keys():
+    for key in INDUSTRY_DEFAULTS:
+        assert key in _INDUSTRY_COUNSEL, f"missing counsel pack: {key}"
+        rec, detail = _counsel_keywords(key)
+        assert rec and detail
 
 
 def test_fresh_food_keywords_prefer_storage_over_skin():
@@ -14,6 +33,13 @@ def test_fashion_keywords_include_size_fit():
     rec, detail = _counsel_keywords("fashion")
     assert "사이즈" in rec or "사이즈" in detail
     assert "핏" in detail or "핏" in rec
+
+
+def test_pet_alias_uses_pet_supplies_keywords():
+    via_alias = _counsel_keywords("pet")
+    via_canon = _counsel_keywords("pet_supplies")
+    assert via_alias == via_canon
+    assert "사료" in via_alias[0] or "사료" in via_alias[1]
 
 
 def test_persona_lines_by_industry_depth():
@@ -37,3 +63,12 @@ def test_persona_lines_by_industry_depth():
 
     pet = "\n".join(ChatService._industry_persona_lines("pet", "펫봇", "반려동물"))
     assert "수의사" in pet or "알러지" in pet
+
+    baby = "\n".join(ChatService._industry_persona_lines("kids", "키즈봇", "유아동"))
+    assert "월령" in baby or "개월" in baby
+
+    clinic = "\n".join(ChatService._industry_persona_lines("medical_clinic", "병원봇", "병원"))
+    assert "진단" in clinic or "응급" in clinic
+
+    hotel = "\n".join(ChatService._industry_persona_lines("hotel", "호텔봇", "호텔"))
+    assert "체크인" in hotel or "예약" in hotel

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.commerce_service import commerce_service
 from app.application.order_service import OrderService
 from app.application.store_service import store_service
+from app.core.industry import INDUSTRY_KR as _INDUSTRY_KR, normalize_industry_key
 from app.core.language import detect_language, LANGUAGE_NAMES
 from app.core.logging import logger
 from app.domain.orders.models import Order, OrderStatus
@@ -22,15 +23,6 @@ _ORDER_ID_RE = re.compile(r"(\d{8}-\d{7}|ORD-[A-Za-z0-9-]+)")
 
 # How many recent turns to feed the LLM for multi-turn memory.
 _HISTORY_LIMIT = 10
-
-_INDUSTRY_KR = {
-    "fresh_food": "신선식품/식품",
-    "beauty": "뷰티/화장품",
-    "fashion": "패션/의류",
-    "electronics": "전자/가전",
-    "pet": "반려동물용품",
-    "general": "종합몰",
-}
 
 # Matches a claim/refund window like "7일 이내" / "3일 이하" in an LLM reply.
 _CLAIM_DAY_RE = re.compile(r"(\d+)\s*일\s*(이내|이하|안에)")
@@ -120,6 +112,49 @@ _PET_DETAIL = [
     "사료", "간식", "나이", "개월", "견종", "묘종", "알러지", "알레르기",
     "체중", "급여", "가격", "얼마", "성분", "급여량", "강아지", "고양이",
 ]
+_RAW_RECOMMEND = ["추천", "규격", "COA", "MSDS", "공급", "샘플", "뭐가", "고르"]
+_RAW_DETAIL = [
+    "규격", "COA", "MSDS", "함량", "순도", "원료", "성분", "레티놀", "나이아신",
+    "가격", "얼마", "MOQ", "샘플", "납기", "제조사",
+]
+_BABY_RECOMMEND = ["추천", "뭐가", "고르", "용품", "개월", "월령", "선물"]
+_BABY_DETAIL = [
+    "개월", "월령", "신생아", "유아", "KC", "안전", "소재", "사이즈", "가격", "얼마",
+    "이유식", "젖병", "카시트", "유모차",
+]
+_SPORTS_RECOMMEND = ["추천", "뭐가", "고르", "스펙", "호환", "캠핑", "장비"]
+_SPORTS_DETAIL = [
+    "스펙", "호환", "사이즈", "모델", "텐트", "캠핑", "등반", "가격", "얼마", "AS", "무게",
+]
+_CLINIC_RECOMMEND = ["예약", "진료", "시술", "상담", "과목", "안내"]
+_CLINIC_DETAIL = [
+    "예약", "초진", "재진", "진료시간", "야간", "주말", "주차", "비용", "비급여",
+    "증명서", "위치", "과목", "시술",
+]
+_EDU_RECOMMEND = ["추천", "수강", "레벨", "반", "커리큘럼", "체험"]
+_EDU_DETAIL = [
+    "레벨", "수강료", "시간표", "개강", "환불", "체험", "테스트", "과목", "가격", "얼마",
+]
+_LEGAL_RECOMMEND = ["상담", "예약", "자문", "수임", "문의"]
+_LEGAL_DETAIL = [
+    "예약", "수임료", "자문", "서류", "계약", "세무", "노무", "법률", "비밀", "절차",
+]
+_INTERIOR_RECOMMEND = ["견적", "상담", "시공", "추천", "문의"]
+_INTERIOR_DETAIL = [
+    "평수", "견적", "실측", "시공", "자재", "포트폴리오", "AS", "하자", "예산", "일정",
+]
+_HOTEL_RECOMMEND = ["예약", "객실", "문의", "요금"]
+_HOTEL_DETAIL = [
+    "예약", "체크인", "체크아웃", "인원", "조식", "수영장", "취소", "환불", "요금", "주차",
+]
+_IT_RECOMMEND = ["도입", "데모", "요금제", "문의", "제휴"]
+_IT_DETAIL = [
+    "요금제", "데모", "도입", "제휴", "장애", "지원", "API", "엔터프라이즈", "가격", "얼마",
+]
+_FNB_RECOMMEND = ["예약", "메뉴", "추천", "가맹", "문의"]
+_FNB_DETAIL = [
+    "예약", "인원", "메뉴", "알레르기", "알러지", "영업시간", "주차", "포장", "배달", "가맹",
+]
 _GENERAL_RECOMMEND = ["추천", "선물", "뭐가", "고르", "어떤"]
 _GENERAL_DETAIL = ["가격", "얼마", "사용법", "어떻게", "스펙", "구성", "옵션"]
 
@@ -128,16 +163,25 @@ _INDUSTRY_COUNSEL: Dict[str, Tuple[List[str], List[str]]] = {
     "fresh_food": (_FRESH_RECOMMEND, _FRESH_DETAIL),
     "fashion": (_FASHION_RECOMMEND, _FASHION_DETAIL),
     "electronics": (_ELECTRONICS_RECOMMEND, _ELECTRONICS_DETAIL),
-    "pet": (_PET_RECOMMEND, _PET_DETAIL),
+    "pet_supplies": (_PET_RECOMMEND, _PET_DETAIL),
+    "raw_materials": (_RAW_RECOMMEND, _RAW_DETAIL),
+    "baby_kids": (_BABY_RECOMMEND, _BABY_DETAIL),
+    "sports_leisure": (_SPORTS_RECOMMEND, _SPORTS_DETAIL),
+    "medical_clinic": (_CLINIC_RECOMMEND, _CLINIC_DETAIL),
+    "education_academy": (_EDU_RECOMMEND, _EDU_DETAIL),
+    "professional_legal": (_LEGAL_RECOMMEND, _LEGAL_DETAIL),
+    "interior_realestate": (_INTERIOR_RECOMMEND, _INTERIOR_DETAIL),
+    "hotel_travel": (_HOTEL_RECOMMEND, _HOTEL_DETAIL),
+    "it_corporate": (_IT_RECOMMEND, _IT_DETAIL),
+    "restaurant_cafe": (_FNB_RECOMMEND, _FNB_DETAIL),
     "general": (_GENERAL_RECOMMEND, _GENERAL_DETAIL),
 }
 
 
 def _counsel_keywords(industry: Optional[str]) -> Tuple[List[str], List[str]]:
     """Return (recommendation_keywords, detail_keywords) for the store industry."""
-    key = (industry or "general").strip().lower()
+    key = normalize_industry_key(industry)
     return _INDUSTRY_COUNSEL.get(key, _INDUSTRY_COUNSEL["general"])
-
 
 
 class ChatService:
@@ -406,8 +450,9 @@ class ChatService:
         industry_key: str, bot_display_name: str, industry_kr: str
     ) -> List[str]:
         """Industry-matched counselor persona lines for the system prompt."""
+        key = normalize_industry_key(industry_key)
         lines: List[str] = []
-        if industry_key == "beauty":
+        if key == "beauty":
             lines += [
                 "",
                 "## 뷰티 전문 상담사 페르소나",
@@ -425,7 +470,7 @@ class ChatService:
                 "3) 아침/저녁 루틴(가능 시) 4) 추가 질문 유도",
                 "- 학습 지식에 없는 성분·효능은 지어내지 마세요. 피부 무관 상품은 추천 금지.",
             ]
-        elif industry_key == "fresh_food":
+        elif key == "fresh_food":
             lines += [
                 "",
                 "## 신선식품 전문 상담사 페르소나",
@@ -447,7 +492,7 @@ class ChatService:
                 "- 알레르기·임산부·유아식은 단정하지 말고, 표시 성분은 지식에 있을 때만 안내하세요.",
                 "- 배송 지연으로 상온 방치·변질이 의심되면 사진 접수와 고객센터 확인을 안내하세요.",
             ]
-        elif industry_key == "fashion":
+        elif key == "fashion":
             lines += [
                 "",
                 "## 패션 전문 상담사 페르소나",
@@ -464,7 +509,7 @@ class ChatService:
                 "1) 요구 요약 2) 상품 1~3개(핏·소재·상황 적합성) 3) 사이즈/세탁 팁 4) 교환은 스토어 정책만 인용",
                 "- 임의로 무료교환·재고를 약속하지 마세요.",
             ]
-        elif industry_key == "electronics":
+        elif key == "electronics":
             lines += [
                 "",
                 "## 전자/가전 전문 상담사 페르소나",
@@ -477,7 +522,7 @@ class ChatService:
                 "1) 요구 요약 2) 적합 상품/스펙 근거 3) 설정·사용 팁 4) 고장 시 자가진단 후 사진 AS 안내",
                 "- 보증·스펙은 학습 지식만 인용하세요.",
             ]
-        elif industry_key == "pet":
+        elif key == "pet_supplies":
             lines += [
                 "",
                 "## 반려동물 용품 상담사 페르소나",
@@ -489,6 +534,136 @@ class ChatService:
                 "### 답변 구조",
                 "1) 반려동물 정보 요약 2) 적합 상품·급여 포인트 3) 주의사항",
                 "- 의료 진단처럼 단정하지 말고, 이상 증상은 수의사 상담을 권하세요.",
+            ]
+        elif key == "raw_materials":
+            lines += [
+                "",
+                "## 원료/B2B 전문 상담사 페르소나",
+                f"당신은 {bot_display_name}. 화장품·식품 원료 B2B 상담사로서 규격·공급·서류를 정확히 안내합니다.",
+                "",
+                "### 인테이크",
+                "- 용도(화장품/식품 등), 필요 규격, 예상 수량(MOQ)을 먼저 확인하세요.",
+                "",
+                "### 답변 구조",
+                "1) 요구 요약 2) 적합 원료/규격 3) COA·MSDS·샘플·납기(지식에 있을 때만) 4) 다음 단계(견적/등록)",
+                "- 없는 성적서·함량을 지어내지 마세요.",
+            ]
+        elif key == "baby_kids":
+            lines += [
+                "",
+                "## 유아동 전문 상담사 페르소나",
+                f"당신은 {bot_display_name}. 유아동 용품 상담사로서 월령·안전 기준으로 신중히 안내합니다.",
+                "",
+                "### 인테이크",
+                "- 추천 전 아이 개월수/체중·사용 목적(수유/외출/수면 등)을 확인하세요.",
+                "- 정보 부족 시 카드·단정 추천을 하지 마세요.",
+                "",
+                "### 답변 구조",
+                "1) 월령·목적 요약 2) 적합 상품 1~3개(이유·안전 포인트) 3) 사용/교환 안내",
+                "- KC·안전 인증은 학습 지식에 있을 때만 언급하세요. 의료 조언은 하지 마세요.",
+            ]
+        elif key == "sports_leisure":
+            lines += [
+                "",
+                "## 스포츠/레저 전문 상담사 페르소나",
+                f"당신은 {bot_display_name}. 스포츠·캠핑 장비 상담사로서 스펙·호환·AS를 정확히 안내합니다.",
+                "",
+                "### 인테이크",
+                "- 사용 환경(캠핑/등산 등), 인원, 예산, 호환이 필요한 기존 장비를 확인하세요.",
+                "",
+                "### 답변 구조",
+                "1) 용도 요약 2) 장비 추천/스펙 근거 3) 사용·관리 팁 4) 파손 시 사진 AS 안내",
+            ]
+        elif key == "medical_clinic":
+            lines += [
+                "",
+                "## 병원/클리닉 상담사 페르소나",
+                f"당신은 {bot_display_name}. 병원·클리닉 안내 상담사로서 예약·진료과·운영 안내를 돕습니다.",
+                "",
+                "### 인테이크",
+                "- 희망 과목/시술, 초진·재진, 희망 일시를 확인하세요.",
+                "",
+                "### 답변 구조",
+                "1) 문의 요약 2) 예약·시간·주차·비용(지식/정책에 있는 범위) 3) 원무과 연결 안내",
+                "- 진단·처방·치료 효과를 단정하지 마세요. 응급은 즉시 병원/응급실을 안내하세요.",
+            ]
+        elif key == "education_academy":
+            lines += [
+                "",
+                "## 교육/학원 상담사 페르소나",
+                f"당신은 {bot_display_name}. 학원·교육 상담사로서 과정·레벨·수강 안내를 합니다.",
+                "",
+                "### 인테이크",
+                "- 관심 과목, 현재 수준, 희망 일정·목표를 확인하세요.",
+                "",
+                "### 답변 구조",
+                "1) 목표 요약 2) 적합 반/커리큘럼 3) 수강료·환불·체험(정책/지식 범위) 4) 상담 신청 안내",
+                "- 합격·성적 보장을 약속하지 마세요.",
+            ]
+        elif key == "professional_legal":
+            lines += [
+                "",
+                "## 전문직(법률/세무/노무) 상담사 페르소나",
+                f"당신은 {bot_display_name}. 전문 상담 예약·서류·절차 안내를 담당합니다.",
+                "",
+                "### 인테이크",
+                "- 상담 분야, 긴급도, 보유 서류를 확인하세요.",
+                "",
+                "### 답변 구조",
+                "1) 문의 요약 2) 예약/절차/필요 서류 3) 수임·자문 안내는 공개된 기준만",
+                "- 개별 사건 법률 결론을 단정하지 말고, 전문가 상담으로 연결하세요.",
+            ]
+        elif key == "interior_realestate":
+            lines += [
+                "",
+                "## 인테리어/건축 상담사 페르소나",
+                f"당신은 {bot_display_name}. 견적·실측·시공 안내 상담사입니다.",
+                "",
+                "### 인테이크",
+                "- 평수/공간, 예산, 희망 일정, 신규·리모델링 여부를 확인하세요.",
+                "",
+                "### 답변 구조",
+                "1) 요구 요약 2) 견적·포트폴리오·실측 예약 안내 3) 하자/AS는 사진 접수 가능",
+                "- 확정 견적을 임의로 약속하지 마세요.",
+            ]
+        elif key == "hotel_travel":
+            lines += [
+                "",
+                "## 호텔/숙박 컨시어지 페르소나",
+                f"당신은 {bot_display_name}. 예약·요금·시설 안내 컨시어지입니다.",
+                "",
+                "### 인테이크",
+                "- 날짜, 인원, 객실 타입, 특별 요청을 확인하세요.",
+                "",
+                "### 답변 구조",
+                "1) 요청 요약 2) 예약/요금/체크인 규정 3) 부대시설·취소 규정(지식 범위)",
+                "- 잔여 객실을 추측해 확정하지 마세요.",
+            ]
+        elif key == "it_corporate":
+            lines += [
+                "",
+                "## IT/SaaS 도입 상담사 페르소나",
+                f"당신은 {bot_display_name}. 도입·요금·기술지원 상담사입니다.",
+                "",
+                "### 인테이크",
+                "- 회사 규모, 필요 기능, 도입 시기, 기존 툴을 확인하세요.",
+                "",
+                "### 답변 구조",
+                "1) 요구 요약 2) 요금제/데모/지원 범위 3) 장애는 증상 확인 후 지원 안내",
+                "- 없는 SLA·기능을 약속하지 마세요.",
+            ]
+        elif key == "restaurant_cafe":
+            lines += [
+                "",
+                "## 레스토랑/카페 상담사 페르소나",
+                f"당신은 {bot_display_name}. 예약·메뉴·운영 안내 상담사입니다.",
+                "",
+                "### 인테이크",
+                "- 날짜·인원·좌석(룸/단체), 알레르기 여부를 확인하세요.",
+                "",
+                "### 답변 구조",
+                "1) 요청 요약 2) 예약/메뉴/영업시간 안내 3) 가맹 문의는 별도 절차 안내",
+                "- 알레르기·원재료는 지식에 있을 때만 안내하고 단정하지 마세요.",
             ]
         else:
             lines += [
@@ -534,7 +709,8 @@ class ChatService:
                 lines.append(rag_context)
             return "\n".join(lines)
 
-        industry_kr = _INDUSTRY_KR.get(store_obj.industry, store_obj.industry or "쇼핑몰")
+        industry_key = normalize_industry_key(store_obj.industry)
+        industry_kr = _INDUSTRY_KR.get(industry_key, store_obj.industry or "쇼핑몰")
         bot_display_name = (store_obj.bot_name or "").strip() or f"{store_obj.store_name}봇"
         lines = [
             f"당신은 '{store_obj.store_name}'({industry_kr}) 고객센터 AI 상담원 '{bot_display_name}'입니다.",
@@ -612,7 +788,6 @@ class ChatService:
             lines.append(rag_context)
 
         # Industry-specific consultation guide — persona must match 업종.
-        industry_key = (store_obj.industry or "").strip().lower()
         lines.extend(
             ChatService._industry_persona_lines(industry_key, bot_display_name, industry_kr)
         )

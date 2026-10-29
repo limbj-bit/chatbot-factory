@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.industry import normalize_industry_key
 from app.infrastructure.database.models import StoreKnowledgeModel
 
 
@@ -162,11 +163,13 @@ class RAGEngine:
     @staticmethod
     def _doc_matches_industry(doc: RAGDocument, industry: Optional[str]) -> bool:
         """True when default doc is allowed for this store industry (no cross-leak)."""
-        key = (industry or "").strip().lower()
-        if not key:
+        if not (industry or "").strip():
             return False
-        meta = (doc.metadata.get("industry") or "").strip().lower()
-        return meta == key
+        key = normalize_industry_key(industry)
+        meta_raw = (doc.metadata.get("industry") or "").strip()
+        if not meta_raw:
+            return False
+        return normalize_industry_key(meta_raw) == key
 
     def search(
         self, query: str, top_k: int = 2, industry: Optional[str] = None
