@@ -215,6 +215,8 @@ async def get_dynamic_widget_script(
     preview_bottom: int = Query(0, description="Instant preview bottom offset in px"),
     preview_side: int = Query(0, description="Instant preview side offset in px"),
     preview_commerce: str = Query("", description="Instant preview commerce platform override"),
+    preview_avatar_url: str = Query("", description="Instant preview custom avatar data URL / URL"),
+    preview_theme_color: str = Query("", description="Instant preview theme color override"),
     session: AsyncSession = Depends(get_db),
 ):
     """Serve a dynamically customized JavaScript widget with 10 Commercial Chat Window Templates & 16 Flaticon Avatars."""
@@ -234,11 +236,12 @@ async def get_dynamic_widget_script(
     title = preview_store_name or (store.store_name if store else "코스라프리")
     industry = preview_industry or (store.industry if store else "general")
     ind_defaults = INDUSTRY_DEFAULTS.get(industry, INDUSTRY_DEFAULTS["general"])
-    theme_color = (
-        ind_defaults.get("theme_color", "#0284C7")
-        if preview_industry
-        else (store.theme_color if store else ind_defaults.get("theme_color", "#0284C7"))
-    )
+    if preview_theme_color.strip():
+        theme_color = preview_theme_color.strip()
+    elif store and store.theme_color:
+        theme_color = store.theme_color
+    else:
+        theme_color = ind_defaults.get("theme_color", "#0284C7")
     bot_name = preview_bot_name or (store.bot_name if store and store.bot_name else ind_defaults.get("bot_name", "코스봇"))
     brand_badge = preview_badge or (store.brand_badge if store and store.brand_badge else title[:8])
     header_title = (store.header_title if store and store.header_title else "고객상담센터")
@@ -288,7 +291,18 @@ async def get_dynamic_widget_script(
     bot_icon_style = preview_icon or (store.bot_icon_style if store and store.bot_icon_style else ind_defaults.get("bot_icon_style", "flaticon_cute_robot"))
     launcher_shape = preview_shape or (store.launcher_shape if store and store.launcher_shape else "cosbot_badge")
     bot_label = preview_label or (store.bot_label if store and store.bot_label else f"{bot_name} 상담")
-    bot_avatar_url = (store.bot_avatar_url if store and store.bot_avatar_url and not preview_icon else "")
+    # Avatar priority: explicit preview URL → saved store avatar when the
+    # showroom is not forcing a different preset-only icon.
+    bot_avatar_url = ""
+    if preview_avatar_url.strip():
+        bot_avatar_url = preview_avatar_url.strip()
+    elif store and store.bot_avatar_url:
+        if (
+            not preview_icon
+            or preview_icon == "custom_upload"
+            or preview_icon == (store.bot_icon_style or "")
+        ):
+            bot_avatar_url = store.bot_avatar_url
 
     # Defense-in-depth: legacy rows may hold giant data URIs (an unresized
     # upload can exceed 9MB and bloats the widget script to ~9MB, wrecking

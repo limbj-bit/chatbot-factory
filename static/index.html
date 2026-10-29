@@ -1076,7 +1076,7 @@
       const shape = document.getElementById("launcherShape").value;
       const botName = document.getElementById("botName").value.trim() || "코스봇";
       const storeName = document.getElementById("storeName").value.trim() || "코스라프리";
-      const label = document.getElementById("botLabel").value.trim() || `${botName} 상담`;
+      const label = document.getElementById("botLabel").value.trim() || (botName + " 상담");
       const badge = document.getElementById("brandBadge").value.trim() || storeName.slice(0, 8);
       const industry = getSelectedIndustryValue();
       const email = document.getElementById("contactEmail").value.trim() || "help@mycompany.com";
@@ -1086,9 +1086,15 @@
       const bottomPx = document.getElementById("widgetBottomPx").value || "24";
       const sidePx = document.getElementById("widgetSidePx").value || "24";
       const commerce = document.getElementById("commercePlatform")?.value || "none";
+      const themeColor = (document.getElementById("themeColor")?.value || "").trim();
+      const mallId = (
+        document.getElementById("targetMallId")?.value.trim()
+        || document.getElementById("mallId")?.value.trim()
+        || "showroom_preview"
+      );
 
       const params = new URLSearchParams({
-        mall_id: "showroom_preview",
+        mall_id: mallId,
         preview_icon: icon,
         preview_template: tpl,
         preview_shape: shape,
@@ -1107,6 +1113,8 @@
         preview_commerce: commerce,
         t: Date.now()
       });
+      if (themeColor) params.set("preview_theme_color", themeColor);
+      if (customPreviewDataUrl) params.set("preview_avatar_url", customPreviewDataUrl);
 
       const oldScript = document.getElementById("dynamic-preview-script");
       if (oldScript) oldScript.remove();
@@ -1114,7 +1122,7 @@
       document.querySelectorAll(".fresh-widget-window").forEach(el => el.remove());
       const s = document.createElement("script");
       s.id = "dynamic-preview-script";
-      s.src = `/api/widget/script?${params.toString()}`;
+      s.src = "/api/widget/script?" + params.toString();
       s.onload = () => {
         populateShowroomIcons();
         if (customPreviewDataUrl) {
@@ -1571,6 +1579,32 @@
       await crawlCatalogBatch(mallId, url, maxProducts, tags, status, true, startOffset);
     }
 
+    function setFieldValue(id, value) {
+      const el = document.getElementById(id);
+      if (!el || value === undefined || value === null) return;
+      el.value = value;
+    }
+
+    function restoreIconSelection(styleName) {
+      const key = styleName || "preset_beauty_model";
+      setFieldValue("botIconStyle", key);
+      document.querySelectorAll(".icon-option").forEach(item => item.classList.remove("selected"));
+      const match = document.querySelector(".icon-option .preview-circle[data-icon-key='" + key + "']");
+      if (match && match.parentElement) match.parentElement.classList.add("selected");
+    }
+
+    function restoreTemplateSelection(tplName) {
+      if (!tplName) return;
+      setFieldValue("chatTemplate", tplName);
+      document.querySelectorAll(".tpl-card").forEach(item => item.classList.remove("selected"));
+      document.querySelectorAll(".tpl-card").forEach(card => {
+        const onclick = card.getAttribute("onclick") || "";
+        if (onclick.indexOf("'" + tplName + "'") >= 0 || onclick.indexOf('"' + tplName + '"') >= 0) {
+          card.classList.add("selected");
+        }
+      });
+    }
+
     async function loadExistingStore() {
       const mallId = document.getElementById("loadMallId").value.trim();
       const status = document.getElementById("loadStatus");
@@ -1578,41 +1612,77 @@
         alert("mall_id를 입력해 주세요.");
         return;
       }
-      status.innerText = "⏳ 기존 설정을 불러오는 중...";
+      status.innerText = "기존 설정을 불러오는 중...";
       try {
-        const res = await fetch("/api/stores/" + mallId);
+        const res = await fetch("/api/stores/" + encodeURIComponent(mallId));
         if (!res.ok) {
-          status.innerText = "⚠️ 스토어를 찾을 수 없습니다 (mall_id 확인)";
+          status.innerText = "스토어를 찾을 수 없습니다 (mall_id 확인)";
           return;
         }
         const data = await res.json();
-        // Populate STEP 1 fields
-        if (data.store_name) { const _sn = document.getElementById("storeName"); if (_sn) _sn.value = data.store_name; }
+
+        setFieldValue("storeName", data.store_name);
         if (data.industry) {
           const sel = document.getElementById("industry");
-          if (sel) sel.value = data.industry;
+          const customEl = document.getElementById("customIndustryInput");
+          if (sel) {
+            const hasOpt = Array.from(sel.options).some(o => o.value === data.industry);
+            if (hasOpt) {
+              sel.value = data.industry;
+              if (customEl) { customEl.style.display = "none"; customEl.value = ""; }
+            } else {
+              sel.value = "__custom__";
+              if (customEl) {
+                customEl.style.display = "block";
+                customEl.value = data.industry;
+              }
+            }
+          }
         }
-        if (data.bot_name) { const _bn = document.getElementById("botName"); if (_bn) _bn.value = data.bot_name; }
-        if (data.brand_badge) { const _bb = document.getElementById("brandBadge"); if (_bb) _bb.value = data.brand_badge; }
-        if (data.header_title) { const _ht = document.getElementById("headerTitle"); if (_ht) _ht.value = data.header_title; }
-        if (data.contact_email) { const _ce = document.getElementById("contactEmail"); if (_ce) _ce.value = data.contact_email; }
-        if (data.business_hours) { const _bh = document.getElementById("businessHours"); if (_bh) _bh.value = data.business_hours; }
-        if (data.welcome_message) { const _wm = document.getElementById("welcomeMessage"); if (_wm) _wm.value = data.welcome_message; }
-        if (data.bot_label) { const _bl = document.getElementById("botLabel"); if (_bl) _bl.value = data.bot_label; }
-        if (data.chat_template) { const _ct = document.getElementById("chatTemplate"); if (_ct) _ct.value = data.chat_template; }
-        if (data.input_placeholder) { const _ip = document.getElementById("inputPlaceholder"); if (_ip) _ip.value = data.input_placeholder; }
+        setFieldValue("botName", data.bot_name);
+        setFieldValue("brandBadge", data.brand_badge);
+        setFieldValue("headerTitle", data.header_title);
+        setFieldValue("contactEmail", data.contact_email);
+        setFieldValue("businessHours", data.business_hours);
+        if (data.welcome_message) {
+          const wm = document.getElementById("welcomeMessage");
+          if (wm) { wm.value = data.welcome_message; wm.dataset.manual = "1"; }
+        }
+        setFieldValue("botLabel", data.bot_label);
+        setFieldValue("inputPlaceholder", data.input_placeholder);
         if (data.quick_buttons && data.quick_buttons.length) {
-          const _qb = document.getElementById("quickButtonsInput"); if (_qb) _qb.value = data.quick_buttons.join(", ");
+          setFieldValue("quickButtonsInput", data.quick_buttons.join(", "));
         }
-        if (data.mall_id) { const _mi = document.getElementById("targetMallId"); if (_mi) _mi.value = data.mall_id; const _mi2 = document.getElementById("mallId"); if (_mi2) _mi2.value = data.mall_id; }
-    const _btn = document.getElementById("createStoreBtn"); if (_btn) _btn.innerText = "변경 저장 (기존 mall_id 업데이트)";
-    window._isEditingExisting = true;
-        if (data.theme_color) { const _tc = document.getElementById("themeColor"); if (_tc) _tc.value = data.theme_color; }
-        status.innerText = "✅ '" + data.store_name + "' 설정을 불러왔습니다. 수정 후 [생성]을 누르면 업데이트됩니다.";
+        if (data.mall_id) {
+          setFieldValue("targetMallId", data.mall_id);
+          setFieldValue("mallId", data.mall_id);
+        }
+        setFieldValue("themeColor", data.theme_color);
+        if (data.launcher_shape) setFieldValue("launcherShape", data.launcher_shape);
+        if (data.commerce_platform) setFieldValue("commercePlatform", data.commerce_platform);
+
+        restoreTemplateSelection(data.chat_template);
+
+        customPreviewDataUrl = "";
+        if (data.bot_avatar_url) {
+          customPreviewDataUrl = data.bot_avatar_url;
+          setFieldValue("botIconStyle", data.bot_icon_style || "custom_upload");
+          document.querySelectorAll(".icon-option").forEach(item => item.classList.remove("selected"));
+        } else {
+          restoreIconSelection(data.bot_icon_style || "preset_beauty_model");
+        }
+
+        const btn = document.getElementById("createStoreBtn");
+        if (btn) btn.innerText = "변경 저장 (기존 mall_id 업데이트)";
+        window._isEditingExisting = true;
+
+        triggerInstantPreview(true);
+        status.innerText = "'" + (data.store_name || mallId) + "' 설정을 불러왔고 미리보기에 반영했습니다.";
       } catch (err) {
-        status.innerText = "⚠️ 불러오기 실패: " + err;
+        status.innerText = "불러오기 실패: " + err;
       }
     }
+
     (function() {
   const wmEl = document.getElementById("welcomeMessage");
   const indEl = document.getElementById("industry");
