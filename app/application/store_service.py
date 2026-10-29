@@ -813,48 +813,73 @@ class StoreService:
                 resp.raise_for_status()
                 raw_html = resp.text
 
-        # Prefer JSON-LD Product name, then last og:title (Cafe24: store name first, product name second)
-        jsonld_name = re.search(
-            r'"@type"\s*:\s*"Product"[^}]*?"name"\s*:\s*"([^"]{2,200})"',
-            raw_html,
-            re.IGNORECASE | re.DOTALL,
-        )
-        og_titles = re.findall(
-            r'<meta\s+property=["\']og:title["\']\s+content=["\'](.*?)["\']',
+        # ---- Structured data first: JSON-LD (Cafe24 emits ProductGroup/Product) ----
+        jsonld_data = None
+        jsonld_match = re.search(
+            r'<script type=["\']application/ld\+json["\']>([\s\S]*?)</script>',
             raw_html,
             re.IGNORECASE,
         )
-        if jsonld_name:
-            title = html.unescape(jsonld_name.group(1).strip())
-        elif og_titles:
-            title = html.unescape(og_titles[-1].strip())
-        else:
+        if jsonld_match:
+            try:
+                parsed = json.loads(jsonld_match.group(1))
+                if isinstance(parsed, dict):
+                    jsonld_data = parsed
+            except Exception:
+                jsonld_data = None
+
+        def _parse_price_val(v) -> Optional[int]:
+            try:
+                p = int(str(v).replace(",", ""))
+            except (ValueError, TypeError):
+                return None
+            return p if p > 0 else None
+
+        # Title: ProductGroup.name (clean) → variant name → og:title → <title>
+        title = None
+        if jsonld_data:
+            if jsonld_data.get("@type") == "ProductGroup":
+                gname = (jsonld_data.get("name") or "").strip()
+                variants = jsonld_data.get("hasVariant") or []
+                vname = ((variants[0] or {}).get("name") or "").strip() if variants else ""
+                # Cafe24 variant names repeat the group name — keep only the suffix
+                if vname and gname and vname.startswith(gname):
+                    vname = vname[len(gname):].strip()
+                title = html.unescape(vname or gname)
+            elif jsonld_data.get("@type") == "Product" and jsonld_data.get("name"):
+                title = html.unescape(str(jsonld_data["name"]).strip())
+        if not title:
+            og_titles = re.findall(
+                r'<meta\s+property=["\']og:title["\']\s+content=["\'](.*?)["\']',
+                raw_html,
+                re.IGNORECASE,
+            )
+            title = html.unescape(og_titles[-1].strip()) if og_titles else None
+        if not title:
             title_match = re.search(r"<title>(.*?)</title>", raw_html, re.IGNORECASE | re.DOTALL)
             title = html.unescape(title_match.group(1).strip()) if title_match else crawl_req.url
 
-        # Extract price (og:price:amount, JSON-LD, Cafe24 JS vars, or "28,000원")
+        # ---- Price: JSON-LD offers → meta → Cafe24 JS (reject 0) → body text (skip delivery/point context) ----
         price: Optional[int] = None
-        # 1) OpenGraph / meta
-        price_meta = re.search(
-            r'property=["\'](?:product:price:amount|og:price:amount)["\']\s+content=["\']([0-9,]+)["\']',
-            raw_html,
-            re.IGNORECASE,
-        )
-        if price_meta:
-            price = int(price_meta.group(1).replace(",", ""))
-        # 2) JSON-LD Product offers.price
+        if jsonld_data:
+            offers = jsonld_data.get("offers")
+            if isinstance(offers, dict):
+                price = _parse_price_val(offers.get("price"))
+            if price is None:
+                for v in jsonld_data.get("hasVariant") or []:
+                    off = (v or {}).get("offers") or {}
+                    p = _parse_price_val(off.get("price") if isinstance(off, dict) else None)
+                    if p:
+                        price = p
+                        break
         if price is None:
-            jsonld_price = re.search(
-                r'"@type"\s*:\s*"Product"[^}]*?"price"\s*:\s*"?([0-9,]+)"?',
+            price_meta = re.search(
+                r'property=["\'](?:product:price:amount|og:price:amount)["\']\s+content=["\']([0-9,]+)["\']',
                 raw_html,
-                re.IGNORECASE | re.DOTALL,
+                re.IGNORECASE,
             )
-            if jsonld_price:
-                try:
-                    price = int(jsonld_price.group(1).replace(",", ""))
-                except ValueError:
-                    pass
-        # 3) Cafe24 JS: var product_price = "28000" or EC_PRODUCT_INFO
+            if price_meta:
+                price = _parse_price_val(price_meta.group(1))
         if price is None:
             cafe24_price = re.search(
                 r'(?:product_price|productPrice|sale_price|salePrice)\s*[=:]\s*["\']?([0-9,]+)',
@@ -862,40 +887,132 @@ class StoreService:
                 re.IGNORECASE,
             )
             if cafe24_price:
-                try:
-                    price = int(cafe24_price.group(1).replace(",", ""))
-                except ValueError:
-                    pass
-        # 4) Fallback: "28,000원" in body text
+                price = _parse_price_val(cafe24_price.group(1))
         if price is None:
-            krw_match = re.search(r"([0-9]{1,3}(?:,[0-9]{3})+)\s*원", raw_html)
-            if krw_match:
-                price = int(krw_match.group(1).replace(",", ""))
-        # 5) Fallback: "28000원" (no comma)
-        if price is None:
-            krw_match2 = re.search(r"([0-9]{4,})\s*원", raw_html)
-            if krw_match2:
-                try:
-                    price = int(krw_match2.group(1))
-                except ValueError:
-                    pass
+            # Body text "28,000원" — but skip delivery-fee / point contexts:
+            # Cafe24 pages load the real price via JS, so the first 원-token is
+            # usually the 배송비 (e.g. "3,000원 (60,000원 이상 구매 시 무료)").
+            for m in re.finditer(r"([0-9]{1,3}(?:,[0-9]{3})+)\s*원", raw_html):
+                ctx = raw_html[max(0, m.start() - 150):m.start()]
+                if any(k in ctx for k in ("배송비", "delivery_cost", "무료배송", "적립", "마일리지", "포인트", "리뷰")):
+                    continue
+                price = _parse_price_val(m.group(1))
+                if price:
+                    break
 
-        # Extract og:image
-        img_match = re.search(
-            r'<meta\s+property=["\']og:image["\']\s+content=["\'](.*?)["\']',
-            raw_html,
-            re.IGNORECASE,
-        )
-        image_url = img_match.group(1).strip() if img_match else None
+        # ---- Image: JSON-LD variant image (real product photo) → og:image (skip logos/SVG) ----
+        image_url: Optional[str] = None
+        if jsonld_data:
+            imgs = jsonld_data.get("image")
+            if isinstance(imgs, list) and imgs and isinstance(imgs[0], str):
+                image_url = imgs[0].strip()
+            elif isinstance(imgs, str) and imgs.strip():
+                image_url = imgs.strip()
+            if not image_url:
+                for v in jsonld_data.get("hasVariant") or []:
+                    vim = (v or {}).get("image")
+                    if isinstance(vim, list) and vim and isinstance(vim[0], str):
+                        image_url = vim[0].strip()
+                        break
+                    if isinstance(vim, str) and vim.strip():
+                        image_url = vim.strip()
+                        break
+        if not image_url:
+            img_match = re.search(
+                r'<meta\s+property=["\']og:image["\']\s+content=["\'](.*?)["\']',
+                raw_html,
+                re.IGNORECASE,
+            )
+            if img_match:
+                cand = img_match.group(1).strip()
+                low = cand.lower()
+                # Cafe24 og:image often points at the store logo (SVG) — skip it
+                if not (low.endswith(".svg") or "logo" in low):
+                    image_url = cand
 
-        # Strip script/style tags and extract readable body text
-        cleaned = re.sub(r"<(script|style|noscript).*?>.*?</\1>", " ", raw_html, flags=re.IGNORECASE | re.DOTALL)
+        # ---- Content: HTML comments first (Cafe24 leaves "-->" template debris), ----
+        # then strip script/style, tags, and common navigation boilerplate.
+        cleaned = re.sub(r"<!--[\s\S]*?-->", " ", raw_html)  # HTML comments incl. {#title} blocks
+        cleaned = re.sub(r"<(script|style|noscript)[^>]*>[\s\S]*?</\1>", " ", cleaned, flags=re.IGNORECASE)
         cleaned = re.sub(r"<[^>]+>", " ", cleaned)
-        cleaned = html.unescape(re.sub(r"\s+", " ", cleaned)).strip()
-        for _n in ['브랜드소개', '제품구매', '특가판매', '알뜰장터', '제품소개서', '이벤트', '공지사항', '문의하기', '회사소개', '로그인', 'About SHOP', '기능별', '탄력/주름개선', '수분/보습', '민감/진정', '영양', '미백/톤업', '지성/트러블', '모공/피지', '기미/잡티', '라인별', '스킨케어', '클린징', '마사지 오일', '세럼/에센스/앰플', '크림', '바디', '모델링팩/마스크', '이너뷰티', '메이크업/자외선 차단', '덴탈/두피', '소모품', '오뜨엘라', '전신마사지젤', 'Event Community', '상품 리뷰', 'FAQ', 'Join Order', '현재 위치', '홈 SHOP', '배송비', '용량', '추천메일 보내기', '상품조르기', '대량구매문의', '기본 정보', '상품명', '리뷰', '관련상품', '배송비', '용량']:
+        cleaned = html.unescape(cleaned)
+        cleaned = re.sub(r"\{#[a-zA-Z_]+\}", " ", cleaned)  # leftover {#title} tokens
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        for _n in ['브랜드소개', '제품구매', '특가판매', '알뜰장터', '제품소개서', '이벤트', '공지사항', '문의하기', '회사소개', '로그인', 'About SHOP', '기능별', '탄력/주름개선', '수분/보습', '민감/진정', '영양', '미백/톤업', '지성/트러블', '모공/피지', '기미/잡티', '라인별', '스킨케어', '클린징', '마사지 오일', '세럼/에센스/앰플', '크림', '바디', '모델링팩/마스크', '이너뷰티', '메이크업/자외선 차단', '덴탈/두피', '소모품', '오뜨엘라', '전신마사지젤', 'Event Community', '상품 리뷰', 'FAQ', 'Join Order', '현재 위치', '홈 SHOP', '추천메일 보내기', '상품조르기', '대량구매문의', '리뷰']:
             cleaned = cleaned.replace(_n, " ")
         cleaned = re.sub(r"\s+", " ", cleaned).strip()
-        summary_content = (title + ". " + cleaned[:600]) if cleaned else title
+
+        # ---- Structured spec table (Cafe24 상품요약정보): "용량: 25ml x 100ea" etc. ----
+        spec_parts: list = []
+        spec_idx = raw_html.find("상품요약정보")
+        if spec_idx > -1:
+            spec_html = raw_html[spec_idx:spec_idx + 3000]
+            for row in re.finditer(
+                r"<th[^>]*>([\s\S]*?)</th>\s*<td[^>]*>([\s\S]*?)</td>", spec_html
+            ):
+                k = re.sub(r"<[^>]+>", "", row.group(1)).strip()
+                v = html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", row.group(2)))).strip()
+                if k and v and len(k) < 30 and len(v) < 200:
+                    spec_parts.append(f"{k}: {v}")
+
+        # ---- Product description from #prdDetail, cut before the payment/shipping ----
+        # boilerplate that is identical on every page of the store.
+        desc = ""
+        detail_idx = raw_html.find('id="prdDetail"')
+        if detail_idx == -1:
+            detail_idx = raw_html.find("id='prdDetail'")
+        if detail_idx > -1:
+            # Start from the opening tag so tag-stripping removes it too
+            tag_start = raw_html.rfind("<div", max(0, detail_idx - 200), detail_idx)
+            detail_html = raw_html[tag_start if tag_start > -1 else detail_idx:detail_idx + 30000]
+            for marker in ("상품결제정보", "배송정보", "교환 및 반품", "교환반품", "환불안내"):
+                cut = detail_html.find(marker)
+                if cut > 500:  # keep the description that precedes the boilerplate
+                    detail_html = detail_html[:cut]
+                    break
+            d = re.sub(r"<!--[\s\S]*?-->", " ", detail_html)
+            d = re.sub(r"<(script|style)[^>]*>[\s\S]*?</\1>", " ", d, flags=re.IGNORECASE)
+            d = re.sub(r"<img[^>]*>", " ", d)
+            d = re.sub(r"<[^>]+>", " ", d)
+            d = html.unescape(re.sub(r"\s+", " ", d)).strip()
+            d = re.sub(r"\[\s*\]", " ", d)  # "[ ]" lazy-image placeholders
+            # Strip mobile sticky-nav / option-table boilerplate that bleeds in
+            for _n in (
+                "멤버십 혜택을 누려보세요", "해외배송 가능상품", "기본 정보", "상품요약정보",
+                "주기결제", "구매방법", "구매하기", "보기 ", "상품명", "리뷰",
+            ):
+                d = d.replace(_n, " ")
+            d = re.sub(r"\s+", " ", d).strip()
+            # Keep only if it carries real prose (image-only detail pages yield junk)
+            if len(d) >= 80 and not d.startswith(("상품결제정보", "배송정보")):
+                desc = d[:1500]
+
+        # ---- Ingredient line (전성분) if present in text ----
+        ingredient_snip = ""
+        ing_m = re.search(r"전성분[:\s]{1,5}([^\n]{10,500})", cleaned)
+        if ing_m:
+            ingredient_snip = "전성분: " + ing_m.group(1).strip()[:400]
+
+        # Assemble: title + specs + ingredients + description. When a store page
+        # has no #prdDetail (simple landing pages, test fixtures), fall back to
+        # the cleaned body text — but only if it survived junk filtering and
+        # carries real sentences (Cafe24 nav/banner debris fails this check).
+        content_bits = [title]
+        if spec_parts:
+            content_bits.append(" | ".join(spec_parts))
+        if ingredient_snip:
+            content_bits.append(ingredient_snip)
+        if desc:
+            content_bits.append(desc)
+        if not desc and len(cleaned) >= 60:
+            # Drop leading repeated title and nav leftovers, keep real prose
+            fallback = cleaned
+            if fallback.startswith(title):
+                fallback = fallback[len(title):].strip(" .:|")
+            junk_tokens = ("[ ]", "멤버십 혜택", "구매하기", "보기 ", "해외배송 가능상품", "상품요약정보")
+            if not any(t in fallback[:200] for t in junk_tokens) or "전성분" in fallback:
+                content_bits.append(fallback[:600])
+        summary_content = ". ".join(b for b in content_bits if b)[:1800]
 
         create_req = StoreKnowledgeCreateRequest(
             doc_type="crawled_url",

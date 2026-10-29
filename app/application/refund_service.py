@@ -68,21 +68,23 @@ class RefundService:
                 idempotency_key=idempotency_key,
             )
 
+            prev_status = claim.status
             if success:
                 refund_record.execution_status = "SUCCESS"
-                claim.status = (
+                new_status = (
                     ClaimStatus.AUTO_APPROVED.value
                     if actor == "RULE_ENGINE"
                     else ClaimStatus.COMPLETED.value
                 )
+                claim.status = new_status
                 claim.refund_amount = decision_result.calculated_amount or 0
 
                 event = ClaimEventModel(
                     id=str(uuid.uuid4()),
                     claim_id=claim.id,
                     event_type="REFUND_EXECUTED",
-                    from_status=claim.status,
-                    to_status=claim.status,
+                    from_status=prev_status,
+                    to_status=new_status,
                     actor=actor,
                     reason=decision_result.explanation,
                     payload_json=f'{{"refund_amount": {claim.refund_amount}, "idempotency_key": "{idempotency_key}"}}',
@@ -91,6 +93,20 @@ class RefundService:
                 await session.commit()
                 return True
 
+            # Adapter returned False without raising — do not leave AUTO_APPROVED + PENDING.
+            refund_record.execution_status = "FAILED"
+            claim.status = ClaimStatus.MANUAL_REVIEW.value
+            event = ClaimEventModel(
+                id=str(uuid.uuid4()),
+                claim_id=claim.id,
+                event_type="REFUND_CHANNEL_REJECTED",
+                from_status=prev_status,
+                to_status=ClaimStatus.MANUAL_REVIEW.value,
+                actor=actor,
+                reason="Channel adapter declined return/refund registration",
+            )
+            session.add(event)
+            await session.commit()
             return False
 
         except Exception as e:
@@ -98,6 +114,7 @@ class RefundService:
             logger.critical(
                 f"External channel call failed for claim={claim.id}: {e}. Transitioning to UNKNOWN_EXTERNAL_STATE."
             )
+            prev_status = claim.status
             refund_record.execution_status = "UNKNOWN_EXTERNAL_STATE"
             claim.status = ClaimStatus.UNKNOWN_EXTERNAL_STATE.value
 
@@ -105,7 +122,7 @@ class RefundService:
                 id=str(uuid.uuid4()),
                 claim_id=claim.id,
                 event_type="EXTERNAL_MUTATION_FAILED",
-                from_status=claim.status,
+                from_status=prev_status,
                 to_status=ClaimStatus.UNKNOWN_EXTERNAL_STATE.value,
                 actor=actor,
                 reason=f"Channel mutation failed or timed out: {e}",

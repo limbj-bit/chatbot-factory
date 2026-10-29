@@ -17,6 +17,10 @@ def test_deterministic_faq_lookup():
     # Irrelevant query returns None
     assert rag.lookup_deterministic_faq("사과 맛이 왜 이런가요?") is None
 
+    # Excluded keywords (store already owns the topic) are skipped
+    assert rag.lookup_deterministic_faq("배송비 얼마예요?", exclude_keywords={"배송비"}) is None
+
+
 
 def test_rag_search_and_context_assembly():
     rag = RAGEngine()

@@ -53,15 +53,26 @@ def validate_image_file(
     return True, detected_mime, None
 
 
+def is_valid_admin_key(x_admin_key: Optional[str]) -> bool:
+    """True only when the key exactly matches the configured ADMIN_API_KEY.
+
+    Hardcoded aliases (e.g. chatbot123) are intentionally NOT accepted so a
+    forgotten default cannot unlock production admin APIs.
+    """
+    configured = (settings.ADMIN_API_KEY or "").strip()
+    if not configured or not x_admin_key:
+        return False
+    return x_admin_key == configured
+
+
 async def verify_admin_key(x_admin_key: Optional[str] = Header(None, alias="X-Admin-Key")) -> str:
     """Dependency for securing admin API endpoints."""
-    allowed_keys = {"chatbot123", "admin-dev-secret-key-change-in-prod", settings.ADMIN_API_KEY}
-    if not x_admin_key or x_admin_key not in allowed_keys:
+    if not is_valid_admin_key(x_admin_key):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing X-Admin-Key",
         )
-    return x_admin_key
+    return x_admin_key  # type: ignore[return-value]
 
 
 def encryption_available() -> bool:

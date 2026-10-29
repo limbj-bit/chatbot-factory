@@ -89,6 +89,9 @@ class Settings(BaseSettings):
                             break
                 except Exception:
                     continue
+        # Production must not ship with DEBUG left on by accident.
+        if (self.APP_ENV or "").lower() == "production":
+            self.DEBUG = False
         return self
 
     # Static Outbound IPs for Coupang Wing / Cafe24 / SmartStore IP Whitelist

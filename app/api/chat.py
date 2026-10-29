@@ -1,10 +1,12 @@
 import json
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.chat_service import ChatService
 from app.infrastructure.database.session import get_db
-from app.schemas.chat import ChatRequest, ChatResponse
+from app.schemas.chat import ChatRequest, ChatResponse, ProductRecommendationCard
 
 router = APIRouter(prefix="/api/chat", tags=["Chat"])
 chat_service = ChatService()
@@ -30,24 +32,32 @@ async def chat_endpoint(request: ChatRequest, session: AsyncSession = Depends(ge
 
 @router.post("/stream")
 async def chat_stream_endpoint(request: ChatRequest, session: AsyncSession = Depends(get_db)):
-    """SSE streaming chat endpoint delivering real-time tokens and recommended product cards."""
+    """SSE streaming chat endpoint.
+
+    Product cards are decided INSIDE stream_chat_response (the same
+    intake-gating logic as handle_message) — never by an independent RAG
+    search here, otherwise vague first messages would still trigger
+    premature recommendations.
+    """
 
     async def sse_event_generator():
+        cards: List[ProductRecommendationCard] = []
         try:
-            # Also retrieve recommended product cards if any
-            results = await chat_service.rag.search_with_store_knowledge(
-                session, request.mall_id, request.message, top_k=2
-            )
-            cards = chat_service._build_product_cards(results)
-
-            async for token in chat_service.stream_chat_response(
+            async for item in chat_service.stream_chat_response(
                 session_db=session,
                 session_id=request.session_id,
                 customer_id=request.customer_id,
                 message_text=request.message,
                 mall_id=request.mall_id,
+                cards_out=cards,
             ):
-                payload = json.dumps({"token": token}, ensure_ascii=False)
+                # Guardrail may send a full-message replace after streaming tokens.
+                if isinstance(item, dict) and "__stream_replace__" in item:
+                    payload = json.dumps(
+                        {"replace": item["__stream_replace__"]}, ensure_ascii=False
+                    )
+                else:
+                    payload = json.dumps({"token": item}, ensure_ascii=False)
                 yield f"data: {payload}\n\n"
 
             if cards:

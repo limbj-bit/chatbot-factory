@@ -114,6 +114,7 @@ class SessionModel(Base):
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     customer_id: Mapped[str] = mapped_column(String(64), index=True)
+    mall_id: Mapped[str] = mapped_column(String(64), default="demo_mall", index=True)
     channel: Mapped[str] = mapped_column(String(32), default="web_widget")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

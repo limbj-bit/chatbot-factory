@@ -255,7 +255,12 @@
       const response = await fetch(`${config.apiBase}/api/chat/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: jsonToString({ session_id: sessionId, message: text, customer_id: "guest" }),
+        body: jsonToString({
+          session_id: sessionId,
+          mall_id: config.mallId || "demo_mall",
+          message: text,
+          customer_id: "guest",
+        }),
       });
 
       const reader = response.body.getReader();
@@ -273,7 +278,11 @@
             if (raw === "[DONE]") continue;
             try {
               const data = JSON.parse(raw);
-              if (data.token) {
+              if (data.replace) {
+                fullText = data.replace;
+                botMsg.innerHTML = fullText.replace(/\n/g, "<br>");
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+              } else if (data.token) {
                 fullText += data.token;
                 botMsg.innerHTML = fullText.replace(/\n/g, "<br>");
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;

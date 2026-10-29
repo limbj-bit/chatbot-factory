@@ -50,9 +50,14 @@ def test_sha256_hash():
 
 @pytest.mark.asyncio
 async def test_admin_key_verification():
-    # Valid key
+    # Valid key — must match configured ADMIN_API_KEY only
     valid_key = await verify_admin_key(x_admin_key="admin-dev-secret-key-change-in-prod")
     assert valid_key == "admin-dev-secret-key-change-in-prod"
+
+    # Hardcoded legacy aliases must NOT unlock admin APIs
+    with pytest.raises(HTTPException) as exc_legacy:
+        await verify_admin_key(x_admin_key="chatbot123")
+    assert exc_legacy.value.status_code == 401
 
     # Invalid key
     with pytest.raises(HTTPException) as exc:

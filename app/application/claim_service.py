@@ -154,12 +154,13 @@ class ClaimService:
         # 2. Security & MIME Magic Byte Validation
         is_valid, detected_mime, err = validate_image_file(file_bytes, filename, declared_mime)
         if not is_valid:
+            prev_status = claim.status
             claim.status = ClaimStatus.IMAGE_RETAKE_REQUIRED.value
             event = ClaimEventModel(
                 id=str(uuid.uuid4()),
                 claim_id=claim_id,
                 event_type="IMAGE_REJECTED",
-                from_status=claim.status,
+                from_status=prev_status,
                 to_status=ClaimStatus.IMAGE_RETAKE_REQUIRED.value,
                 actor="SECURITY_GATE",
                 reason=err or "Invalid image file",
@@ -176,10 +177,17 @@ class ClaimService:
         duplicate_count = dup_q.scalar_one() or 0
         is_duplicate = duplicate_count > 0
 
-        # Save image file to local uploads directory
+        # Save image file to local uploads directory (basename only — block path traversal)
         os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-        saved_filename = f"{claim_id}_{img_hash[:10]}_{filename}"
+        safe_name = os.path.basename(filename or "upload.jpg").replace("\x00", "")
+        if not safe_name or safe_name in (".", ".."):
+            safe_name = "upload.jpg"
+        saved_filename = f"{claim_id}_{img_hash[:10]}_{safe_name}"
         saved_path = os.path.join(settings.UPLOAD_DIR, saved_filename)
+        # Defense in depth: resolved path must stay under UPLOAD_DIR
+        upload_root = os.path.abspath(settings.UPLOAD_DIR)
+        if not os.path.abspath(saved_path).startswith(upload_root + os.sep):
+            raise ValueError("Invalid upload path.")
         with open(saved_path, "wb") as f:
             f.write(file_bytes)
 

@@ -68,9 +68,12 @@ async def test_phase1_and_3_url_crawler_and_ai_counselor_product_cards():
         assert chat_res.status_code == 200
         chat_data = chat_res.json()
         assert chat_data["intent"] == "ai_counselor_recommendation"
-        assert "나이아신아마이드 10%" in chat_data["message"]
+        # The product facts are delivered via the recommendation cards (title,
+        # price, purchase URL) — the message itself is the counselor's
+        # conversational answer and must not be a raw data dump anymore.
         assert len(chat_data["recommended_products"]) >= 1
         top_card = chat_data["recommended_products"][0]
+        assert "나이아신아마이드 10%" in top_card["title"]
         assert top_card["price"] == 38000
         assert top_card["purchase_url"] == "https://lumiere.co.kr/products/niacin-10"
 

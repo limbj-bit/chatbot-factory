@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile,
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.notification_service import notification_service
 from app.application.store_service import store_service
-from app.core.config import settings
 from app.core.security import verify_admin_key
 from app.infrastructure.database.session import get_db
 from app.schemas.store import (
@@ -30,8 +29,9 @@ async def create_store_endpoint(
     """Register a new e-commerce store and generate an intelligent AS chatbot.
     If called from public self-service showroom without X-Admin-Key, trial_days is capped at 30 days (cannot be unlimited or >30).
     """
-    allowed_keys = {"chatbot123", "admin-dev-secret-key-change-in-prod", settings.ADMIN_API_KEY}
-    is_admin = bool(x_admin_key and x_admin_key in allowed_keys)
+    from app.core.security import is_valid_admin_key
+
+    is_admin = is_valid_admin_key(x_admin_key)
     if not is_admin:
         if request.trial_days is None or request.trial_days > 30:
             request.trial_days = 30

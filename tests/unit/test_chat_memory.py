@@ -136,6 +136,7 @@ class _FakeStore:
     def __init__(self, **kw):
         self.mall_id = kw.get("mall_id", "fake_mall")
         self.store_name = kw.get("store_name", "루이셀")
+        self.bot_name = kw.get("bot_name", "루이")
         self.industry = kw.get("industry", "beauty")
         self.business_hours = kw.get("business_hours", "평일 10:00~17:00")
         self.contact_email = kw.get("contact_email", "hi@louiselle.com")
@@ -286,7 +287,7 @@ class _RecordingRouter(AIProviderPort):
 
 
 class _EmptyRAG:
-    def lookup_deterministic_faq(self, message):
+    def lookup_deterministic_faq(self, message, exclude_keywords=None):
         return None
 
     async def search_with_store_knowledge(self, session, mall_id, message, top_k=2):
@@ -352,8 +353,9 @@ async def test_general_cs_gets_store_grounded_system_prompt(db_session):
     svc = ChatService(ai_router=router, rag=_EmptyRAG())
     await _add_store(db_session)
 
+    # Avoid store_policy_faq / global FAQ keywords so the LLM path runs
     await svc.handle_message(
-        db_session, None, "cust-1", "반품 기간이 어떻게 되나요?", mall_id="memory_test_mall"
+        db_session, None, "cust-1", "사은품 구성이 어떻게 되나요?", mall_id="memory_test_mall"
     )
     sp = router.calls[0]["system_prompt"]
     assert sp is not None
@@ -372,8 +374,9 @@ async def test_guardrail_corrects_hallucinated_window_in_general_cs(db_session):
     svc = ChatService(ai_router=router, rag=_EmptyRAG())
     await _add_store(db_session)  # policy max_claim_days=7
 
+    # Wording must not match store_policy_faq patterns (기한/정책) so LLM runs
     _, reply, intent, _ = await svc.handle_message(
-        db_session, None, "cust-1", "반품 되나요?", mall_id="memory_test_mall"
+        db_session, None, "cust-1", "파손되면 어떻게 보상되나요?", mall_id="memory_test_mall"
     )
     assert intent == "general_cs"
     # The hallucinated 3일 is re-anchored to the store's real 7일 policy
@@ -387,8 +390,13 @@ async def test_stream_path_also_sends_memory_and_store_prompt(db_session):
     svc = ChatService(ai_router=router, rag=_EmptyRAG())
     await _add_store(db_session)
 
-    # Prime one prior turn directly
-    sess = SessionModel(id="sess-stream", customer_id="cust-1", channel="web_widget")
+    # Prime one prior turn directly (must match mall_id used by stream_chat_response)
+    sess = SessionModel(
+        id="sess-stream",
+        customer_id="cust-1",
+        mall_id="memory_test_mall",
+        channel="web_widget",
+    )
     db_session.add(sess)
     db_session.add(
         MessageModel(id="m1", session_id="sess-stream", role="user", content="이전 질문")
@@ -403,6 +411,7 @@ async def test_stream_path_also_sends_memory_and_store_prompt(db_session):
         async for t in svc.stream_chat_response(
             db_session, "sess-stream", "cust-1", "스트리밍 질문", mall_id="memory_test_mall"
         )
+        if isinstance(t, str)
     ]
     assert tokens
     call = router.calls[0]
@@ -416,7 +425,7 @@ async def test_stream_path_also_sends_memory_and_store_prompt(db_session):
 @pytest.mark.asyncio
 async def test_history_loader_orders_and_filters_roles(db_session):
     svc = ChatService(ai_router=_RecordingRouter(), rag=_EmptyRAG())
-    sess = SessionModel(id="sess-h", customer_id="c", channel="web_widget")
+    sess = SessionModel(id="sess-h", customer_id="c", mall_id="demo_mall", channel="web_widget")
     db_session.add(sess)
     db_session.add(MessageModel(id="a", session_id="sess-h", role="user", content="1"))
     db_session.add(MessageModel(id="b", session_id="sess-h", role="assistant", content="2"))

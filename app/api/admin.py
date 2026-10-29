@@ -129,7 +129,9 @@ async def admin_delete_store_endpoint(
     x_admin_key: str = Header(default="", alias="X-Admin-Key"),
 ):
     """Delete a store and all related knowledge/messages."""
-    if x_admin_key != settings.ADMIN_API_KEY:
+    from app.core.security import is_valid_admin_key
+
+    if not is_valid_admin_key(x_admin_key):
         raise HTTPException(status_code=403, detail="Invalid admin key")
     ok = await store_service.delete_store(session, mall_id)
     if not ok:
@@ -149,12 +151,13 @@ async def admin_list_conversations_endpoint(
     Korean translation (for foreign customer messages). Use ?language=ja to
     filter to a specific foreign language.
     """
-    # Find sessions that have messages for this mall's customers.
-    # Sessions are not directly tied to mall_id, so we look up via messages
-    # whose content we can't filter by mall. Instead, return all sessions
-    # that have at least one message; the caller filters by mall via the
-    # store's known customer sessions. For simplicity, return recent sessions.
-    q = select(SessionModel).order_by(SessionModel.created_at.desc()).limit(limit)
+    # Tenant-scoped: sessions carry mall_id so we never leak other malls' chats.
+    q = (
+        select(SessionModel)
+        .where(SessionModel.mall_id == mall_id)
+        .order_by(SessionModel.created_at.desc())
+        .limit(limit)
+    )
     res = await session.execute(q)
     sessions = res.scalars().all()
 

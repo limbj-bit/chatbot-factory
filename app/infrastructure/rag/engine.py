@@ -117,11 +117,20 @@ class RAGEngine:
     def __init__(self, documents: Optional[List[RAGDocument]] = None):
         self.documents = documents or DEFAULT_KNOWLEDGE_DOCS
 
-    def lookup_deterministic_faq(self, query: str) -> Optional[str]:
-        """Check deterministic FAQs first. Costs 0 tokens."""
+    def lookup_deterministic_faq(
+        self, query: str, exclude_keywords: Optional[set] = None
+    ) -> Optional[str]:
+        """Check deterministic FAQs. Costs 0 tokens.
+
+        `exclude_keywords`: global FAQ keys superseded by the store's own
+        policy (e.g. skip '배송비' when shipping_policy is configured).
+        """
+        blocked = exclude_keywords or set()
         clean_q = query.replace(" ", "").lower()
         for keyword, answer in DETERMINISTIC_FAQS.items():
             if keyword in clean_q:
+                if keyword in blocked:
+                    continue
                 return answer
         return None
 

@@ -290,6 +290,26 @@ async def get_dynamic_widget_script(
     bot_label = preview_label or (store.bot_label if store and store.bot_label else f"{bot_name} 상담")
     bot_avatar_url = (store.bot_avatar_url if store and store.bot_avatar_url and not preview_icon else "")
 
+    # Defense-in-depth: legacy rows may hold giant data URIs (an unresized
+    # upload can exceed 9MB and bloats the widget script to ~9MB, wrecking
+    # page load on the customer's mall). Re-encode oversized avatars to a
+    # 64x64 PNG on the fly so the widget always stays small.
+    if bot_avatar_url.startswith("data:") and len(bot_avatar_url) > 200_000:
+        try:
+            import base64 as _b64_big
+            import io as _io_big
+            from PIL import Image as _PILImage
+
+            _comma = bot_avatar_url.find(",")
+            _raw = _b64_big.b64decode(bot_avatar_url[_comma + 1:])
+            _img = _PILImage.open(_io_big.BytesIO(_raw)).convert("RGBA").resize((64, 64), _PILImage.LANCZOS)
+            _buf = _io_big.BytesIO()
+            _img.save(_buf, format="PNG", optimize=True)
+            bot_avatar_url = "data:image/png;base64," + _b64_big.b64encode(_buf.getvalue()).decode("ascii")
+        except Exception:
+            # Un-decodable blob: fall back to the preset icon instead of shipping megabytes
+            bot_avatar_url = ""
+
     if bot_avatar_url:
         safe_url = bot_avatar_url.replace('"', '\\"')
         icon_graphic_html = f'<img src="{safe_url}" alt="bot" class="fresh-bot-avatar-img" />'
@@ -668,14 +688,24 @@ async def get_dynamic_widget_script(
     }}
     .fresh-product-card {{
       background: #FFFFFF; border: 1px solid #E5E7EB; border-left: 4px solid ${{config.primaryColor}};
-      border-radius: 10px; padding: 12px; max-width: 88%; align-self: flex-start;
+      border-radius: 10px; padding: 10px; max-width: 92%; align-self: flex-start;
       box-shadow: 0 2px 6px rgba(0,0,0,0.05); font-size: 13px;
+      display: flex; gap: 10px; align-items: flex-start;
     }}
-    .fresh-product-card h4 {{ margin: 0 0 4px 0; font-size: 14px; color: #111827; }}
-    .fresh-product-card .price {{ font-weight: 700; color: ${{config.primaryColor}}; margin-bottom: 6px; }}
+    .fresh-product-card .pc-img {{
+      flex-shrink: 0; width: 80px; height: 80px; border-radius: 8px; overflow: hidden;
+      background: #F3F4F6;
+    }}
+    .fresh-product-card .pc-img img {{
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }}
+    .fresh-product-card .pc-body {{ flex: 1; min-width: 0; }}
+    .fresh-product-card h4 {{ margin: 0 0 3px 0; font-size: 13px; color: #111827; line-height: 1.3; }}
+    .fresh-product-card .price {{ font-weight: 700; color: ${{config.primaryColor}}; margin-bottom: 4px; font-size: 13px; }}
+    .fresh-product-card .pc-summary {{ font-size: 12px; color: #6B7280; line-height: 1.4; margin-bottom: 6px; }}
     .fresh-product-card .buy-link {{
-      display: inline-block; margin-top: 8px; background: ${{config.primaryColor}}; color: #FFFFFF;
-      text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
+      display: inline-block; background: ${{config.primaryColor}}; color: #FFFFFF;
+      text-decoration: none; padding: 5px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 600;
     }}
     .fresh-contact-bar {{
       background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 7px 14px;
@@ -1002,13 +1032,17 @@ async def get_dynamic_widget_script(
       cardEl.className = "fresh-product-card";
       const priceHtml = c.price ? `<div class="price">${{c.price.toLocaleString()}}원</div>` : "";
       const linkHtml = c.purchase_url ? `<a class="buy-link" href="${{c.purchase_url}}" target="_blank">🛒 상품 상세 / 바로 구매하기</a>` : "";
-      const imgHtml = c.image_url ? `<img src="${{c.image_url}}" alt="${{c.title}}" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-bottom:8px;" onerror="this.style.display='none'" />` : "";
+      const imgHtml = c.image_url
+        ? `<div class="pc-img"><img src="${{c.image_url}}" alt="${{c.title}}" onerror="this.parentElement.style.display='none'" /></div>`
+        : "";
       cardEl.innerHTML = `
         ${{imgHtml}}
-        <h4>✨ [맞춤 추천] ${{c.title}}</h4>
-        ${{priceHtml}}
-        <div>${{c.summary}}</div>
-        ${{linkHtml}}
+        <div class="pc-body">
+          <h4>${{c.title}}</h4>
+          ${{priceHtml}}
+          <div class="pc-summary">${{c.summary}}</div>
+          ${{linkHtml}}
+        </div>
       `;
       messagesContainer.appendChild(cardEl);
     }});
@@ -1060,7 +1094,11 @@ async def get_dynamic_widget_script(
             if (raw === "[DONE]") continue;
             try {{
               const data = JSON.parse(raw);
-              if (data.token) {{
+              if (data.replace) {{
+                fullText = data.replace;
+                botMsg.innerHTML = fullText.replace(/\\n/g, "<br>");
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+              }} else if (data.token) {{
                 fullText += data.token;
                 botMsg.innerHTML = fullText.replace(/\\n/g, "<br>");
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
