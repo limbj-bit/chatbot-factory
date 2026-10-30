@@ -1,5 +1,7 @@
 from app.application.chat_service import (
     ChatService,
+    catalog_match_plan,
+    catalog_match_preamble,
     filter_results_for_cards,
     should_attach_product_cards,
     wants_product_cards,
@@ -49,6 +51,33 @@ def test_uniform_lists_all_three_cards():
     assert should_attach_product_cards("유니폼 있니", "유니폼 있니", "beauty", results)
     cards = filter_results_for_cards("유니폼 있니", results, max_cards=5)
     assert len(cards) == 3
+
+
+def test_catalog_match_plan_named_keyword_n_and_top_k():
+    results = [
+        _hit("콜라겐 앰플", doc_id="1"),
+        _hit("콜라겐 크림", doc_id="2"),
+        _hit("콜라겐 마스크", doc_id="3"),
+        _hit("콜라겐 세럼", doc_id="4"),
+        _hit("알로에 젤", doc_id="5"),
+    ]
+    plan = catalog_match_plan("콜라겐 추천해줘", results, recommend_k=3)
+    assert plan is not None
+    total_n, top = plan
+    assert total_n == 4
+    assert len(top) == 3
+    assert all("콜라겐" in h.document.title for h in top)
+    soft = catalog_match_plan("건성 피부 추천", results, recommend_k=3)
+    assert soft is None
+
+
+def test_catalog_match_preamble_includes_n_and_titles():
+    top = [_hit("콜라겐 앰플", doc_id="1"), _hit("콜라겐 크림", doc_id="2")]
+    text = catalog_match_preamble(7, top)
+    assert "총 7개" in text
+    assert "상위 2개" in text
+    assert "콜라겐 앰플" in text
+    assert "N=7" in text
 
 
 def test_greeting_not_in_system_prompt():

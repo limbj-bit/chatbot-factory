@@ -357,6 +357,16 @@ def _card_query_tokens(message_text: str) -> List[str]:
     return out
 
 
+def _token_is_soft(t: str) -> bool:
+    if t in _CARD_SOFT_TOKENS or t in _CARD_QUERY_STOP:
+        return True
+    return any(s in t for s in _CARD_SOFT_TOKENS)
+
+
+def _tokens_are_soft_only(tokens: List[str]) -> bool:
+    return bool(tokens) and all(_token_is_soft(t) for t in tokens)
+
+
 def filter_results_for_cards(
     message_text: str,
     results: Optional[List[RAGSearchResult]],
@@ -378,15 +388,44 @@ def filter_results_for_cards(
         if matched:
             return matched[:max_cards]
         # "건성/보습 추천" → soft fallback. "콜라겐 에센스" → never show aloe.
-        def _soft(t: str) -> bool:
-            if t in _CARD_SOFT_TOKENS or t in _CARD_QUERY_STOP:
-                return True
-            return any(s in t for s in _CARD_SOFT_TOKENS)
-
-        if tokens and all(_soft(t) for t in tokens):
+        if _tokens_are_soft_only(tokens):
             return hits[:max_cards]
         return []
     return hits[:max_cards]
+
+
+def catalog_match_plan(
+    message_text: str,
+    results: Optional[List[RAGSearchResult]],
+    *,
+    recommend_k: int = 3,
+) -> Optional[Tuple[int, List[RAGSearchResult]]]:
+    """For named product keywords: (total matching N, top-k recommend hits).
+
+    Soft skin-concern queries return None (use normal RAG framing).
+    """
+    tokens = _card_query_tokens(message_text)
+    if not tokens or _tokens_are_soft_only(tokens):
+        return None
+    matched = filter_results_for_cards(message_text, results, max_cards=10_000)
+    if not matched:
+        return None
+    k = max(1, min(recommend_k, len(matched)))
+    return len(matched), matched[:k]
+
+
+def catalog_match_preamble(total_n: int, top_hits: List[RAGSearchResult]) -> str:
+    titles = [h.document.title for h in top_hits]
+    k = len(top_hits)
+    return "\n".join(
+        [
+            "## 카탈로그 매칭 (필수 반영)",
+            f"- 고객 키워드와 맞는 학습 상품: 총 {total_n}개",
+            f"- 이번 답변 추천 후보(상위 {k}개): " + ", ".join(titles),
+            f"- 첫머리에 관련 상품이 {total_n}개 있음을 말하고, 위 상위 {k}개만 한 줄 이유와 함께 추천하세요.",
+            f"- N={total_n}과 상품명은 이 목록 밖으로 늘리거나 바꾸지 마세요.",
+        ]
+    )
 
 
 def message_matches_product_hit(
@@ -1015,12 +1054,14 @@ class ChatService:
             "## 상품 상담 답변 벤치 (전 업종 공통 · 구조+내용)",
             "구조:",
             "1) 환영 멘트 반복 없이, 고객 요청을 한 줄로 반영",
-            "2) 학습된 상품 1~3개를 추천 이유와 함께 짧게 안내 (상세·가격·이미지는 카드가 담당)",
-            "3) 필요하면 맨 끝에 확인 질문 최대 1개",
+            "2) 카탈로그 매칭이 있으면: 관련 학습 상품 N개 → 상위 2~3개만 추천 이유와 함께 (상세·가격·이미지는 카드)",
+            "3) 카탈로그 매칭이 없으면: 학습된 상품 1~3개를 추천 이유와 함께 짧게 안내",
+            "4) 필요하면 맨 끝에 확인 질문 최대 1개",
             "내용:",
             "- 지식에 있는 상품명·스펙·가격만 말하세요. 없는 할인가·재고·성분을 지어내지 마세요.",
             "- 배송비·무료배송 기준 금액을 상품 판매가처럼 말하지 마세요.",
-            "- 상품이 여러 개면 'N개 있습니다'만 하지 말고, 각 상품을 한 줄 이유와 함께 구분하세요.",
+            "- 'N개'는 카탈로그 매칭에 적힌 숫자만 쓰고, 상위 후보 밖의 상품을 추가하지 마세요.",
+            "- 상품이 여러 개면 'N개 있습니다'만으로 끝내지 말고, 추천 후보마다 한 줄 이유를 적으세요.",
             "- 문장은 간결한 존댓말. 과장 광고 톤·이모지 과다·색/HTML 태그 사용 금지.",
             "서식(가독성 · 색 없이 강조):",
             "- 상품명은 **볼드**로 표기하세요. 예: **진주 유니폼** — 한 줄 이유",
@@ -1366,11 +1407,14 @@ class ChatService:
 
                 # 4b. ALWAYS search store knowledge — advice/usage questions must
                 # be answered with real product data.
+                # Wide recall for named keywords (콜라겐 등) so N = mall matches, not top_k=5
+                tokens = _card_query_tokens(message_text)
+                wide = bool(tokens) and not _tokens_are_soft_only(tokens)
                 results = await self.rag.search_with_store_knowledge(
                     session_db,
                     mall_id,
                     message_text,
-                    top_k=5,
+                    top_k=80 if wide else 5,
                     industry=industry,
                 )
                 attach_cards = should_attach_product_cards(
@@ -1381,18 +1425,26 @@ class ChatService:
                 if results:
                     intent = "ai_counselor_recommendation" if is_counselor_query else "rag_product_inquiry"
                     reject_prices = self._shipping_reject_prices(store_obj)
-                    if attach_cards:
+                    plan = catalog_match_plan(message_text, results, recommend_k=3)
+                    if plan:
+                        _n, card_hits = plan
+                        context_results = card_hits
+                    else:
                         card_hits = filter_results_for_cards(
                             message_text, results, max_cards=5
                         )
+                        context_results = results
+                    if attach_cards:
                         recommended_products = self._build_product_cards(
                             card_hits,
                             reject_prices=reject_prices,
                         )
                     context = self.rag.assemble_context(
-                        results,
+                        context_results,
                         reject_prices=reject_prices,
                     )
+                    if plan:
+                        context = catalog_match_preamble(plan[0], plan[1]) + "\n\n" + context
                     system_prompt = self._build_store_system_prompt(store_obj, rag_context=context)
                     response_text = await self.ai_router.generate_text(
                         message_text, system_prompt=system_prompt, history=history
@@ -1527,12 +1579,14 @@ class ChatService:
         rec_kw, _detail_kw = _counsel_keywords(industry)
         reject_prices = self._shipping_reject_prices(store_obj)
 
-        # Always search RAG so expert answers are grounded in real product data.
+        # Always search RAG; widen when named product keywords need full N count.
+        tokens = _card_query_tokens(message_text)
+        wide = bool(tokens) and not _tokens_are_soft_only(tokens)
         results = await self.rag.search_with_store_knowledge(
             session_db,
             mall_id,
             message_text,
-            top_k=5,
+            top_k=80 if wide else 5,
             industry=industry,
         )
         attach_cards = should_attach_product_cards(
@@ -1540,18 +1594,25 @@ class ChatService:
         )
         is_counselor_query = any(k in message_text for k in rec_kw) or attach_cards
 
-        # 상품명/유니폼·찾아·추천 매칭 시 카드 최대 5장 (링크·이미지·가격)
-        if results and cards_out is not None and attach_cards:
+        plan = catalog_match_plan(message_text, results, recommend_k=3)
+        if plan:
+            _n, card_hits = plan
+            context_results = card_hits
+        else:
             card_hits = filter_results_for_cards(message_text, results, max_cards=5)
+            context_results = results
+        if results and cards_out is not None and attach_cards:
             cards_out.extend(
                 self._build_product_cards(card_hits, reject_prices=reject_prices)
             )
 
         context = (
-            self.rag.assemble_context(results, reject_prices=reject_prices)
+            self.rag.assemble_context(context_results, reject_prices=reject_prices)
             if results
             else None
         )
+        if plan and context:
+            context = catalog_match_preamble(plan[0], plan[1]) + "\n\n" + context
         system_prompt = self._build_store_system_prompt(store_obj, rag_context=context)
 
         collected = []
