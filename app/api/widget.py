@@ -1417,7 +1417,7 @@ async def get_dynamic_widget_script(
     }} else {{
       const msg = document.createElement("div");
       msg.className = "fresh-msg user";
-      const esc = String(text == null ? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const esc = String(text == null ? "" : text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       msg.innerHTML = esc.replace(/\\n/g, "<br>");
       messagesContainer.appendChild(msg);
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
