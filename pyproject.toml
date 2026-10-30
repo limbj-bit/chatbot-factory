@@ -20,6 +20,8 @@ dependencies = [
     "pillow>=10.0.0",
     "price-parser>=0.3.4",
     "extruct>=0.18.0",
+    # Cafe24 JS sale prices during crawl (API 발급 전 보강)
+    "playwright>=1.40.0",
 ]
 
 [project.optional-dependencies]
@@ -27,10 +29,6 @@ dev = [
     "pytest>=8.3.3",
     "pytest-asyncio>=0.24.0",
     "pytest-mock>=3.14.0",
-]
-# JS-rendered Cafe24 sale prices during crawl (pip install '.[crawl]' && playwright install chromium)
-crawl = [
-    "playwright>=1.40.0",
 ]
 
 [build-system]

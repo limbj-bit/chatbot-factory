@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (+ curl for healthcheck)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -14,9 +14,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv for fast dependency resolution
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
+# Shared browser path so appuser can run Playwright after install-as-root
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
 # Copy project definition and install dependencies
 COPY pyproject.toml README.md ./
-RUN uv pip install --system --no-cache ".[dev]" greenlet
+RUN uv pip install --system --no-cache ".[dev]" greenlet \
+    && playwright install --with-deps chromium \
+    && chmod -R a+rX /ms-playwright
 
 # Copy application source code (cache-bust: rebuild on every deploy)
 ARG RENDER_GIT_COMMIT=unknown

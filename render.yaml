@@ -7,7 +7,7 @@ services:
     branch: main
     autoDeploy: true
     healthCheckPath: /health
-    # bump: force Render redeploy after schema-heal 2026-10-30
+    # bump: Playwright Chromium for Cafe24 price enrich 2026-10-30
     envVars:
       - key: APP_ENV
         value: production
