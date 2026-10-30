@@ -166,6 +166,11 @@ _PRODUCT_LOOKUP_KW = (
     "있나요",
     "있어요",
     "있어?",
+    "보여",
+    "보여줘",
+    "사진",
+    "이미지",
+    "골라",
     "상품",
     "제품",
     "구매",
@@ -175,6 +180,7 @@ _PRODUCT_LOOKUP_KW = (
     "어디서",
     "품번",
     "재고",
+    "유니폼",
 )
 
 _INDUSTRY_COUNSEL: Dict[str, Tuple[List[str], List[str]]] = {
@@ -219,6 +225,72 @@ def wants_product_cards(
     if any(k in convo for k in detail_kw):
         return True
     return False
+
+
+def _normalize_product_query(message_text: str) -> str:
+    """Strip verbs/particles so '진주를 보여줘'→'진주', '유니폼이 있니'→'유니폼'."""
+    raw = (message_text or "").strip()
+    cleaned = re.sub(
+        r"[을를이가은는좀]?\s*"
+        r"(보여\s*줘|보여줘|찾아\s*줘|찾아줘|검색|알려\s*줘|골라\s*줘|추천해\s*줘|"
+        r"있니|있나요|있어요|있어\??|있냐|뭐야|뭐\s*있어).*$",
+        "",
+        raw,
+    )
+    cleaned = re.sub(
+        r"(보여|찾아|검색|알려|골라|추천|있니|있나요|있어요|있어|있냐)\s*$",
+        "",
+        cleaned,
+    )
+    cleaned = re.sub(r"[을를이가은는]\s*$", "", cleaned)
+    return re.sub(r"\s+", "", cleaned).strip()
+
+
+def _product_hits(results: Optional[List[RAGSearchResult]]) -> List[RAGSearchResult]:
+    if not results:
+        return []
+    return [r for r in results if r.document.source in ("product", "crawled_url")]
+
+
+def filter_results_for_cards(
+    message_text: str,
+    results: Optional[List[RAGSearchResult]],
+    *,
+    max_cards: int = 5,
+) -> List[RAGSearchResult]:
+    """Prefer title/content matches for the query token; else all product hits (cap)."""
+    hits = _product_hits(results)
+    if not hits:
+        return []
+    token = _normalize_product_query(message_text)
+    if len(token) >= 2:
+        matched = []
+        for r in hits:
+            title = re.sub(r"\s+", "", r.document.title or "")
+            snippet = re.sub(r"\s+", "", (r.document.content or "")[:200])
+            if token in title or token in snippet or title in token:
+                matched.append(r)
+        if matched:
+            return matched[:max_cards]
+    return hits[:max_cards]
+
+
+def message_matches_product_hit(
+    message_text: str, results: Optional[List[RAGSearchResult]]
+) -> bool:
+    """True when the user message names a retrieved product (follow-up like '진주')."""
+    return bool(filter_results_for_cards(message_text, results, max_cards=1))
+
+
+def should_attach_product_cards(
+    message_text: str,
+    convo_text: str,
+    industry: Optional[str],
+    results: Optional[List[RAGSearchResult]] = None,
+) -> bool:
+    if wants_product_cards(message_text, convo_text, industry):
+        return bool(_product_hits(results)) if results is not None else True
+    return message_matches_product_hit(message_text, results)
 
 
 class ChatService:
@@ -953,9 +1025,42 @@ class ChatService:
         )
         lines.append(
             "8. 지식에 '할인 중'·정상가·판매가가 있으면 구분해 안내하세요. "
-            "배송비 금액을 상품 가격처럼 말하지 마세요."
+            "배송비·무료배송 기준 금액을 상품 판매가처럼 말하지 마세요. "
+            "지식에 판매가가 없거나 불확실하면 가격을 숫자로 단정하지 말고 "
+            "'상품 카드/상세 페이지에서 확인해 주세요'라고 안내하세요."
         )
         return "\n".join(lines)
+
+    @classmethod
+    def _guardrail_shipping_not_product_price(
+        cls, reply: str, store_obj: Optional[StoreModel]
+    ) -> str:
+        """Stop the model from quoting delivery_fee as if it were the product price."""
+        if not reply or store_obj is None:
+            return reply
+        reject = cls._shipping_reject_prices(store_obj)
+        if not reject:
+            return reply
+        out = reply
+        for fee in sorted(reject):
+            for amount in {f"{fee:,}", str(fee)}:
+                pat = re.compile(
+                    rf"([^\n。\.!]{{0,40}}?){re.escape(amount)}원"
+                    rf"(?:\s*에\s*판매|\s*에\s*팔|\s*판매\s*중|"
+                    rf"\s*(?:에|으로)\s*(?:구매|구입)|"
+                    rf"(?=\s*(?:입니다|이에요|예요|입니다\.)))"
+                )
+
+                def _sub(m: re.Match, _fee: int = fee) -> str:
+                    head = m.group(1) or ""
+                    if any(k in head for k in ("배송", "택배", "무료배송", "이상")):
+                        return m.group(0)
+                    return (
+                        f"{head}판매가는 상품 카드·상세 페이지에서 확인해 주세요"
+                    )
+
+                out = pat.sub(_sub, out)
+        return out
 
     @staticmethod
     def _guardrail_fix_claim_window(reply: str, store_obj: Optional[StoreModel]) -> str:
@@ -1111,8 +1216,6 @@ class ChatService:
                 )
                 industry = (store_obj.industry if store_obj else None)
                 rec_kw, _detail_kw = _counsel_keywords(industry)
-                attach_cards = wants_product_cards(message_text, convo_text, industry)
-                is_counselor_query = any(k in message_text for k in rec_kw) or attach_cards
 
                 # 4b. ALWAYS search store knowledge — advice/usage questions must
                 # be answered with real product data.
@@ -1120,16 +1223,23 @@ class ChatService:
                     session_db,
                     mall_id,
                     message_text,
-                    top_k=3,
+                    top_k=5,
                     industry=industry,
                 )
+                attach_cards = should_attach_product_cards(
+                    message_text, convo_text, industry, results
+                )
+                is_counselor_query = any(k in message_text for k in rec_kw) or attach_cards
 
                 if results:
                     intent = "ai_counselor_recommendation" if is_counselor_query else "rag_product_inquiry"
                     reject_prices = self._shipping_reject_prices(store_obj)
                     if attach_cards:
+                        card_hits = filter_results_for_cards(
+                            message_text, results, max_cards=5
+                        )
                         recommended_products = self._build_product_cards(
-                            results,
+                            card_hits,
                             reject_prices=reject_prices,
                         )
                     context = self.rag.assemble_context(
@@ -1157,6 +1267,9 @@ class ChatService:
             "stream_response",
         ):
             response_text = self._guardrail_fix_claim_window(response_text, store_obj)
+            response_text = self._guardrail_shipping_not_product_price(
+                response_text, store_obj
+            )
 
         latency_ms = int((time.time() - start_time) * 1000)
 
@@ -1265,8 +1378,6 @@ class ChatService:
         )
         industry = (store_obj.industry if store_obj else None)
         rec_kw, _detail_kw = _counsel_keywords(industry)
-        attach_cards = wants_product_cards(message_text, convo_text, industry)
-        is_counselor_query = any(k in message_text for k in rec_kw) or attach_cards
         reject_prices = self._shipping_reject_prices(store_obj)
 
         # Always search RAG so expert answers are grounded in real product data.
@@ -1274,14 +1385,19 @@ class ChatService:
             session_db,
             mall_id,
             message_text,
-            top_k=3,
+            top_k=5,
             industry=industry,
         )
+        attach_cards = should_attach_product_cards(
+            message_text, convo_text, industry, results
+        )
+        is_counselor_query = any(k in message_text for k in rec_kw) or attach_cards
 
-        # 찾아/추천/디테일 의도 + 상품 RAG 히트 → 카드(이미지·링크·설명)
+        # 상품명/유니폼·찾아·추천 매칭 시 카드 최대 5장 (링크·이미지·가격)
         if results and cards_out is not None and attach_cards:
+            card_hits = filter_results_for_cards(message_text, results, max_cards=5)
             cards_out.extend(
-                self._build_product_cards(results, reject_prices=reject_prices)
+                self._build_product_cards(card_hits, reject_prices=reject_prices)
             )
 
         context = (
@@ -1309,6 +1425,7 @@ class ChatService:
         if results:
             intent = "ai_counselor_recommendation" if is_counselor_query else "rag_product_inquiry"
         full_content = self._guardrail_fix_claim_window(raw_content, store_obj)
+        full_content = self._guardrail_shipping_not_product_price(full_content, store_obj)
         # Live correction for the widget: replace on-screen text if policy was re-anchored.
         if full_content != raw_content:
             yield {"__stream_replace__": full_content}

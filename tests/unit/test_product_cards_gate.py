@@ -1,11 +1,54 @@
-from app.application.chat_service import ChatService, wants_product_cards
+from app.application.chat_service import (
+    ChatService,
+    filter_results_for_cards,
+    should_attach_product_cards,
+    wants_product_cards,
+)
 from app.infrastructure.rag.engine import RAGDocument, RAGSearchResult
+
+
+def _hit(title: str, content: str = "", doc_id: str = "D1") -> RAGSearchResult:
+    return RAGSearchResult(
+        document=RAGDocument(
+            document_id=doc_id,
+            source="crawled_url",
+            product_id=doc_id,
+            title=title,
+            content=content or title,
+            metadata={"purchase_url": f"https://x/{doc_id}", "price": 10000},
+        ),
+        score=1.0,
+    )
 
 
 def test_lookup_and_recommend_want_cards():
     assert wants_product_cards("솜통 찾아줘", "솜통 찾아줘", "beauty") is True
     assert wants_product_cards("추천해줘", "추천해줘", "beauty") is True
     assert wants_product_cards("건성 피부예요", "건성 피부예요", "beauty") is True
+    assert wants_product_cards("유니폼 있니", "유니폼 있니", "beauty") is True
+
+
+def test_pearl_followup_attaches_matching_card_only():
+    results = [
+        _hit("파스텔 1 유니폼", doc_id="1"),
+        _hit("파스텔 2 유니폼", doc_id="2"),
+        _hit("진주 유니폼", doc_id="3"),
+    ]
+    assert should_attach_product_cards("진주", "진주", "beauty", results) is True
+    cards = filter_results_for_cards("진주", results, max_cards=5)
+    assert len(cards) == 1
+    assert "진주" in cards[0].document.title
+
+
+def test_uniform_lists_all_three_cards():
+    results = [
+        _hit("파스텔 1 유니폼", doc_id="1"),
+        _hit("파스텔 2 유니폼", doc_id="2"),
+        _hit("진주 유니폼", doc_id="3"),
+    ]
+    assert should_attach_product_cards("유니폼 있니", "유니폼 있니", "beauty", results)
+    cards = filter_results_for_cards("유니폼 있니", results, max_cards=5)
+    assert len(cards) == 3
 
 
 def test_greeting_not_in_system_prompt():
