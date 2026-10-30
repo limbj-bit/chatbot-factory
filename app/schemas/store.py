@@ -8,6 +8,16 @@ class StoreCreateRequest(BaseModel):
     mall_id: Optional[str] = Field(None, description="스토어 고유 ID (생략 시 자동 생성)")
     theme_color: Optional[str] = Field(None, description="위젯 테마 색상 HEX 코드 (생략 시 업종 기본 테마 적용)")
     welcome_message: Optional[str] = Field(None, description="고객 첫 접속 웰컴 인사말 (생략 시 스토어명+봇이름으로 자동 생성)")
+    welcome_bubbles: Optional[List[str]] = Field(
+        None,
+        description="채팅창 오픈 시 순차 표시할 봇 말풍선 목록 (있으면 welcome_message보다 우선)",
+    )
+    bubble_first_delay_ms: Optional[int] = Field(
+        None, ge=0, le=10000, description="첫 말풍선 등장 전 지연(ms), 기본 0"
+    )
+    bubble_gap_ms: Optional[int] = Field(
+        None, ge=0, le=10000, description="말풍선 사이 간격(ms), 기본 450"
+    )
     policy_config: Optional[Dict[str, Any]] = Field(None, description="스토어별 AS/환불 정책 임계값")
     trial_days: Optional[int] = Field(
         30,
@@ -87,6 +97,9 @@ class StoreSubscriptionUpdateRequest(BaseModel):
     input_placeholder: Optional[str] = Field(None, description="하단 입력창 placeholder 변경")
     bot_avatar_url: Optional[str] = Field(None, description="커스텀 아바타 이미지 URL 또는 Data URI 변경")
     brand_logo_url: Optional[str] = Field(None, description="헤더 브랜드 배지 로고 이미지 URL 또는 Data URI")
+    welcome_bubbles: Optional[List[str]] = Field(None, description="첫 화면 봇 말풍선 목록")
+    bubble_first_delay_ms: Optional[int] = Field(None, ge=0, le=10000)
+    bubble_gap_ms: Optional[int] = Field(None, ge=0, le=10000)
 
 
 class StoreKnowledgeCreateRequest(BaseModel):
@@ -157,6 +170,9 @@ class StoreResponse(BaseModel):
     industry: str
     theme_color: str
     welcome_message: str
+    welcome_bubbles: List[str] = Field(default_factory=list)
+    bubble_first_delay_ms: int = 0
+    bubble_gap_ms: int = 450
     embed_script_tag: str
     plan_type: str
     trial_days: Optional[int]

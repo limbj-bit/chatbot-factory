@@ -210,6 +210,12 @@ async def get_dynamic_widget_script(
     preview_email: str = Query("", description="Instant preview contact email override"),
     preview_hours: str = Query("", description="Instant preview business hours override"),
     preview_welcome_message: str = Query("", description="Instant preview welcome message override"),
+    preview_welcome_bubbles: str = Query(
+        "",
+        description="Instant preview bubbles joined by |||",
+    ),
+    preview_bubble_first_delay_ms: int = Query(-1, description="First bubble delay ms (-1=store default)"),
+    preview_bubble_gap_ms: int = Query(-1, description="Gap between bubbles ms (-1=store default)"),
     preview_quick_buttons: str = Query("", description="Instant preview comma-separated quick buttons override"),
     preview_pos: str = Query("", description="Instant preview horizontal position (bottom_right or bottom_left)"),
     preview_bottom: int = Query(0, description="Instant preview bottom offset in px"),
@@ -326,6 +332,34 @@ async def get_dynamic_widget_script(
         welcome_msg = f"안녕하세요! <b>{title} ({industry.strip()})</b> AI 상담사 <b>'{bot_name}'</b>입니다. ✨\\n궁금하신 서비스, 예약/견적 문의 또는 상담 내용을 편하게 말씀해 주세요!"
     else:
         welcome_msg = f"안녕하세요. {title}의 AI 상담사 <b>'{bot_name}'</b> 입니다. 🧪\\n어떤 원료나 서비스가 궁금하신가요?"
+
+    from app.application.first_screen import read_first_screen, split_welcome_to_bubbles
+
+    _policy = {}
+    if store and store.policy_config_json:
+        try:
+            _policy = json.loads(store.policy_config_json or "{}")
+        except Exception:
+            _policy = {}
+    _fs = read_first_screen(_policy if isinstance(_policy, dict) else {}, store.welcome_message if store else "")
+    if preview_welcome_bubbles.strip():
+        welcome_bubbles = [b.strip() for b in preview_welcome_bubbles.split("|||") if b.strip()]
+    elif preview_welcome_message.strip():
+        welcome_bubbles = split_welcome_to_bubbles(preview_welcome_message.replace("\\n", "\n"))
+    else:
+        welcome_bubbles = _fs["bubbles"] or split_welcome_to_bubbles(
+            welcome_msg.replace("\\n", "\n").replace("<b>", "").replace("</b>", "")
+        )
+    if not welcome_bubbles:
+        welcome_bubbles = [welcome_msg.replace("\\n", "\n")]
+    bubble_first_delay_ms = (
+        preview_bubble_first_delay_ms
+        if preview_bubble_first_delay_ms >= 0
+        else int(_fs.get("first_delay_ms") or 0)
+    )
+    bubble_gap_ms = (
+        preview_bubble_gap_ms if preview_bubble_gap_ms >= 0 else int(_fs.get("bubble_gap_ms") or 450)
+    )
 
     bot_icon_style = preview_icon or (store.bot_icon_style if store and store.bot_icon_style else ind_defaults.get("bot_icon_style", "flaticon_cute_robot"))
     launcher_shape = preview_shape or (store.launcher_shape if store and store.launcher_shape else "cosbot_badge")
@@ -489,6 +523,10 @@ async def get_dynamic_widget_script(
     safe_title = title.replace("\\", "\\\\").replace('"', '\\"')
     safe_upload_guide = upload_guide.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
     safe_welcome_msg = welcome_msg.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+    welcome_bubbles_js = json.dumps(
+        [b.replace("\n", "<br>") for b in welcome_bubbles],
+        ensure_ascii=False,
+    )
     safe_commerce_platform = commerce_platform.replace('"', '\\"')
     safe_commerce_badge = commerce_badge.replace('"', '\\"')
     quick_buttons_js = json.dumps(quick_buttons, ensure_ascii=False)
@@ -537,6 +575,9 @@ async def get_dynamic_widget_script(
     businessHours: "{safe_hours}",
     inputPlaceholder: "{safe_placeholder}",
     welcomeMessage: "{safe_welcome_msg}",
+    welcomeBubbles: {welcome_bubbles_js},
+    bubbleFirstDelayMs: {bubble_first_delay_ms},
+    bubbleGapMs: {bubble_gap_ms},
     uploadGuide: "{safe_upload_guide}",
     commercePlatform: "{safe_commerce_platform}",
     commerceBadge: "{safe_commerce_badge}",
@@ -968,9 +1009,7 @@ async def get_dynamic_widget_script(
     bannerHtml = `<div class="fresh-widget-banner">${{config.statusMessage}}</div>`;
   }}
 
-  const initialBodyMessage = config.isExpired
-    ? "⛔ <b>[서비스 이용기간 만료 안내]</b><br>무료 체험(또는 구독) 사용기한이 만료되어 AI 상담 및 사진 판독 기능이 일시 중단되었습니다.<br><br>스토어 관리자께서는 챗봇공장 관리자에게 기한 연장을 요청해 주시기 바랍니다."
-    : config.welcomeMessage.replace(/\\\\n/g, "<br>");
+  const expiredBodyMessage = "⛔ <b>[서비스 이용기간 만료 안내]</b><br>무료 체험(또는 구독) 사용기한이 만료되어 AI 상담 및 사진 판독 기능이 일시 중단되었습니다.<br><br>스토어 관리자께서는 챗봇공장 관리자에게 기한 연장을 요청해 주시기 바랍니다.";
 
   const disabledAttr = config.isExpired ? "disabled" : "";
   const inputPlaceholder = config.isExpired ? "사용기한이 만료되어 입력할 수 없습니다." : config.inputPlaceholder;
@@ -1073,15 +1112,8 @@ async def get_dynamic_widget_script(
     <div class="fresh-widget-body" id="dyn-messages">
       ${{orderLookupBoxHtml}}
       ${{topExtraHtml}}
-      <div class="fresh-bot-block">
-        <div class="fresh-bot-meta">
-          <div class="fresh-bot-sq-avatar">${{iconGraphicHtml}}</div>
-          <span class="fresh-bot-meta-name">${{config.botName}}</span>
-          <span class="fresh-bot-meta-time">방금 전</span>
-        </div>
-        <div class="fresh-msg bot">${{initialBodyMessage}}</div>
-        ${{templateQuickAreaHtml}}
-      </div>
+      <div id="dyn-welcome-slot"></div>
+      <div id="dyn-quick-area" style="display:none;">${{templateQuickAreaHtml}}</div>
     </div>
     <div class="fresh-widget-footer">
       <input type="file" id="dyn-file" accept="image/*" style="display:none;" ${{disabledAttr}} />
@@ -1153,9 +1185,76 @@ async def get_dynamic_widget_script(
     teaserTimer = setTimeout(tick, teaserFirstDelayMs);
   }}
   scheduleTeaserLoop();
+
+  let welcomeStarted = false;
+  function appendWelcomeBubbleHtml(html) {{
+    const slot = messagesContainer.querySelector("#dyn-welcome-slot");
+    if (!slot) return;
+    const block = document.createElement("div");
+    block.className = "fresh-bot-block";
+    block.innerHTML = `
+      <div class="fresh-bot-meta">
+        <div class="fresh-bot-sq-avatar">${{iconGraphicHtml}}</div>
+        <span class="fresh-bot-meta-name">${{config.botName}}</span>
+        <span class="fresh-bot-meta-time">방금 전</span>
+      </div>
+      <div class="fresh-msg bot">${{html}}</div>
+    `;
+    slot.appendChild(block);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }}
+  function bindQuickAreaClicks() {{
+    chatWindow.querySelectorAll("#dyn-quick-area [data-q]").forEach(btn => {{
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
+      btn.addEventListener("click", () => {{
+        const qText = btn.getAttribute("data-q");
+        if (qText.includes("사진") || qText.includes("판독")) {{
+          fileInput.click();
+        }} else if (qText.includes("다른 질문")) {{
+          userInput.focus();
+        }} else {{
+          userInput.value = qText;
+          sendMessage();
+        }}
+      }});
+    }});
+  }}
+  function startWelcomeSequence() {{
+    if (welcomeStarted) return;
+    welcomeStarted = true;
+    const slot = messagesContainer.querySelector("#dyn-welcome-slot");
+    const quick = messagesContainer.querySelector("#dyn-quick-area");
+    if (config.isExpired) {{
+      appendWelcomeBubbleHtml(expiredBodyMessage);
+      return;
+    }}
+    const bubbles = (config.welcomeBubbles && config.welcomeBubbles.length)
+      ? config.welcomeBubbles
+      : [String(config.welcomeMessage || "").replace(/\\\\n/g, "<br>")];
+    const firstDelay = Math.max(0, Number(config.bubbleFirstDelayMs) || 0);
+    const gap = Math.max(0, Number(config.bubbleGapMs) || 0);
+    let i = 0;
+    const tick = () => {{
+      if (i >= bubbles.length) {{
+        if (quick) {{
+          quick.style.display = "";
+          bindQuickAreaClicks();
+        }}
+        return;
+      }}
+      const raw = String(bubbles[i] || "");
+      appendWelcomeBubbleHtml(raw.replace(/\\n/g, "<br>"));
+      i += 1;
+      setTimeout(tick, gap);
+    }};
+    setTimeout(tick, firstDelay);
+  }}
+
   teaserBubble.addEventListener("click", () => {{
     hideTeaser();
     chatWindow.style.display = "flex";
+    startWelcomeSequence();
     if (!config.isExpired) userInput.focus();
   }});
 
@@ -1163,6 +1262,7 @@ async def get_dynamic_widget_script(
     chatWindow.style.display = chatWindow.style.display === "flex" ? "none" : "flex";
     if (chatWindow.style.display === "flex") {{
       hideTeaser();
+      startWelcomeSequence();
       if (!config.isExpired) userInput.focus();
     }} else {{
       scheduleTeaserLoop();
@@ -1172,6 +1272,12 @@ async def get_dynamic_widget_script(
     chatWindow.style.display = "none";
     scheduleTeaserLoop();
   }});
+  // Showroom preview opens via style.display=flex without launcher click
+  try {{
+    new MutationObserver(() => {{
+      if (chatWindow.style.display === "flex") startWelcomeSequence();
+    }}).observe(chatWindow, {{ attributes: true, attributeFilter: ["style"] }});
+  }} catch (_e) {{}}
 
   chatWindow.querySelectorAll("[data-q]").forEach(btn => {{
     btn.addEventListener("click", () => {{

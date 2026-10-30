@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
 from app.application.commerce_service import commerce_service
+from app.application.first_screen import merge_first_screen_into_policy, read_first_screen
 from app.core.logging import logger
 from app.core.security import encryption_available
 from app.infrastructure.database.models import StoreKnowledgeModel, StoreModel
@@ -459,6 +460,8 @@ class StoreService:
         if not isinstance(widget_layout, dict):
             widget_layout = None
 
+        fs = read_first_screen(policy_dict if isinstance(policy_dict, dict) else {}, store.welcome_message or "")
+
         return StoreResponse(
             store_id=store.id,
             mall_id=store.mall_id,
@@ -466,6 +469,9 @@ class StoreService:
             industry=store.industry,
             theme_color=store.theme_color,
             welcome_message=store.welcome_message,
+            welcome_bubbles=fs["bubbles"],
+            bubble_first_delay_ms=fs["first_delay_ms"],
+            bubble_gap_ms=fs["bubble_gap_ms"],
             embed_script_tag=embed_tag,
             plan_type=store.plan_type,
             trial_days=store.trial_days,
@@ -571,6 +577,19 @@ class StoreService:
                 merged = {}
             if request.policy_config:
                 merged.update(request.policy_config)
+            if (
+                request.welcome_bubbles is not None
+                or request.bubble_first_delay_ms is not None
+                or request.bubble_gap_ms is not None
+            ):
+                merged, joined = merge_first_screen_into_policy(
+                    merged,
+                    bubbles=request.welcome_bubbles,
+                    first_delay_ms=request.bubble_first_delay_ms,
+                    bubble_gap_ms=request.bubble_gap_ms,
+                )
+                if request.welcome_bubbles is not None:
+                    existing_store.welcome_message = joined
             existing_store.policy_config_json = json.dumps(merged, ensure_ascii=False)
             await session.commit()
             await session.refresh(existing_store)
@@ -630,6 +649,26 @@ class StoreService:
         merged_policy = industry_info["default_policy"].copy()
         if request.policy_config:
             merged_policy.update(request.policy_config)
+        if (
+            request.welcome_bubbles is not None
+            or request.bubble_first_delay_ms is not None
+            or request.bubble_gap_ms is not None
+        ):
+            default_bubbles = request.welcome_bubbles
+            if default_bubbles is None:
+                from app.application.first_screen import split_welcome_to_bubbles
+
+                default_bubbles = split_welcome_to_bubbles(welcome_message)
+            merged_policy, welcome_message = merge_first_screen_into_policy(
+                merged_policy,
+                bubbles=default_bubbles,
+                first_delay_ms=request.bubble_first_delay_ms
+                if request.bubble_first_delay_ms is not None
+                else 0,
+                bubble_gap_ms=request.bubble_gap_ms
+                if request.bubble_gap_ms is not None
+                else 450,
+            )
 
         now = datetime.now(timezone.utc)
         if request.trial_days is None:
@@ -831,6 +870,25 @@ class StoreService:
             store.is_active = True
             if store.plan_type in ("suspended", "unlimited"):
                 store.plan_type = update_req.plan_type or "active"
+
+        if (
+            update_req.welcome_bubbles is not None
+            or update_req.bubble_first_delay_ms is not None
+            or update_req.bubble_gap_ms is not None
+        ):
+            try:
+                pol = json.loads(store.policy_config_json or "{}")
+            except Exception:
+                pol = {}
+            pol, joined = merge_first_screen_into_policy(
+                pol,
+                bubbles=update_req.welcome_bubbles,
+                first_delay_ms=update_req.bubble_first_delay_ms,
+                bubble_gap_ms=update_req.bubble_gap_ms,
+            )
+            store.policy_config_json = json.dumps(pol, ensure_ascii=False)
+            if update_req.welcome_bubbles is not None:
+                store.welcome_message = joined
 
         await session.commit()
         await session.refresh(store)
