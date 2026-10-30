@@ -18,9 +18,17 @@ def test_rejects_delivery_fee_even_from_jsonld():
     assert extract_product_price("", jsonld, reject_prices={3000}) is None
 
 
-def test_cafe24_js_price_wins():
-    html = 'var product_price = "18500"; 배송비 3,000원 (60,000원 이상 구매 시 무료)'
+def test_cafe24_js_sale_price_wins():
+    html = 'var sale_price = "18500"; product_price = "28000"; 배송비 3,000원'
     assert extract_product_price(html, None, reject_prices={3000, 60000}) == 18500
+
+
+def test_list_price_alone_does_not_become_sale():
+    """소비자가/정가만 있으면 카드에는 가격 생략 (잘못된 본문 추정 방지)."""
+    html = 'var product_price = "18500"; 배송비 3,000원'
+    info = extract_product_prices(html, None, reject_prices={3000, 60000})
+    assert info.price is None
+    assert info.original_price == 18500
 
 
 def test_sale_vs_original():
@@ -29,6 +37,22 @@ def test_sale_vs_original():
     assert info.price == 18500
     assert info.original_price == 28000
     assert info.on_sale is True
+
+
+def test_cafe24_sale_beats_related_rail_amount():
+    html = """
+    <strong id="span_product_price_text">20,000원</strong>
+    <span id="span_product_price_sale">10,000원</span>
+    <div class="relate">추천상품 45,000원</div>
+    """
+    info = extract_product_prices(html, None, reject_prices={3000})
+    assert info.price == 10000
+    assert info.original_price == 20000
+
+
+def test_body_rail_not_used_as_sale_by_default():
+    html = "연관상품 45,000원 다른상품 32,000원 배송비 3,000원"
+    assert extract_product_prices(html, None, reject_prices={3000}).price is None
 
 
 def test_cafe24_dom_ids():

@@ -995,6 +995,10 @@ async def get_dynamic_widget_script(
     .fresh-product-card .price-row {{ display:flex; flex-wrap:wrap; align-items:center; gap:3px; }}
     .fresh-product-card .price-orig {{ font-size:9px; color:#9CA3AF; text-decoration:line-through; font-weight:500; }}
     .fresh-product-card .sale-badge {{ font-size:9px; font-weight:800; color:#B91C1C; background:#FEF2F2; padding:1px 4px; border-radius:999px; }}
+    .fresh-product-card .pc-feat {{
+      margin: 0; font-size: 10px; color: #64748B; line-height: 1.3; font-weight: 500;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }}
     .fresh-follow-chips {{ width: 94%; align-self: flex-start; margin-top: 4px; }}
     .fresh-contact-bar {{
       background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 7px 14px;
@@ -1508,6 +1512,10 @@ async def get_dynamic_widget_script(
           ? `<span class="price-orig">${{c.original_price.toLocaleString()}}원</span>`
           : "";
         priceHtml = `<div class="price-row">${{saleBadge}}<span class="price">${{c.price.toLocaleString()}}원</span>${{orig}}</div>`;
+      }} else if (c.summary) {{
+        // No reliable sale price → short features; detail URL still opens the page
+        const feat = String(c.summary).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        priceHtml = `<p class="pc-feat">${{feat}}</p>`;
       }}
       const safeTitle = String(c.title == null ? "" : c.title)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

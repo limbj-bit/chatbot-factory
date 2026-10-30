@@ -27,8 +27,13 @@ def test_needs_enrichment_when_missing_or_rejected():
 
 @pytest.mark.asyncio
 async def test_enrich_keeps_static_when_good(monkeypatch):
-    html = '<span id="span_product_price_text">18,500원</span> 배송비 3,000원'
-    # Ensure API/playwright not called when static is enough
+    # Cafe24 sale span present → trusted, no API/Playwright
+    html = (
+        '<span id="span_product_price_text">28,000원</span>'
+        '<span id="span_product_price_sale">18,500원</span>'
+        " 배송비 3,000원"
+    )
+
     async def boom(*a, **k):
         raise AssertionError("should not enrich")
 
@@ -43,6 +48,7 @@ async def test_enrich_keeps_static_when_good(monkeypatch):
     )
     assert src == "static"
     assert info.price == 18500
+    assert info.original_price == 28000
     assert used == html
 
 

@@ -242,18 +242,23 @@ def extract_product_prices(
     jsonld_data: Optional[Dict[str, Any]] = None,
     *,
     reject_prices: Optional[Set[int]] = None,
+    allow_body_fallback: bool = False,
 ) -> ProductPriceInfo:
-    """Cafe24 DOM → JS vars → labels → JSON-LD/extruct → meta → body."""
+    """Cafe24 sale/list spans first. Never guess from random body amounts by default.
+
+    Body/related-product digits (e.g. 45,000원 in a rail) caused false sale prices.
+    If sale cannot be resolved, price stays None — card shows features; Front API can fill later.
+    """
     reject = reject_prices or set()
     sale: Optional[int] = None
     original: Optional[int] = None
 
-    # 1) Cafe24 theme nodes (highest priority for KR malls)
+    # 1) Cafe24 theme nodes — sale span is source of truth for discount malls
     c24_sale, c24_list = _cafe24_dom_prices(raw_html, reject)
     sale = c24_sale
     original = c24_list
 
-    # 2) Cafe24 / generic JS assignments
+    # 2) Explicit sale JS / 할인가 labels only (not generic product_price → sale)
     if sale is None:
         sale = _ok(
             _js_assigned(raw_html, ("sale_price", "salePrice", "prd_price_sale")),
@@ -274,19 +279,18 @@ def extract_product_prices(
             reject,
         )
 
-    # 3) Korean labels
+    # 3) Korean sale/list labels
     if sale is None:
         sale = _ok(_label_price(raw_html, ("할인가", "할인판매가", "판매가")), reject)
     if original is None:
         original = _ok(_label_price(raw_html, ("소비자가", "정상가", "정가", "기존가")), reject)
 
-    # 4) Caller-provided JSON-LD + optional extruct
-    jsonld_price = None
-    if jsonld_data:
+    # 4) JSON-LD / meta only when Cafe24 sale still empty (structured, not body scrape)
+    if sale is None and jsonld_data:
         offers = jsonld_data.get("offers")
         if isinstance(offers, dict):
-            jsonld_price = _ok(parse_price_val(offers.get("price")), reject)
-        if jsonld_price is None:
+            sale = _ok(parse_price_val(offers.get("price")), reject)
+        if sale is None:
             for v in jsonld_data.get("hasVariant") or []:
                 off = (v or {}).get("offers") or {}
                 p = _ok(
@@ -294,10 +298,8 @@ def extract_product_prices(
                     reject,
                 )
                 if p:
-                    jsonld_price = p
+                    sale = p
                     break
-    if sale is None and jsonld_price is not None:
-        sale = jsonld_price
     if sale is None:
         sale = _extruct_offer_price(raw_html, reject)
 
@@ -310,15 +312,13 @@ def extract_product_prices(
         if price_meta:
             sale = _ok(parse_price_val(price_meta.group(1)), reject)
 
-    if sale is None:
+    # 5) Body scrape OFF by default — related rails inject wrong amounts (45,000 등)
+    if sale is None and allow_body_fallback:
         body = _body_candidate_prices(raw_html, reject)
         if body:
             sale = body[0]
 
-    if sale is None and original is not None:
-        sale = original
-        original = None
-
+    # Do NOT promote list/소비자가 alone to sale — omit price rather than lie
     if original is not None and sale is not None and original <= sale:
         original = None
 
