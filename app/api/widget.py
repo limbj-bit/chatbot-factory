@@ -945,31 +945,56 @@ async def get_dynamic_widget_script(
       background: linear-gradient(90deg, #FDF2F8 0%, #FCE7F3 100%);
       border: 1px solid #FBCFE8; border-radius: 12px; padding: 10px 12px; font-size: 12px; color: #831843; width: 94%;
     }}
+    /* Slim product carousel: image + price; card = detail, bag = buy */
+    .fresh-card-carousel-wrap {{
+      position: relative; width: 94%; align-self: flex-start; margin-top: 2px;
+    }}
+    .fresh-card-carousel {{
+      display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch; scrollbar-width: thin; padding: 2px 2px 8px;
+    }}
+    .fresh-card-carousel::-webkit-scrollbar {{ height: 4px; }}
+    .fresh-card-carousel::-webkit-scrollbar-thumb {{ background: #CBD5E1; border-radius: 999px; }}
+    .fresh-carousel-nav {{
+      position: absolute; top: 36%; transform: translateY(-50%); z-index: 2;
+      width: 28px; height: 28px; border-radius: 50%; border: 1px solid #E2E8F0;
+      background: rgba(255,255,255,0.95); color: #475569; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 16px; line-height: 1;
+      box-shadow: 0 1px 4px rgba(15,23,42,0.08); padding: 0;
+    }}
+    .fresh-carousel-nav.prev {{ left: -4px; }}
+    .fresh-carousel-nav.next {{ right: -4px; }}
+    .fresh-carousel-nav[hidden] {{ display: none; }}
     .fresh-product-card {{
-      background: #FFFFFF; border: 1px solid #E5E7EB;
-      border-radius: 12px; padding: 12px; max-width: 94%; width: 94%; align-self: flex-start;
-      box-shadow: 0 2px 8px rgba(15,23,42,0.06); font-size: 13px;
-      display: flex; gap: 12px; align-items: stretch;
+      flex: 0 0 158px; width: 158px; max-width: 158px; scroll-snap-align: start;
+      background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 0;
+      box-shadow: 0 2px 8px rgba(15,23,42,0.06); font-size: 12.5px;
+      display: flex; flex-direction: column; overflow: hidden; cursor: pointer;
     }}
-    .fresh-product-card .pc-img {{
-      flex-shrink: 0; width: 96px; height: 96px; border-radius: 10px; overflow: hidden;
-      background: #F3F4F6; border: 1px solid #F1F5F9;
+    .fresh-product-card .pc-media {{
+      position: relative; width: 100%; aspect-ratio: 1 / 1; background: #F3F4F6;
+      border-bottom: 1px solid #F1F5F9; overflow: hidden;
     }}
-    .fresh-product-card .pc-img img {{
+    .fresh-product-card .pc-media img {{
       width: 100%; height: 100%; object-fit: cover; display: block;
     }}
-    .fresh-product-card .pc-body {{ flex: 1; min-width: 0; display:flex; flex-direction:column; }}
-    .fresh-product-card h4 {{ margin: 0 0 6px 0; font-size: 13.5px; color: #111827; line-height: 1.35; font-weight: 700; }}
-    .fresh-product-card .price {{ font-weight: 800; color: #111827; font-size: 15px; }}
-    .fresh-product-card .price-row {{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:6px; }}
-    .fresh-product-card .price-orig {{ font-size:12px; color:#9CA3AF; text-decoration:line-through; font-weight:500; }}
-    /* Color only on discount cue + buy CTA — keep fatigue low */
-    .fresh-product-card .sale-badge {{ font-size:11px; font-weight:800; color:#B91C1C; background:#FEF2F2; padding:2px 7px; border-radius:999px; }}
-    .fresh-product-card .pc-summary {{ font-size: 12px; color: #6B7280; line-height: 1.4; margin-bottom: 8px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }}
-    .fresh-product-card .buy-link {{
-      display: block; text-align:center; margin-top:auto; background: ${{config.primaryColor}}; color: #FFFFFF;
-      text-decoration: none; padding: 8px 10px; border-radius: 8px; font-size: 12.5px; font-weight: 700;
+    .fresh-product-card .pc-bag {{
+      position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%;
+      border: none; background: rgba(255,255,255,0.95); color: #0F172A; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 1px 4px rgba(15,23,42,0.12); padding: 0;
     }}
+    .fresh-product-card .pc-bag svg {{ width: 15px; height: 15px; }}
+    .fresh-product-card .pc-meta {{ padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 4px; }}
+    .fresh-product-card .pc-title {{
+      margin: 0; font-size: 12.5px; color: #111827; line-height: 1.35; font-weight: 700;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }}
+    .fresh-product-card .price {{ font-weight: 800; color: #111827; font-size: 14px; }}
+    .fresh-product-card .price-row {{ display:flex; flex-wrap:wrap; align-items:center; gap:5px; }}
+    .fresh-product-card .price-orig {{ font-size:11px; color:#9CA3AF; text-decoration:line-through; font-weight:500; }}
+    .fresh-product-card .sale-badge {{ font-size:11px; font-weight:800; color:#B91C1C; background:#FEF2F2; padding:2px 6px; border-radius:999px; }}
+    .fresh-follow-chips {{ width: 94%; align-self: flex-start; margin-top: 4px; }}
     .fresh-contact-bar {{
       background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 7px 14px;
       text-align: center; font-size: 11.5px; color: #64748B;
@@ -1425,11 +1450,53 @@ async def get_dynamic_widget_script(
     }}
   }}
 
+  function openProductUrl(url) {{
+    if (!url) return;
+    try {{ window.open(url, "_blank", "noopener"); }} catch (e) {{ window.location.href = url; }}
+  }}
+
+  function bindFollowChips(rowEl) {{
+    if (!rowEl) return;
+    rowEl.querySelectorAll("[data-q]").forEach(btn => {{
+      btn.addEventListener("click", () => {{
+        const qText = btn.getAttribute("data-q");
+        if (!qText) return;
+        userInput.value = qText;
+        sendMessage();
+      }});
+    }});
+  }}
+
+  function appendFollowChips(cards) {{
+    const firstTitle = (cards[0] && cards[0].title) ? String(cards[0].title) : "";
+    const shortTitle = firstTitle.length > 18 ? firstTitle.slice(0, 18) + "…" : firstTitle;
+    const chips = ["비슷한 상품 추천"];
+    if (shortTitle) chips.push(shortTitle + " 효과 알려줘");
+    chips.push("배송·교환 문의");
+    const row = document.createElement("div");
+    row.className = "fresh-chips-row fresh-follow-chips";
+    row.innerHTML = chips.map(label =>
+      `<button type="button" class="fresh-chip" data-q="${{label.replace(/"/g, "&quot;")}}">${{label}}</button>`
+    ).join("");
+    messagesContainer.appendChild(row);
+    bindFollowChips(row);
+  }}
+
   function appendProductCards(cards) {{
     if (!cards || !cards.length) return;
+    const wrap = document.createElement("div");
+    wrap.className = "fresh-card-carousel-wrap";
+    const track = document.createElement("div");
+    track.className = "fresh-card-carousel";
+    const bagSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V7a3 3 0 0 1 6 0v1"/></svg>';
+
     cards.forEach(c => {{
+      const detailUrl = c.purchase_url || "";
       const cardEl = document.createElement("div");
       cardEl.className = "fresh-product-card";
+      cardEl.setAttribute("role", "link");
+      cardEl.tabIndex = detailUrl ? 0 : -1;
+
       let priceHtml = "";
       if (c.price) {{
         const pct = (c.on_sale && c.discount_percent) ? Math.round(c.discount_percent) : 0;
@@ -1441,22 +1508,60 @@ async def get_dynamic_widget_script(
           : "";
         priceHtml = `<div class="price-row">${{saleBadge}}<span class="price">${{c.price.toLocaleString()}}원</span>${{orig}}</div>`;
       }}
-      const linkHtml = c.purchase_url ? `<a class="buy-link" href="${{c.purchase_url}}" target="_blank" rel="noopener">구매하기</a>` : "";
+      const safeTitle = String(c.title == null ? "" : c.title)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const safeImg = String(c.image_url || "").replace(/"/g, "&quot;");
       const imgHtml = c.image_url
-        ? `<div class="pc-img"><img src="${{c.image_url}}" alt="${{c.title}}" onerror="this.parentElement.style.display='none'" /></div>`
-        : `<div class="pc-img" aria-hidden="true"></div>`;
-      const summaryHtml = c.summary ? `<div class="pc-summary">${{c.summary}}</div>` : "";
+        ? `<img src="${{safeImg}}" alt="${{safeTitle}}" loading="lazy" onerror="this.style.visibility='hidden'" />`
+        : "";
+      const bagHtml = detailUrl
+        ? `<button type="button" class="pc-bag" aria-label="구매하기">${{bagSvg}}</button>`
+        : "";
       cardEl.innerHTML = `
-        ${{imgHtml}}
-        <div class="pc-body">
-          <h4>${{c.title}}</h4>
+        <div class="pc-media">${{imgHtml}}${{bagHtml}}</div>
+        <div class="pc-meta">
+          <p class="pc-title">${{safeTitle}}</p>
           ${{priceHtml}}
-          ${{summaryHtml}}
-          ${{linkHtml}}
         </div>
       `;
-      messagesContainer.appendChild(cardEl);
+      cardEl.addEventListener("click", () => openProductUrl(detailUrl));
+      cardEl.addEventListener("keydown", (ev) => {{
+        if (ev.key === "Enter" || ev.key === " ") {{
+          ev.preventDefault();
+          openProductUrl(detailUrl);
+        }}
+      }});
+      const bagBtn = cardEl.querySelector(".pc-bag");
+      if (bagBtn) {{
+        bagBtn.addEventListener("click", (ev) => {{
+          ev.preventDefault();
+          ev.stopPropagation();
+          openProductUrl(detailUrl);
+        }});
+      }}
+      track.appendChild(cardEl);
     }});
+
+    wrap.appendChild(track);
+    if (cards.length > 1) {{
+      const prev = document.createElement("button");
+      prev.type = "button";
+      prev.className = "fresh-carousel-nav prev";
+      prev.setAttribute("aria-label", "이전 상품");
+      prev.textContent = "‹";
+      const next = document.createElement("button");
+      next.type = "button";
+      next.className = "fresh-carousel-nav next";
+      next.setAttribute("aria-label", "다음 상품");
+      next.textContent = "›";
+      const step = () => Math.max(140, Math.floor(track.clientWidth * 0.85));
+      prev.addEventListener("click", () => track.scrollBy({{ left: -step(), behavior: "smooth" }}));
+      next.addEventListener("click", () => track.scrollBy({{ left: step(), behavior: "smooth" }}));
+      wrap.appendChild(prev);
+      wrap.appendChild(next);
+    }}
+    messagesContainer.appendChild(wrap);
+    appendFollowChips(cards);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }}
 
