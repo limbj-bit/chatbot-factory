@@ -501,6 +501,37 @@
           </div>
         </div>
 
+        <div class="field-card" id="teaserEditor" style="grid-column: 1 / -1; border:1.5px solid #D97706; background:#FFFBEB;">
+          <div class="field-title"><span>⑧ 닫힌 창 티저 팝업 · 노출 시간</span><span class="field-tag">직접편집</span></div>
+          <div class="field-desc">채팅창이 닫혀 있을 때 런처 옆에 뜨는 짧은 팝업입니다. 업종 기본 문구를 채운 뒤 수정·삭제·추가하고, 첫 노출·표시·간격·최대 횟수를 조절합니다.</div>
+          <label style="display:block;font-size:12px;font-weight:700;color:#B45309;margin:10px 0 6px;">티저 문구 (순서대로 순환)</label>
+          <div id="teaserPromptsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+            <button type="button" class="pos-btn" onclick="addTeaserPromptRow()">+ 문구 추가</button>
+            <button type="button" class="pos-btn" onclick="seedTeaserFromIndustry()" style="color:#B45309;">업종 기본으로 채우기</button>
+          </div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;">
+            <div>
+              <label style="display:block;font-size:12px;font-weight:700;color:#B45309;margin-bottom:4px;">첫 노출 전 지연 (ms)</label>
+              <input type="number" id="teaserFirstDelayMs" min="0" max="120000" step="500" value="12000" oninput="triggerInstantPreview()" style="width:120px;" />
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;font-weight:700;color:#B45309;margin-bottom:4px;">표시 시간 (ms)</label>
+              <input type="number" id="teaserVisibleMs" min="0" max="60000" step="100" value="4500" oninput="triggerInstantPreview()" style="width:120px;" />
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;font-weight:700;color:#B45309;margin-bottom:4px;">다음까지 간격 (ms)</label>
+              <input type="number" id="teaserGapMs" min="0" max="300000" step="500" value="32000" oninput="triggerInstantPreview()" style="width:120px;" />
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;font-weight:700;color:#B45309;margin-bottom:4px;">최대 노출 횟수</label>
+              <input type="number" id="teaserMaxShows" min="1" max="20" step="1" value="4" oninput="triggerInstantPreview()" style="width:80px;" />
+            </div>
+          </div>
+        </div>
+
+
+
       </div>
 
       <!-- 2순위: 고객이 눈으로 보고 클릭하는 아이콘 & 템플릿 -->
@@ -1252,6 +1283,11 @@
         preview_welcome_bubbles: (typeof getWelcomeBubblesFromList === "function" ? getWelcomeBubblesFromList() : []).join("|||"),
         preview_bubble_first_delay_ms: parseInt(document.getElementById("bubbleFirstDelayMs")?.value || "0", 10),
         preview_bubble_gap_ms: parseInt(document.getElementById("bubbleGapMs")?.value || "450", 10),
+        preview_teaser_prompts: (typeof getTeaserPromptsFromList === "function" ? getTeaserPromptsFromList() : []).join("|||"),
+        preview_teaser_first_delay_ms: parseInt(document.getElementById("teaserFirstDelayMs")?.value || "12000", 10),
+        preview_teaser_visible_ms: parseInt(document.getElementById("teaserVisibleMs")?.value || "4500", 10),
+        preview_teaser_gap_ms: parseInt(document.getElementById("teaserGapMs")?.value || "32000", 10),
+        preview_teaser_max_shows: parseInt(document.getElementById("teaserMaxShows")?.value || "4", 10),
         preview_pos: pos,
         preview_bottom: bottomPx,
         preview_avatar_px: avatarPx,
@@ -1363,6 +1399,81 @@
       electronics: ["⚡ 전원/작동 불량 자가진단", "🔧 고장/파손 사진 A/S 판독", "📦 주문 / 배송 현황 조회", "🛡️ 1년 무상 보증 규정 안내", "💬 그 외 다른 질문하기"],
       general: ["📦 주문 / 배송 조회", "🔄 교환/반품 문의", "💬 다른 질문하기"]
     };
+
+    function getTeaserPromptsFromList() {
+      const root = document.getElementById("teaserPromptsList");
+      if (!root) return [];
+      return Array.from(root.querySelectorAll("textarea.tp-row")).map(el => (el.value || "").trim()).filter(Boolean).slice(0, 12);
+    }
+    function renderTeaserPromptsList(items) {
+      const root = document.getElementById("teaserPromptsList");
+      if (!root) return;
+      const list = (items && items.length) ? items.slice(0, 12) : [""];
+      root.innerHTML = "";
+      list.forEach((text, idx) => {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;gap:8px;align-items:flex-start;";
+        const ta = document.createElement("textarea");
+        ta.className = "tp-row";
+        ta.rows = 2;
+        ta.style.cssText = "flex:1;font-size:13px;";
+        ta.value = text || "";
+        ta.placeholder = "티저 팝업 문구";
+        ta.oninput = function() { triggerInstantPreview(); };
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "pos-btn";
+        btn.style.color = "#B91C1C";
+        btn.textContent = "삭제";
+        btn.onclick = function() { removeTeaserPromptRow(idx); };
+        row.appendChild(ta);
+        row.appendChild(btn);
+        root.appendChild(row);
+      });
+    }
+    function addTeaserPromptRow() {
+      const cur = Array.from(document.querySelectorAll("#teaserPromptsList textarea.tp-row")).map(el => el.value);
+      if (cur.length >= 12) { alert("티저 문구는 최대 12개입니다."); return; }
+      cur.push("");
+      renderTeaserPromptsList(cur);
+      triggerInstantPreview();
+    }
+    function removeTeaserPromptRow(idx) {
+      const cur = Array.from(document.querySelectorAll("#teaserPromptsList textarea.tp-row")).map(el => el.value);
+      cur.splice(idx, 1);
+      renderTeaserPromptsList(cur.length ? cur : [""]);
+      triggerInstantPreview();
+    }
+    async function seedTeaserFromIndustry() {
+      const industry = (typeof getSelectedIndustryValue === "function")
+        ? getSelectedIndustryValue()
+        : (document.getElementById("industry")?.value || "general");
+      const bot = document.getElementById("botName")?.value.trim() || "상담봇";
+      try {
+        const res = await fetch(`/api/widget/teaser-defaults?industry=${encodeURIComponent(industry)}&bot_name=${encodeURIComponent(bot)}`);
+        if (res.ok) {
+          const data = await res.json();
+          renderTeaserPromptsList(data.prompts || []);
+          if (document.getElementById("teaserFirstDelayMs") && data.first_delay_ms != null) {
+            document.getElementById("teaserFirstDelayMs").value = data.first_delay_ms;
+          }
+          if (document.getElementById("teaserVisibleMs") && data.visible_ms != null) {
+            document.getElementById("teaserVisibleMs").value = data.visible_ms;
+          }
+          if (document.getElementById("teaserGapMs") && data.gap_ms != null) {
+            document.getElementById("teaserGapMs").value = data.gap_ms;
+          }
+          if (document.getElementById("teaserMaxShows") && data.max_shows != null) {
+            document.getElementById("teaserMaxShows").value = data.max_shows;
+          }
+          triggerInstantPreview();
+          return;
+        }
+      } catch (e) {}
+      renderTeaserPromptsList(["안녕하세요, 상담사 " + bot + "입니다 ✨", "궁금하신 건 언제든 물어보세요"]);
+      triggerInstantPreview();
+    }
+
     function getWelcomeBubblesFromList() {
       const root = document.getElementById("welcomeBubblesList");
       if (!root) return [];
@@ -1573,6 +1684,11 @@
           welcome_bubbles: (typeof getWelcomeBubblesFromList === "function" ? getWelcomeBubblesFromList() : undefined),
           bubble_first_delay_ms: parseInt(document.getElementById("bubbleFirstDelayMs")?.value || "0", 10),
           bubble_gap_ms: parseInt(document.getElementById("bubbleGapMs")?.value || "450", 10),
+          teaser_prompts: (typeof getTeaserPromptsFromList === "function" ? getTeaserPromptsFromList() : undefined),
+          teaser_first_delay_ms: parseInt(document.getElementById("teaserFirstDelayMs")?.value || "12000", 10),
+          teaser_visible_ms: parseInt(document.getElementById("teaserVisibleMs")?.value || "4500", 10),
+          teaser_gap_ms: parseInt(document.getElementById("teaserGapMs")?.value || "32000", 10),
+          teaser_max_shows: parseInt(document.getElementById("teaserMaxShows")?.value || "4", 10),
           quick_buttons,
           allowed_domains,
           policy_config,
@@ -1970,6 +2086,23 @@
         if (document.getElementById("bubbleGapMs") && data.bubble_gap_ms != null) {
           document.getElementById("bubbleGapMs").value = data.bubble_gap_ms;
         }
+        if (typeof renderTeaserPromptsList === "function") {
+          const tps = (data.teaser_prompts && data.teaser_prompts.length) ? data.teaser_prompts : [];
+          if (tps.length) renderTeaserPromptsList(tps);
+          else if (typeof seedTeaserFromIndustry === "function") seedTeaserFromIndustry();
+        }
+        if (document.getElementById("teaserFirstDelayMs") && data.teaser_first_delay_ms != null) {
+          document.getElementById("teaserFirstDelayMs").value = data.teaser_first_delay_ms;
+        }
+        if (document.getElementById("teaserVisibleMs") && data.teaser_visible_ms != null) {
+          document.getElementById("teaserVisibleMs").value = data.teaser_visible_ms;
+        }
+        if (document.getElementById("teaserGapMs") && data.teaser_gap_ms != null) {
+          document.getElementById("teaserGapMs").value = data.teaser_gap_ms;
+        }
+        if (document.getElementById("teaserMaxShows") && data.teaser_max_shows != null) {
+          document.getElementById("teaserMaxShows").value = data.teaser_max_shows;
+        }
 
         setFieldValue("botLabel", data.bot_label);
         setFieldValue("inputPlaceholder", data.input_placeholder);
@@ -2040,6 +2173,10 @@
     } else {
       seedQuickButtonsFromIndustry();
     }
+  }
+  if (typeof seedTeaserFromIndustry === "function") {
+    const tpRoot = document.getElementById("teaserPromptsList");
+    if (tpRoot && !tpRoot.querySelector("textarea.tp-row")) seedTeaserFromIndustry();
   }
   const wmEl = document.getElementById("welcomeMessage");
   const indEl = document.getElementById("industry");

@@ -195,6 +195,24 @@ FLATICON_PRESET_SVGS: Dict[str, str] = {
 }
 
 
+@router.get("/teaser-defaults")
+async def get_teaser_defaults(
+    industry: str = Query("general"),
+    bot_name: str = Query("상담봇"),
+):
+    """Industry seed lines + default timings for closed-chat teaser popups."""
+    from app.application.first_screen import DEFAULT_TEASER
+    from app.domain.teaser_prompts import get_teaser_prompts
+
+    return {
+        "prompts": get_teaser_prompts(industry, bot_name),
+        "first_delay_ms": DEFAULT_TEASER["first_delay_ms"],
+        "visible_ms": DEFAULT_TEASER["visible_ms"],
+        "gap_ms": DEFAULT_TEASER["gap_ms"],
+        "max_shows": DEFAULT_TEASER["max_shows"],
+    }
+
+
 @router.get("/script")
 async def get_dynamic_widget_script(
     request: Request,
@@ -216,6 +234,11 @@ async def get_dynamic_widget_script(
     ),
     preview_bubble_first_delay_ms: int = Query(-1, description="First bubble delay ms (-1=store default)"),
     preview_bubble_gap_ms: int = Query(-1, description="Gap between bubbles ms (-1=store default)"),
+    preview_teaser_prompts: str = Query("", description="Teaser prompts joined by |||"),
+    preview_teaser_first_delay_ms: int = Query(-1, description="Teaser first delay ms (-1=store)"),
+    preview_teaser_visible_ms: int = Query(-1, description="Teaser visible ms (-1=store)"),
+    preview_teaser_gap_ms: int = Query(-1, description="Teaser gap ms (-1=store)"),
+    preview_teaser_max_shows: int = Query(-1, description="Teaser max shows (-1=store)"),
     preview_quick_buttons: str = Query("", description="Instant preview comma-separated quick buttons override"),
     preview_pos: str = Query("", description="Instant preview horizontal position (bottom_right or bottom_left)"),
     preview_bottom: int = Query(0, description="Instant preview bottom offset in px"),
@@ -333,7 +356,7 @@ async def get_dynamic_widget_script(
     else:
         welcome_msg = f"안녕하세요. {title}의 AI 상담사 <b>'{bot_name}'</b> 입니다. 🧪\\n어떤 원료나 서비스가 궁금하신가요?"
 
-    from app.application.first_screen import read_first_screen, split_welcome_to_bubbles
+    from app.application.first_screen import read_first_screen, read_teaser, split_welcome_to_bubbles
 
     _policy = {}
     if store and store.policy_config_json:
@@ -359,6 +382,29 @@ async def get_dynamic_widget_script(
     )
     bubble_gap_ms = (
         preview_bubble_gap_ms if preview_bubble_gap_ms >= 0 else int(_fs.get("bubble_gap_ms") or 450)
+    )
+    _teaser = read_teaser(
+        _policy if isinstance(_policy, dict) else {},
+        industry=industry,
+        bot_name=bot_name,
+    )
+    if preview_teaser_prompts.strip():
+        teaser_prompts_list = [p.strip() for p in preview_teaser_prompts.split("|||") if p.strip()]
+    else:
+        teaser_prompts_list = list(_teaser["prompts"])
+    teaser_first_delay_ms = (
+        preview_teaser_first_delay_ms
+        if preview_teaser_first_delay_ms >= 0
+        else int(_teaser["first_delay_ms"])
+    )
+    teaser_visible_ms = (
+        preview_teaser_visible_ms if preview_teaser_visible_ms >= 0 else int(_teaser["visible_ms"])
+    )
+    teaser_gap_ms = (
+        preview_teaser_gap_ms if preview_teaser_gap_ms >= 0 else int(_teaser["gap_ms"])
+    )
+    teaser_max_shows = (
+        preview_teaser_max_shows if preview_teaser_max_shows >= 0 else int(_teaser["max_shows"])
     )
 
     bot_icon_style = preview_icon or (store.bot_icon_style if store and store.bot_icon_style else ind_defaults.get("bot_icon_style", "flaticon_cute_robot"))
@@ -494,9 +540,7 @@ async def get_dynamic_widget_script(
     )
     teaser_tail_side = "left" if widget_pos == "bottom_left" else "right"
 
-    from app.domain.teaser_prompts import get_teaser_prompts
-
-    teaser_prompts = [] if is_expired else get_teaser_prompts(industry, bot_name)
+    teaser_prompts = [] if is_expired else teaser_prompts_list
     teaser_prompts_js = json.dumps(teaser_prompts, ensure_ascii=False)
 
     is_expired_js = "true" if is_expired else "false"
@@ -571,6 +615,10 @@ async def get_dynamic_widget_script(
     chatTemplate: "{chat_template}",
     quickButtons: {quick_buttons_js},
     teaserPrompts: {teaser_prompts_js},
+    teaserFirstDelayMs: {teaser_first_delay_ms},
+    teaserVisibleMs: {teaser_visible_ms},
+    teaserGapMs: {teaser_gap_ms},
+    teaserMaxShows: {teaser_max_shows},
     contactEmail: "{safe_email}",
     businessHours: "{safe_hours}",
     inputPlaceholder: "{safe_placeholder}",
@@ -1147,11 +1195,10 @@ async def get_dynamic_widget_script(
   let teaserTimer = null;
   let teaserIdx = 0;
   let teaserShows = 0;
-  // Keep teasers sparse: ~40s cycle, few shows per page visit.
-  const teaserMaxShows = 4;
-  const teaserFirstDelayMs = 12000;
-  const teaserVisibleMs = 4500;
-  const teaserGapMs = 32000;
+  const teaserMaxShows = Math.max(1, Math.min(20, Number(config.teaserMaxShows) || 4));
+  const teaserFirstDelayMs = Math.max(0, Number(config.teaserFirstDelayMs) || 12000);
+  const teaserVisibleMs = Math.max(0, Number(config.teaserVisibleMs) || 4500);
+  const teaserGapMs = Math.max(0, Number(config.teaserGapMs) || 32000);
   function hideTeaser() {{
     teaserBubble.classList.remove("visible");
   }}

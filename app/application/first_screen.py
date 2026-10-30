@@ -59,3 +59,85 @@ def merge_first_screen_into_policy(
         "bubble_gap_ms": cur["bubble_gap_ms"],
     }
     return out, join_bubbles(cur["bubbles"])
+
+
+DEFAULT_TEASER = {
+    "first_delay_ms": 12000,
+    "visible_ms": 4500,
+    "gap_ms": 32000,
+    "max_shows": 4,
+}
+_DEFAULT_TEASER = DEFAULT_TEASER  # back-compat alias
+
+
+def read_teaser(
+    policy: Optional[Dict[str, Any]],
+    *,
+    industry: str = "general",
+    bot_name: str = "상담봇",
+) -> Dict[str, Any]:
+    """Closed-chat launcher teaser popups (not in-chat welcome bubbles)."""
+    from app.domain.teaser_prompts import get_teaser_prompts
+
+    raw = (policy or {}).get("teaser") if isinstance(policy, dict) else None
+    raw = raw if isinstance(raw, dict) else {}
+    prompts = raw.get("prompts")
+    if not isinstance(prompts, list) or not [p for p in prompts if str(p).strip()]:
+        prompts = get_teaser_prompts(industry, bot_name)
+    else:
+        prompts = [str(p).strip() for p in prompts if str(p).strip()][:12]
+
+    def _ms(key: str, default: int, hi: int) -> int:
+        try:
+            v = int(raw.get(key, default))
+        except Exception:
+            v = default
+        return max(0, min(v, hi))
+
+    return {
+        "prompts": prompts,
+        "first_delay_ms": _ms("first_delay_ms", _DEFAULT_TEASER["first_delay_ms"], 120000),
+        "visible_ms": _ms("visible_ms", _DEFAULT_TEASER["visible_ms"], 60000),
+        "gap_ms": _ms("gap_ms", _DEFAULT_TEASER["gap_ms"], 300000),
+        "max_shows": _clamp_max_shows(raw.get("max_shows")),
+    }
+
+
+def _clamp_max_shows(val: Any) -> int:
+    try:
+        n = int(val) if val is not None else _DEFAULT_TEASER["max_shows"]
+    except Exception:
+        n = _DEFAULT_TEASER["max_shows"]
+    return max(1, min(n, 20))
+
+
+def merge_teaser_into_policy(
+    policy: Dict[str, Any],
+    *,
+    prompts: Optional[List[str]] = None,
+    first_delay_ms: Optional[int] = None,
+    visible_ms: Optional[int] = None,
+    gap_ms: Optional[int] = None,
+    max_shows: Optional[int] = None,
+) -> Dict[str, Any]:
+    out = dict(policy or {})
+    cur = read_teaser(out, industry="general", bot_name="상담봇")
+    # If prompts omitted, keep existing custom or empty list marker
+    if prompts is not None:
+        cur["prompts"] = [str(p).strip() for p in prompts if str(p).strip()][:12]
+    if first_delay_ms is not None:
+        cur["first_delay_ms"] = max(0, min(int(first_delay_ms), 120000))
+    if visible_ms is not None:
+        cur["visible_ms"] = max(0, min(int(visible_ms), 60000))
+    if gap_ms is not None:
+        cur["gap_ms"] = max(0, min(int(gap_ms), 300000))
+    if max_shows is not None:
+        cur["max_shows"] = max(1, min(int(max_shows), 20))
+    out["teaser"] = {
+        "prompts": cur["prompts"],
+        "first_delay_ms": cur["first_delay_ms"],
+        "visible_ms": cur["visible_ms"],
+        "gap_ms": cur["gap_ms"],
+        "max_shows": cur["max_shows"],
+    }
+    return out

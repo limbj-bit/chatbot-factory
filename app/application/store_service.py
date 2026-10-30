@@ -10,7 +10,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
 from app.application.commerce_service import commerce_service
-from app.application.first_screen import merge_first_screen_into_policy, read_first_screen
+from app.application.first_screen import (
+    merge_first_screen_into_policy,
+    merge_teaser_into_policy,
+    read_first_screen,
+    read_teaser,
+)
 from app.core.logging import logger
 from app.core.security import encryption_available
 from app.infrastructure.database.models import StoreKnowledgeModel, StoreModel
@@ -460,7 +465,13 @@ class StoreService:
         if not isinstance(widget_layout, dict):
             widget_layout = None
 
-        fs = read_first_screen(policy_dict if isinstance(policy_dict, dict) else {}, store.welcome_message or "")
+        _pol = policy_dict if isinstance(policy_dict, dict) else {}
+        fs = read_first_screen(_pol, store.welcome_message or "")
+        teaser = read_teaser(
+            _pol,
+            industry=store.industry or "general",
+            bot_name=store.bot_name or "상담봇",
+        )
 
         return StoreResponse(
             store_id=store.id,
@@ -472,6 +483,11 @@ class StoreService:
             welcome_bubbles=fs["bubbles"],
             bubble_first_delay_ms=fs["first_delay_ms"],
             bubble_gap_ms=fs["bubble_gap_ms"],
+            teaser_prompts=teaser["prompts"],
+            teaser_first_delay_ms=teaser["first_delay_ms"],
+            teaser_visible_ms=teaser["visible_ms"],
+            teaser_gap_ms=teaser["gap_ms"],
+            teaser_max_shows=teaser["max_shows"],
             embed_script_tag=embed_tag,
             plan_type=store.plan_type,
             trial_days=store.trial_days,
@@ -590,6 +606,21 @@ class StoreService:
                 )
                 if request.welcome_bubbles is not None:
                     existing_store.welcome_message = joined
+            if (
+                request.teaser_prompts is not None
+                or request.teaser_first_delay_ms is not None
+                or request.teaser_visible_ms is not None
+                or request.teaser_gap_ms is not None
+                or request.teaser_max_shows is not None
+            ):
+                merged = merge_teaser_into_policy(
+                    merged,
+                    prompts=request.teaser_prompts,
+                    first_delay_ms=request.teaser_first_delay_ms,
+                    visible_ms=request.teaser_visible_ms,
+                    gap_ms=request.teaser_gap_ms,
+                    max_shows=request.teaser_max_shows,
+                )
             existing_store.policy_config_json = json.dumps(merged, ensure_ascii=False)
             await session.commit()
             await session.refresh(existing_store)
@@ -668,6 +699,21 @@ class StoreService:
                 bubble_gap_ms=request.bubble_gap_ms
                 if request.bubble_gap_ms is not None
                 else 450,
+            )
+        if (
+            request.teaser_prompts is not None
+            or request.teaser_first_delay_ms is not None
+            or request.teaser_visible_ms is not None
+            or request.teaser_gap_ms is not None
+            or request.teaser_max_shows is not None
+        ):
+            merged_policy = merge_teaser_into_policy(
+                merged_policy,
+                prompts=request.teaser_prompts,
+                first_delay_ms=request.teaser_first_delay_ms,
+                visible_ms=request.teaser_visible_ms,
+                gap_ms=request.teaser_gap_ms,
+                max_shows=request.teaser_max_shows,
             )
 
         now = datetime.now(timezone.utc)
@@ -871,24 +917,46 @@ class StoreService:
             if store.plan_type in ("suspended", "unlimited"):
                 store.plan_type = update_req.plan_type or "active"
 
+        teaser_touched = (
+            update_req.teaser_prompts is not None
+            or update_req.teaser_first_delay_ms is not None
+            or update_req.teaser_visible_ms is not None
+            or update_req.teaser_gap_ms is not None
+            or update_req.teaser_max_shows is not None
+        )
         if (
             update_req.welcome_bubbles is not None
             or update_req.bubble_first_delay_ms is not None
             or update_req.bubble_gap_ms is not None
+            or teaser_touched
         ):
             try:
                 pol = json.loads(store.policy_config_json or "{}")
             except Exception:
                 pol = {}
-            pol, joined = merge_first_screen_into_policy(
-                pol,
-                bubbles=update_req.welcome_bubbles,
-                first_delay_ms=update_req.bubble_first_delay_ms,
-                bubble_gap_ms=update_req.bubble_gap_ms,
-            )
+            if (
+                update_req.welcome_bubbles is not None
+                or update_req.bubble_first_delay_ms is not None
+                or update_req.bubble_gap_ms is not None
+            ):
+                pol, joined = merge_first_screen_into_policy(
+                    pol,
+                    bubbles=update_req.welcome_bubbles,
+                    first_delay_ms=update_req.bubble_first_delay_ms,
+                    bubble_gap_ms=update_req.bubble_gap_ms,
+                )
+                if update_req.welcome_bubbles is not None:
+                    store.welcome_message = joined
+            if teaser_touched:
+                pol = merge_teaser_into_policy(
+                    pol,
+                    prompts=update_req.teaser_prompts,
+                    first_delay_ms=update_req.teaser_first_delay_ms,
+                    visible_ms=update_req.teaser_visible_ms,
+                    gap_ms=update_req.teaser_gap_ms,
+                    max_shows=update_req.teaser_max_shows,
+                )
             store.policy_config_json = json.dumps(pol, ensure_ascii=False)
-            if update_req.welcome_bubbles is not None:
-                store.welcome_message = joined
 
         await session.commit()
         await session.refresh(store)

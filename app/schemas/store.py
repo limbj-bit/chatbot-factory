@@ -18,6 +18,13 @@ class StoreCreateRequest(BaseModel):
     bubble_gap_ms: Optional[int] = Field(
         None, ge=0, le=10000, description="말풍선 사이 간격(ms), 기본 450"
     )
+    teaser_prompts: Optional[List[str]] = Field(
+        None, description="닫힌 위젯 옆 티저 팝업 문구 목록"
+    )
+    teaser_first_delay_ms: Optional[int] = Field(None, ge=0, le=120000)
+    teaser_visible_ms: Optional[int] = Field(None, ge=0, le=60000)
+    teaser_gap_ms: Optional[int] = Field(None, ge=0, le=300000)
+    teaser_max_shows: Optional[int] = Field(None, ge=1, le=20)
     policy_config: Optional[Dict[str, Any]] = Field(None, description="스토어별 AS/환불 정책 임계값")
     trial_days: Optional[int] = Field(
         30,
@@ -100,6 +107,11 @@ class StoreSubscriptionUpdateRequest(BaseModel):
     welcome_bubbles: Optional[List[str]] = Field(None, description="첫 화면 봇 말풍선 목록")
     bubble_first_delay_ms: Optional[int] = Field(None, ge=0, le=10000)
     bubble_gap_ms: Optional[int] = Field(None, ge=0, le=10000)
+    teaser_prompts: Optional[List[str]] = Field(None, description="티저 팝업 문구")
+    teaser_first_delay_ms: Optional[int] = Field(None, ge=0, le=120000)
+    teaser_visible_ms: Optional[int] = Field(None, ge=0, le=60000)
+    teaser_gap_ms: Optional[int] = Field(None, ge=0, le=300000)
+    teaser_max_shows: Optional[int] = Field(None, ge=1, le=20)
 
 
 class StoreKnowledgeCreateRequest(BaseModel):
@@ -173,6 +185,11 @@ class StoreResponse(BaseModel):
     welcome_bubbles: List[str] = Field(default_factory=list)
     bubble_first_delay_ms: int = 0
     bubble_gap_ms: int = 450
+    teaser_prompts: List[str] = Field(default_factory=list)
+    teaser_first_delay_ms: int = 12000
+    teaser_visible_ms: int = 4500
+    teaser_gap_ms: int = 32000
+    teaser_max_shows: int = 4
     embed_script_tag: str
     plan_type: str
     trial_days: Optional[int]
