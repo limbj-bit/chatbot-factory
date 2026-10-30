@@ -428,6 +428,31 @@ def catalog_match_preamble(total_n: int, top_hits: List[RAGSearchResult]) -> str
     )
 
 
+def dialogue_query_from_history(
+    message_text: str,
+    history: Optional[List[Dict[str, str]]],
+    *,
+    max_user_turns: int = 6,
+) -> str:
+    """Recent user turns + current message for RAG/cards/answer grounding.
+
+    Avoids brittle single-keyword extract; keeps prior cues (e.g. 콜라겐) when
+    the latest turn is only '비슷한 상품 추천'.
+    """
+    prior: List[str] = []
+    for h in history or []:
+        if (h.get("role") or "") != "user":
+            continue
+        content = (h.get("content") or "").strip()
+        if content:
+            prior.append(content)
+    if max_user_turns > 0 and len(prior) > max_user_turns:
+        prior = prior[-max_user_turns:]
+    cur = (message_text or "").strip()
+    parts = prior + ([cur] if cur else [])
+    return " ".join(parts).strip() or cur
+
+
 def message_matches_product_hit(
     message_text: str, results: Optional[List[RAGSearchResult]]
 ) -> bool:
@@ -1061,12 +1086,16 @@ class ChatService:
         return [
             "",
             "## 상품 상담 답변 벤치 (전 업종 공통 · 구조+내용)",
+            "역할: 당신은 대화 맥락을 읽고 추론하는 숙련 상담 AI입니다. "
+            "마지막 한 줄·키워드 조각이 아니라 history 전체로 의도·연속성을 판단하세요.",
             "구조:",
-            "1) 환영 멘트 반복 없이, 고객 요청을 한 줄로 반영",
+            "1) 환영 멘트 반복 없이, 고객 요청을 **대화 전체**(이전 턴 포함)에서 파악해 한 줄로 반영",
             "2) 카탈로그 매칭이 있으면: 관련 학습 상품 N개 → 상위 2~3개만 추천 이유와 함께 (상세·가격·이미지는 카드)",
-            "3) 카탈로그 매칭이 없으면: 학습된 상품 1~3개를 추천 이유와 함께 짧게 안내",
+            "3) 카탈로그 매칭이 없으면: 앞 턴 관심(성분·상품명)과 맞는 학습 상품만; 맞출 수 없으면 기준을 한 줄로 되묻기",
             "4) 필요하면 맨 끝에 확인 질문 최대 1개",
             "내용:",
+            "- 마지막 문장만 보지 마세요. 예: 앞에서 콜라겐을 말했는데 '비슷한 상품'이면 콜라겐 계열만.",
+            "- 대화 맥락과 무관한 상품(예: 콜라겐 다음에 비비크림)을 끼워 넣지 마세요.",
             "- 지식에 있는 상품명·스펙·가격만 말하세요. 없는 할인가·재고·성분을 지어내지 마세요.",
             "- 배송비·무료배송 기준 금액을 상품 판매가처럼 말하지 마세요.",
             "- 추천·비슷한 상품·찾아줘 요청: 각 후보마다 '왜 이 상품인지' 전문가 이유 1줄 "
@@ -1421,38 +1450,44 @@ class ChatService:
                 convo_text = message_text + " " + " ".join(
                     h.get("content", "") for h in history if h.get("role") == "user"
                 )
+                # Full recent dialogue for search/cards — not keyword extract alone
+                dialogue_query = dialogue_query_from_history(message_text, history)
                 industry = (store_obj.industry if store_obj else None)
                 rec_kw, _detail_kw = _counsel_keywords(industry)
 
                 # 4b. ALWAYS search store knowledge — advice/usage questions must
                 # be answered with real product data.
                 # Wide recall for named keywords (콜라겐 등) so N = mall matches, not top_k=5
-                tokens = _card_query_tokens(message_text)
+                tokens = _card_query_tokens(dialogue_query)
                 wide = bool(tokens) and not _tokens_are_soft_only(tokens)
                 results = await self.rag.search_with_store_knowledge(
                     session_db,
                     mall_id,
-                    message_text,
+                    dialogue_query,
                     top_k=80 if wide else 5,
                     industry=industry,
                 )
                 attach_cards = should_attach_product_cards(
                     message_text, convo_text, industry, results
                 )
-                is_counselor_query = any(k in message_text for k in rec_kw) or attach_cards
+                is_counselor_query = (
+                    any(k in dialogue_query for k in rec_kw) or attach_cards
+                )
 
                 if results:
                     intent = "ai_counselor_recommendation" if is_counselor_query else "rag_product_inquiry"
                     reject_prices = self._shipping_reject_prices(store_obj)
-                    plan = catalog_match_plan(message_text, results, recommend_k=3)
+                    plan = catalog_match_plan(dialogue_query, results, recommend_k=3)
+                    named = wide
                     if plan:
                         _n, card_hits = plan
                         context_results = card_hits
                     else:
                         card_hits = filter_results_for_cards(
-                            message_text, results, max_cards=5
+                            dialogue_query, results, max_cards=5
                         )
-                        context_results = results
+                        # Named dialogue cue with no title match → do not dump unrelated RAG
+                        context_results = card_hits if named else results
                     if attach_cards:
                         recommended_products = self._build_product_cards(
                             card_hits,
@@ -1594,32 +1629,34 @@ class ChatService:
         convo_text = message_text + " " + " ".join(
             h.get("content", "") for h in history if h.get("role") == "user"
         )
+        dialogue_query = dialogue_query_from_history(message_text, history)
         industry = (store_obj.industry if store_obj else None)
         rec_kw, _detail_kw = _counsel_keywords(industry)
         reject_prices = self._shipping_reject_prices(store_obj)
 
-        # Always search RAG; widen when named product keywords need full N count.
-        tokens = _card_query_tokens(message_text)
+        # Always search RAG on recent dialogue; widen for named product cues.
+        tokens = _card_query_tokens(dialogue_query)
         wide = bool(tokens) and not _tokens_are_soft_only(tokens)
         results = await self.rag.search_with_store_knowledge(
             session_db,
             mall_id,
-            message_text,
+            dialogue_query,
             top_k=80 if wide else 5,
             industry=industry,
         )
         attach_cards = should_attach_product_cards(
             message_text, convo_text, industry, results
         )
-        is_counselor_query = any(k in message_text for k in rec_kw) or attach_cards
+        is_counselor_query = any(k in dialogue_query for k in rec_kw) or attach_cards
 
-        plan = catalog_match_plan(message_text, results, recommend_k=3)
+        plan = catalog_match_plan(dialogue_query, results, recommend_k=3)
+        named = wide
         if plan:
             _n, card_hits = plan
             context_results = card_hits
         else:
-            card_hits = filter_results_for_cards(message_text, results, max_cards=5)
-            context_results = results
+            card_hits = filter_results_for_cards(dialogue_query, results, max_cards=5)
+            context_results = card_hits if named else results
         if results and cards_out is not None and attach_cards:
             cards_out.extend(
                 self._build_product_cards(card_hits, reject_prices=reject_prices)

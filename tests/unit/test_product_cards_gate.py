@@ -2,6 +2,7 @@ from app.application.chat_service import (
     ChatService,
     catalog_match_plan,
     catalog_match_preamble,
+    dialogue_query_from_history,
     filter_results_for_cards,
     should_attach_product_cards,
     wants_product_cards,
@@ -78,6 +79,34 @@ def test_catalog_match_preamble_includes_n_and_titles():
     assert "상위 2개" in text
     assert "콜라겐 앰플" in text
     assert "N=7" in text
+
+
+def test_dialogue_query_keeps_prior_collagen_for_similar_ask():
+    history = [
+        {"role": "user", "content": "콜라겐 있어?"},
+        {"role": "assistant", "content": "콜라겐 라인 안내드릴게요."},
+        {"role": "user", "content": "비슷한 상품 추천"},
+    ]
+    # Current turn alone loses 콜라겐; dialogue query must keep it.
+    q = dialogue_query_from_history("비슷한 상품 추천", history[:-1])
+    assert "콜라겐" in q
+    assert "비슷한 상품 추천" in q
+    results = [
+        _hit("콜라겐 앰플", doc_id="1"),
+        _hit("스네일 비비크림", doc_id="2"),
+        _hit("매직 비비밤", doc_id="3"),
+    ]
+    plan = catalog_match_plan(q, results, recommend_k=3)
+    assert plan is not None
+    assert plan[0] == 1
+    assert "콜라겐" in plan[1][0].document.title
+
+
+def test_competitive_prompt_requires_full_dialogue_reasoning():
+    lines = "\n".join(ChatService._competitive_cs_reply_lines())
+    assert "대화 전체" in lines
+    assert "history" in lines or "이전 턴" in lines
+    assert "비비크림" in lines
 
 
 def test_greeting_not_in_system_prompt():
