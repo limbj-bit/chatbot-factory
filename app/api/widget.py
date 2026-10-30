@@ -704,16 +704,16 @@ async def get_dynamic_widget_script(
       bottom: {teaser_bottom_px}px;
       {teaser_horiz_css}
       max-width: min(230px, calc(100vw - 110px));
-      background: #FFFFFF;
-      color: #1E293B;
-      border: 1px solid rgba(15, 23, 42, 0.08);
+      background: #111827;
+      color: #F8FAFC;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 16px;
       padding: 10px 14px;
       font-size: 12.5px;
       font-weight: 700;
       line-height: 1.45;
       letter-spacing: -0.2px;
-      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.16);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
       z-index: 999998;
       cursor: pointer;
       opacity: 0;
@@ -733,9 +733,9 @@ async def get_dynamic_widget_script(
       bottom: 14px;
       {teaser_tail_side}: -6px;
       width: 12px; height: 12px;
-      background: #FFFFFF;
-      border-{teaser_tail_side}: 1px solid rgba(15, 23, 42, 0.08);
-      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+      background: #111827;
+      border-{teaser_tail_side}: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       transform: rotate(45deg);
     }}
     @media (max-width: 480px) {{
