@@ -15,7 +15,12 @@ from app.domain.orders.models import Order, OrderStatus
 from app.domain.ports.ai_port import AIProviderPort
 from app.infrastructure.ai.router import AIProviderRouter
 from app.infrastructure.database.models import MessageModel, SessionModel, StoreModel
-from app.infrastructure.rag.engine import RAGEngine, RAGSearchResult, rag_engine
+from app.infrastructure.rag.engine import (
+    RAGDocument,
+    RAGEngine,
+    RAGSearchResult,
+    rag_engine,
+)
 from app.schemas.chat import ProductRecommendationCard
 
 # Real Cafe24 order no (e.g. 20261028-0000012) OR our test order id (ORD-...)
@@ -252,6 +257,46 @@ def _product_hits(results: Optional[List[RAGSearchResult]]) -> List[RAGSearchRes
     return [r for r in results if r.document.source in ("product", "crawled_url")]
 
 
+def _card_dedupe_key(doc: RAGDocument) -> str:
+    """Stable key so the same Cafe24 product is not shown twice in the carousel."""
+    meta = doc.metadata or {}
+    url = str(meta.get("purchase_url") or "").strip()
+    if url:
+        try:
+            from app.application.store_service import StoreService
+
+            norm = StoreService._normalize_product_url(url)
+            if norm:
+                return "u:" + norm
+        except Exception:
+            pass
+    # Prefer title over raw product_id: crawl often stores the same SKU under
+    # different document/product ids (list vs detail, http vs https).
+    title = re.sub(r"\s+", "", doc.title or "").lower()
+    if title:
+        return "t:" + title
+    pid = (doc.product_id or doc.document_id or "").strip()
+    return "id:" + pid if pid else "empty"
+
+
+def _dedupe_product_hits(hits: List[RAGSearchResult]) -> List[RAGSearchResult]:
+    out: List[RAGSearchResult] = []
+    seen_keys: set = set()
+    seen_titles: set = set()
+    for r in hits:
+        key = _card_dedupe_key(r.document)
+        title = re.sub(r"\s+", "", r.document.title or "").lower()
+        if not key or key in seen_keys:
+            continue
+        if title and title in seen_titles:
+            continue
+        seen_keys.add(key)
+        if title:
+            seen_titles.add(title)
+        out.append(r)
+    return out
+
+
 def filter_results_for_cards(
     message_text: str,
     results: Optional[List[RAGSearchResult]],
@@ -259,7 +304,7 @@ def filter_results_for_cards(
     max_cards: int = 5,
 ) -> List[RAGSearchResult]:
     """Prefer title/content matches for the query token; else all product hits (cap)."""
-    hits = _product_hits(results)
+    hits = _dedupe_product_hits(_product_hits(results))
     if not hits:
         return []
     token = _normalize_product_query(message_text)
