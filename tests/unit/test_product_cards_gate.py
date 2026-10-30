@@ -106,7 +106,12 @@ def test_card_price_stripped_when_matches_shipping():
         product_id="D1",
         title="솜통",
         content="솜통 설명",
-        metadata={"price": 3000, "purchase_url": "https://x/p", "image_url": None},
+        metadata={
+            "price": 3000,
+            "purchase_url": "https://x/p",
+            "image_url": None,
+            "tags": "psrc=cafe24",
+        },
     )
     cards = ChatService._build_product_cards(
         [RAGSearchResult(document=doc, score=1.0)],
@@ -117,7 +122,23 @@ def test_card_price_stripped_when_matches_shipping():
     assert cards[0].purchase_url == "https://x/p"
 
 
-def test_card_on_sale_fields():
+def test_card_hides_legacy_price_without_psrc():
+    doc = RAGDocument(
+        document_id="D450",
+        source="crawled_url",
+        product_id="D450",
+        title="히알루론산 앰플 시트 마스크",
+        content="설명",
+        metadata={"price": 45000, "purchase_url": "https://x/m", "tags": None},
+    )
+    cards = ChatService._build_product_cards(
+        [RAGSearchResult(document=doc, score=1.0)],
+        reject_prices={3000},
+    )
+    assert cards[0].price is None
+
+
+def test_card_shows_trusted_cafe24_price():
     doc = RAGDocument(
         document_id="D2",
         source="crawled_url",
@@ -128,6 +149,29 @@ def test_card_on_sale_fields():
             "price": 18500,
             "original_price": 28000,
             "purchase_url": "https://x/s",
+            "tags": "psrc=cafe24",
+        },
+    )
+    cards = ChatService._build_product_cards(
+        [RAGSearchResult(document=doc, score=1.0)],
+        reject_prices={3000},
+    )
+    assert cards[0].price == 18500
+    assert cards[0].on_sale is True
+
+
+def test_card_on_sale_fields():
+    doc = RAGDocument(
+        document_id="D2b",
+        source="crawled_url",
+        product_id="D2b",
+        title="세럼",
+        content="세럼",
+        metadata={
+            "price": 18500,
+            "original_price": 28000,
+            "purchase_url": "https://x/s",
+            "tags": "psrc=cafe24_api",
         },
     )
     cards = ChatService._build_product_cards(

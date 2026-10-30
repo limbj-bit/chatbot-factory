@@ -1062,6 +1062,8 @@ class StoreService:
         from app.application.product_price_extract import (
             extract_product_image_url,
             extract_product_prices,
+            merge_price_source_tags,
+            normalize_price_source,
             reject_price_set,
         )
         from app.application.product_price_enrich import enrich_product_prices
@@ -1203,6 +1205,7 @@ class StoreService:
                 content_bits.append(fallback[:600])
         summary_content = ". ".join(b for b in content_bits if b)[:1800]
 
+        psrc = normalize_price_source(price_source, has_price=price is not None)
         create_req = StoreKnowledgeCreateRequest(
             doc_type="crawled_url",
             title=title[:256],
@@ -1211,7 +1214,7 @@ class StoreService:
             original_price=original_price,
             purchase_url=crawl_req.url,
             image_url=image_url,
-            tags=crawl_req.tags,
+            tags=merge_price_source_tags(crawl_req.tags, psrc),
         )
         # Update existing entry if same URL already learned
         existing_res = await session.execute(

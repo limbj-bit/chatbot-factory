@@ -104,6 +104,50 @@ def reject_price_set(
     return out
 
 
+# Card UI may only show prices tagged with these crawl/enrich sources.
+TRUSTED_CARD_PRICE_SOURCES = frozenset(
+    {"cafe24", "cafe24_api", "playwright", "static_override"}
+)
+
+
+def normalize_price_source(enrich_source: str, *, has_price: bool) -> str:
+    """Map enrich_* return source → tags psrc= value."""
+    src = (enrich_source or "").strip()
+    if src == "cafe24_api":
+        return "cafe24_api"
+    if src == "playwright":
+        return "playwright"
+    if src == "static_override":
+        return "static_override"
+    if src == "static_cleared" or not has_price:
+        return "cleared"
+    # static extract with a sale from Cafe24 DOM / JS sale_*
+    return "cafe24"
+
+
+def parse_price_source_tag(tags: Optional[str]) -> Optional[str]:
+    for part in (tags or "").split(","):
+        p = part.strip()
+        if p.startswith("psrc="):
+            v = p[5:].strip()
+            return v or None
+    return None
+
+
+def merge_price_source_tags(tags: Optional[str], psrc: str) -> str:
+    parts = [
+        p.strip()
+        for p in (tags or "").split(",")
+        if p.strip() and not p.strip().startswith("psrc=")
+    ]
+    parts.append(f"psrc={psrc}")
+    return ",".join(parts)
+
+
+def card_price_is_trusted(tags: Optional[str]) -> bool:
+    return parse_price_source_tag(tags) in TRUSTED_CARD_PRICE_SOURCES
+
+
 def _ok(p: Optional[int], reject: Set[int]) -> Optional[int]:
     if p is None or p in reject:
         return None
@@ -244,9 +288,9 @@ def extract_product_prices(
     reject_prices: Optional[Set[int]] = None,
     allow_body_fallback: bool = False,
 ) -> ProductPriceInfo:
-    """Cafe24 sale/list spans first. Never guess from random body amounts by default.
+    """Sale = Cafe24 DOM / JS sale_* only. No JSON-LD, og:, or 판매가 label.
 
-    Body/related-product digits (e.g. 45,000원 in a rail) caused false sale prices.
+    Related rails and meta often inject wrong amounts (e.g. 45,000원).
     If sale cannot be resolved, price stays None — card shows features; Front API can fill later.
     """
     reject = reject_prices or set()
@@ -279,40 +323,14 @@ def extract_product_prices(
             reject,
         )
 
-    # 3) Korean sale/list labels
-    if sale is None:
-        sale = _ok(_label_price(raw_html, ("할인가", "할인판매가", "판매가")), reject)
+    # 3) List/소비자가 labels only (never use 판매가/JSON-LD/og as sale — rails & meta lie)
     if original is None:
         original = _ok(_label_price(raw_html, ("소비자가", "정상가", "정가", "기존가")), reject)
 
-    # 4) JSON-LD / meta only when Cafe24 sale still empty (structured, not body scrape)
-    if sale is None and jsonld_data:
-        offers = jsonld_data.get("offers")
-        if isinstance(offers, dict):
-            sale = _ok(parse_price_val(offers.get("price")), reject)
-        if sale is None:
-            for v in jsonld_data.get("hasVariant") or []:
-                off = (v or {}).get("offers") or {}
-                p = _ok(
-                    parse_price_val(off.get("price") if isinstance(off, dict) else None),
-                    reject,
-                )
-                if p:
-                    sale = p
-                    break
-    if sale is None:
-        sale = _extruct_offer_price(raw_html, reject)
+    # jsonld_data kept in signature for callers; ignored for sale (45,000 rail/meta false positives)
+    _ = jsonld_data
 
-    if sale is None:
-        price_meta = re.search(
-            r'property=["\'](?:product:price:amount|og:price:amount)["\']\s+content=["\']([0-9,]+)["\']',
-            raw_html or "",
-            re.IGNORECASE,
-        )
-        if price_meta:
-            sale = _ok(parse_price_val(price_meta.group(1)), reject)
-
-    # 5) Body scrape OFF by default — related rails inject wrong amounts (45,000 등)
+    # 4) Body scrape OFF by default — related rails inject wrong amounts (45,000 등)
     if sale is None and allow_body_fallback:
         body = _body_candidate_prices(raw_html, reject)
         if body:

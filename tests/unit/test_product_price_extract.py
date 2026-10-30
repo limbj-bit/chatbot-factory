@@ -8,14 +8,21 @@ from app.application.product_price_extract import (
 def test_skips_shipping_fee_body_text():
     html = """
     <div>배송비 3,000원 (60,000원 이상 구매 시 무료)</div>
-    <div class="price">판매가 28,000원</div>
+    <span id="span_product_price_sale">28,000원</span>
     """
     assert extract_product_price(html, None, reject_prices={3000, 60000}) == 28000
 
 
 def test_rejects_delivery_fee_even_from_jsonld():
     jsonld = {"@type": "Product", "offers": {"price": "3000"}}
+    # JSON-LD is ignored for sale; reject set still applies if used elsewhere
     assert extract_product_price("", jsonld, reject_prices={3000}) is None
+
+
+def test_jsonld_and_og_not_used_as_sale():
+    html = '<meta property="og:price:amount" content="45000" />'
+    jsonld = {"@type": "Product", "offers": {"price": "45000"}}
+    assert extract_product_prices(html, jsonld).price is None
 
 
 def test_cafe24_js_sale_price_wins():
@@ -68,12 +75,13 @@ def test_cafe24_dom_ids():
     assert info.discount_percent == 10
 
 
-def test_label_sale_and_list():
+def test_label_list_only_no_sale_from_hangul_sale_label():
+    """할인가/판매가 본문 라벨은 쓰지 않음 — 소비자가만 original."""
     html = "소비자가 32,000원 할인가 24,000원"
     info = extract_product_prices(html, None)
-    assert info.price == 24000
+    assert info.price is None
     assert info.original_price == 32000
-    assert info.on_sale is True
+    assert info.on_sale is False
 
 
 def test_reject_price_set():

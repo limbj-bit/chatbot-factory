@@ -514,11 +514,14 @@ class ChatService:
         *,
         reject_prices: Optional[set] = None,
     ) -> List[ProductRecommendationCard]:
+        from app.application.product_price_extract import card_price_is_trusted
+
         cards: List[ProductRecommendationCard] = []
         reject = reject_prices or set()
         for r in search_results:
             doc = r.document
             if doc.source in ("product", "crawled_url"):
+                tags_raw = doc.metadata.get("tags")
                 price = doc.metadata.get("price")
                 orig = doc.metadata.get("original_price")
                 try:
@@ -528,6 +531,12 @@ class ChatService:
                 try:
                     orig_i = int(orig) if orig is not None else None
                 except (TypeError, ValueError):
+                    orig_i = None
+                # Legacy crawls (no psrc=) may hold rail/meta false prices — hide.
+                if not card_price_is_trusted(
+                    tags_raw if isinstance(tags_raw, str) else None
+                ):
+                    price_i = None
                     orig_i = None
                 if price_i is not None and price_i in reject:
                     price_i = None
@@ -1060,8 +1069,11 @@ class ChatService:
             "내용:",
             "- 지식에 있는 상품명·스펙·가격만 말하세요. 없는 할인가·재고·성분을 지어내지 마세요.",
             "- 배송비·무료배송 기준 금액을 상품 판매가처럼 말하지 마세요.",
+            "- 추천·비슷한 상품·찾아줘 요청: 각 후보마다 '왜 이 상품인지' 전문가 이유 1줄 "
+            "(피부고민·제형·사용감·용도 등 지식에 있는 단서). "
+            "배송비·무료배송·용량(g/ml)만 나열하는 답변 금지. 배송은 고객이 배송을 물을 때만.",
             "- 'N개'는 카탈로그 매칭에 적힌 숫자만 쓰고, 상위 후보 밖의 상품을 추가하지 마세요.",
-            "- 상품이 여러 개면 'N개 있습니다'만으로 끝내지 말고, 추천 후보마다 한 줄 이유를 적으세요.",
+            "- 상품이 여러 개면 '다양합니다'만으로 끝내지 말고, 추천 후보마다 한 줄 이유를 적으세요.",
             "- 문장은 간결한 존댓말. 과장 광고 톤·이모지 과다·색/HTML 태그 사용 금지.",
             "서식(가독성 · 색 없이 강조):",
             "- 상품명은 **볼드**로 표기하세요. 예: **진주 유니폼** — 한 줄 이유",
@@ -1223,13 +1235,11 @@ class ChatService:
     def _guardrail_shipping_not_product_price(
         cls, reply: str, store_obj: Optional[StoreModel]
     ) -> str:
-        """Stop the model from quoting delivery_fee as if it were the product price."""
-        if not reply or store_obj is None:
-            return reply
-        reject = cls._shipping_reject_prices(store_obj)
-        if not reject:
+        """Stop shipping fees being pasted as product selling points / fake sale prices."""
+        if not reply:
             return reply
         out = reply
+        reject = cls._shipping_reject_prices(store_obj) if store_obj is not None else set()
         for fee in sorted(reject):
             for amount in {f"{fee:,}", str(fee)}:
                 pat = re.compile(
@@ -1248,7 +1258,16 @@ class ChatService:
                     )
 
                 out = pat.sub(_sub, out)
-        return out
+        # Recommend replies often paste "배송비가 3,000원이며, 60,000원 이상…" — drop those clauses.
+        out = re.sub(
+            r"배송비가?\s*[\d,]+원(?:이며|이고|이고,)?(?:,\s*)?"
+            r"(?:\d[\d,]*원\s*이상\s*구매\s*시\s*무료(?:입니다|입니다\.)?)?",
+            "",
+            out,
+        )
+        out = re.sub(r"[ \t]{2,}", " ", out)
+        out = re.sub(r" *\n *\n+", "\n\n", out)
+        return out.strip()
 
     @staticmethod
     def _guardrail_fix_claim_window(reply: str, store_obj: Optional[StoreModel]) -> str:
