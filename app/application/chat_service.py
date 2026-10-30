@@ -377,8 +377,13 @@ class ChatService:
                 if orig_i is not None and orig_i in reject:
                     orig_i = None
                 on_sale = bool(price_i and orig_i and orig_i > price_i)
+                discount_pct = None
                 if not on_sale:
                     orig_i = None
+                elif price_i and orig_i:
+                    discount_pct = max(
+                        1, min(99, int(round((1 - price_i / orig_i) * 100)))
+                    )
                 cards.append(
                     ProductRecommendationCard(
                         product_id=doc.product_id or doc.document_id,
@@ -386,6 +391,7 @@ class ChatService:
                         price=price_i,
                         original_price=orig_i,
                         on_sale=on_sale,
+                        discount_percent=discount_pct,
                         summary=doc.content[:140] + ("..." if len(doc.content) > 140 else ""),
                         purchase_url=doc.metadata.get("purchase_url"),
                         image_url=doc.metadata.get("image_url"),

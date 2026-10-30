@@ -1058,6 +1058,7 @@ class StoreService:
 
         # ---- Price: sale + list (skip shipping/point; reject store delivery_fee) ----
         from app.application.product_price_extract import (
+            extract_product_image_url,
             extract_product_prices,
             reject_price_set,
         )
@@ -1082,35 +1083,14 @@ class StoreService:
         price = price_info.price
         original_price = price_info.original_price
 
-        # ---- Image: JSON-LD variant image (real product photo) → og:image (skip logos/SVG) ----
-        image_url: Optional[str] = None
-        if jsonld_data:
+        # ---- Image: Cafe24 bigImage → JSON-LD/extruct → og:image ----
+        image_url = extract_product_image_url(raw_html)
+        if not image_url and jsonld_data:
             imgs = jsonld_data.get("image")
             if isinstance(imgs, list) and imgs and isinstance(imgs[0], str):
                 image_url = imgs[0].strip()
             elif isinstance(imgs, str) and imgs.strip():
                 image_url = imgs.strip()
-            if not image_url:
-                for v in jsonld_data.get("hasVariant") or []:
-                    vim = (v or {}).get("image")
-                    if isinstance(vim, list) and vim and isinstance(vim[0], str):
-                        image_url = vim[0].strip()
-                        break
-                    if isinstance(vim, str) and vim.strip():
-                        image_url = vim.strip()
-                        break
-        if not image_url:
-            img_match = re.search(
-                r'<meta\s+property=["\']og:image["\']\s+content=["\'](.*?)["\']',
-                raw_html,
-                re.IGNORECASE,
-            )
-            if img_match:
-                cand = img_match.group(1).strip()
-                low = cand.lower()
-                # Cafe24 og:image often points at the store logo (SVG) — skip it
-                if not (low.endswith(".svg") or "logo" in low):
-                    image_url = cand
 
         # ---- Content: HTML comments first (Cafe24 leaves "-->" template debris), ----
         # then strip script/style, tags, and common navigation boilerplate.
@@ -1180,9 +1160,10 @@ class StoreService:
         # the cleaned body text — but only if it survived junk filtering and
         # carries real sentences (Cafe24 nav/banner debris fails this check).
         content_bits = [title]
-        if price_info.on_sale:
+        if price_info.on_sale and price and original_price:
+            pct = price_info.discount_percent or 0
             content_bits.append(
-                f"판매가: {price:,}원 (정상가 {original_price:,}원, 할인 중)"
+                f"판매가: {price:,}원 (정상가 {original_price:,}원, {pct}% 할인 중)"
             )
         elif price:
             content_bits.append(f"판매가: {price:,}원")

@@ -31,6 +31,19 @@ def test_sale_vs_original():
     assert info.on_sale is True
 
 
+def test_cafe24_dom_ids():
+    html = """
+    <strong id="span_product_price_text" style="text-decoration: line-through;">69,900원</strong>
+    <span id="span_product_price_sale">62,910원 <span>(6,990원 할인)</span></span>
+    배송비 3,000원 (60,000원 이상 구매 시 무료)
+    """
+    info = extract_product_prices(html, None, reject_prices={3000, 60000})
+    assert info.price == 62910
+    assert info.original_price == 69900
+    assert info.on_sale is True
+    assert info.discount_percent == 10
+
+
 def test_label_sale_and_list():
     html = "소비자가 32,000원 할인가 24,000원"
     info = extract_product_prices(html, None)
@@ -41,3 +54,10 @@ def test_label_sale_and_list():
 
 def test_reject_price_set():
     assert reject_price_set(3000, 60000) == {3000, 60000}
+
+
+def test_cafe24_image_big():
+    from app.application.product_price_extract import extract_product_image_url
+
+    html = '<div id="bigImage"><img src="https://cdn.example.com/p/pearl.jpg" /></div>'
+    assert extract_product_image_url(html) == "https://cdn.example.com/p/pearl.jpg"

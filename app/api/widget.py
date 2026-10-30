@@ -938,28 +938,28 @@ async def get_dynamic_widget_script(
       border: 1px solid #FBCFE8; border-radius: 12px; padding: 10px 12px; font-size: 12px; color: #831843; width: 94%;
     }}
     .fresh-product-card {{
-      background: #FFFFFF; border: 1px solid #E5E7EB; border-left: 4px solid ${{config.primaryColor}};
-      border-radius: 10px; padding: 10px; max-width: 92%; align-self: flex-start;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05); font-size: 13px;
-      display: flex; gap: 10px; align-items: flex-start;
+      background: #FFFFFF; border: 1px solid #E5E7EB;
+      border-radius: 12px; padding: 12px; max-width: 94%; width: 94%; align-self: flex-start;
+      box-shadow: 0 2px 8px rgba(15,23,42,0.06); font-size: 13px;
+      display: flex; gap: 12px; align-items: stretch;
     }}
     .fresh-product-card .pc-img {{
-      flex-shrink: 0; width: 80px; height: 80px; border-radius: 8px; overflow: hidden;
-      background: #F3F4F6;
+      flex-shrink: 0; width: 96px; height: 96px; border-radius: 10px; overflow: hidden;
+      background: #F3F4F6; border: 1px solid #F1F5F9;
     }}
     .fresh-product-card .pc-img img {{
       width: 100%; height: 100%; object-fit: cover; display: block;
     }}
-    .fresh-product-card .pc-body {{ flex: 1; min-width: 0; }}
-    .fresh-product-card h4 {{ margin: 0 0 3px 0; font-size: 13px; color: #111827; line-height: 1.3; }}
-    .fresh-product-card .price {{ font-weight: 700; color: ${{config.primaryColor}}; margin-bottom: 4px; font-size: 13px; }}
-    .fresh-product-card .price-row {{ display:flex; flex-wrap:wrap; align-items:baseline; gap:6px; margin-bottom:4px; }}
+    .fresh-product-card .pc-body {{ flex: 1; min-width: 0; display:flex; flex-direction:column; }}
+    .fresh-product-card h4 {{ margin: 0 0 6px 0; font-size: 13.5px; color: #111827; line-height: 1.35; font-weight: 700; }}
+    .fresh-product-card .price {{ font-weight: 800; color: #111827; font-size: 15px; }}
+    .fresh-product-card .price-row {{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:6px; }}
     .fresh-product-card .price-orig {{ font-size:12px; color:#9CA3AF; text-decoration:line-through; font-weight:500; }}
-    .fresh-product-card .sale-badge {{ font-size:11px; font-weight:700; color:#B91C1C; background:#FEE2E2; padding:1px 6px; border-radius:4px; }}
-    .fresh-product-card .pc-summary {{ font-size: 12px; color: #6B7280; line-height: 1.4; margin-bottom: 6px; }}
+    .fresh-product-card .sale-badge {{ font-size:11px; font-weight:800; color:#FFFFFF; background:#EF4444; padding:2px 7px; border-radius:999px; }}
+    .fresh-product-card .pc-summary {{ font-size: 12px; color: #6B7280; line-height: 1.4; margin-bottom: 8px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }}
     .fresh-product-card .buy-link {{
-      display: inline-block; background: ${{config.primaryColor}}; color: #FFFFFF;
-      text-decoration: none; padding: 5px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 600;
+      display: block; text-align:center; margin-top:auto; background: ${{config.primaryColor}}; color: #FFFFFF;
+      text-decoration: none; padding: 8px 10px; border-radius: 8px; font-size: 12.5px; font-weight: 700;
     }}
     .fresh-contact-bar {{
       background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 7px 14px;
@@ -1410,22 +1410,26 @@ async def get_dynamic_widget_script(
       cardEl.className = "fresh-product-card";
       let priceHtml = "";
       if (c.price) {{
-        const saleBadge = c.on_sale ? `<span class="sale-badge">할인 중</span>` : "";
+        const pct = (c.on_sale && c.discount_percent) ? Math.round(c.discount_percent) : 0;
+        const saleBadge = pct > 0
+          ? `<span class="sale-badge">${{pct}}%</span>`
+          : (c.on_sale ? `<span class="sale-badge">할인</span>` : "");
         const orig = (c.on_sale && c.original_price)
           ? `<span class="price-orig">${{c.original_price.toLocaleString()}}원</span>`
           : "";
         priceHtml = `<div class="price-row">${{saleBadge}}<span class="price">${{c.price.toLocaleString()}}원</span>${{orig}}</div>`;
       }}
-      const linkHtml = c.purchase_url ? `<a class="buy-link" href="${{c.purchase_url}}" target="_blank">🛒 상품 상세 / 바로 구매하기</a>` : "";
+      const linkHtml = c.purchase_url ? `<a class="buy-link" href="${{c.purchase_url}}" target="_blank" rel="noopener">구매하기</a>` : "";
       const imgHtml = c.image_url
         ? `<div class="pc-img"><img src="${{c.image_url}}" alt="${{c.title}}" onerror="this.parentElement.style.display='none'" /></div>`
-        : "";
+        : `<div class="pc-img" aria-hidden="true"></div>`;
+      const summaryHtml = c.summary ? `<div class="pc-summary">${{c.summary}}</div>` : "";
       cardEl.innerHTML = `
         ${{imgHtml}}
         <div class="pc-body">
           <h4>${{c.title}}</h4>
           ${{priceHtml}}
-          <div class="pc-summary">${{c.summary}}</div>
+          ${{summaryHtml}}
           ${{linkHtml}}
         </div>
       `;

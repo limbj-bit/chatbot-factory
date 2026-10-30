@@ -18,6 +18,8 @@ dependencies = [
     "python-multipart>=0.0.12",
     "cryptography>=42.0.0",
     "pillow>=10.0.0",
+    "price-parser>=0.3.4",
+    "extruct>=0.18.0",
 ]
 
 [project.optional-dependencies]
