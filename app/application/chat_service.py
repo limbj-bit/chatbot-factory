@@ -890,6 +890,23 @@ class ChatService:
         return lines
 
     @staticmethod
+    def _competitive_cs_reply_lines() -> List[str]:
+        """Cross-industry reply structure + content bar (channel-talk-like density)."""
+        return [
+            "",
+            "## 상품 상담 답변 벤치 (전 업종 공통 · 구조+내용)",
+            "구조:",
+            "1) 환영 멘트 반복 없이, 고객 요청을 한 줄로 반영",
+            "2) 학습된 상품 1~3개를 추천 이유와 함께 짧게 안내 (상세·가격·이미지는 카드가 담당)",
+            "3) 필요하면 맨 끝에 확인 질문 최대 1개",
+            "내용:",
+            "- 지식에 있는 상품명·스펙·가격만 말하세요. 없는 할인가·재고·성분을 지어내지 마세요.",
+            "- 배송비·무료배송 기준 금액을 상품 판매가처럼 말하지 마세요.",
+            "- 상품이 여러 개면 'N개 있습니다'만 하지 말고, 각 상품을 한 줄 이유와 함께 구분하세요.",
+            "- 문장은 간결한 존댓말. 과장 광고 톤·이모지 과다 사용 금지.",
+        ]
+
+    @staticmethod
     def _build_store_system_prompt(
         store_obj: Optional[StoreModel],
         rag_context: Optional[str] = None,
@@ -996,6 +1013,8 @@ class ChatService:
         lines.extend(
             ChatService._industry_persona_lines(industry_key, bot_display_name, industry_kr)
         )
+        # Cross-industry competitive CS bar (structure + factual content).
+        lines.extend(ChatService._competitive_cs_reply_lines())
 
         lines.append("")
         lines.append("## 답변 규칙 (필수)")

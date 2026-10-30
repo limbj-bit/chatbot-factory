@@ -1,0 +1,4 @@
+{"id": "fashion-uniform-list", "industry": "fashion", "message": "유니폼 있니", "titles": ["파스텔 1 유니폼", "파스텔 2 유니폼", "진주 유니폼"], "expect_card_titles": ["파스텔 1 유니폼", "파스텔 2 유니폼", "진주 유니폼"]}
+{"id": "fashion-pearl-one", "industry": "fashion", "message": "진주", "titles": ["파스텔 1 유니폼", "파스텔 2 유니폼", "진주 유니폼"], "expect_card_titles": ["진주 유니폼"]}
+{"id": "beauty-recommend", "industry": "beauty", "message": "건성인데 보습 추천해줘", "titles": ["히알루론 크림", "시카 앰플"], "expect_attach": true, "min_cards": 1}
+{"id": "general-find", "industry": "general", "message": "솜통 찾아줘", "titles": ["순면 솜통 100매", "화장솜"], "expect_card_titles_contains": ["솜통"]}
