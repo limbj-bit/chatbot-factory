@@ -248,6 +248,7 @@ def _normalize_product_query(message_text: str) -> str:
         cleaned,
     )
     cleaned = re.sub(r"[을를이가은는]\s*$", "", cleaned)
+    cleaned = re.sub(r"인데", " ", cleaned)
     return re.sub(r"\s+", "", cleaned).strip()
 
 
@@ -297,6 +298,65 @@ def _dedupe_product_hits(hits: List[RAGSearchResult]) -> List[RAGSearchResult]:
     return out
 
 
+_CARD_QUERY_STOP = frozenset(
+    {
+        "관심",
+        "추천",
+        "가격",
+        "용량",
+        "아침",
+        "저녁",
+        "사용",
+        "피부",
+        "타입",
+        "고민",
+        "제품",
+        "상품",
+        "있어요",
+        "있나요",
+        "알려줘",
+        "찾아줘",
+        "보여줘",
+        "추천해줘",
+        "인데",
+    }
+)
+# Skin/need words: allow RAG top cards when these don't match a title
+_CARD_SOFT_TOKENS = frozenset(
+    {
+        "건성",
+        "지성",
+        "복합성",
+        "보습",
+        "미백",
+        "주름",
+        "탄력",
+        "모공",
+        "민감",
+        "피지",
+        "잡티",
+        "여드름",
+        "진정",
+        "수분",
+    }
+)
+
+
+def _card_query_tokens(message_text: str) -> List[str]:
+    """Tokens used to keep carousel on the named product (e.g. 콜라겐)."""
+    primary = _normalize_product_query(message_text)
+    out: List[str] = []
+    if len(primary) >= 2:
+        out.append(primary)
+    for w in re.findall(r"[가-힣A-Za-z0-9]{2,}", message_text or ""):
+        wl = re.sub(r"\s+", "", w)
+        if len(wl) < 2 or wl in _CARD_QUERY_STOP:
+            continue
+        if wl not in out:
+            out.append(wl)
+    return out
+
+
 def filter_results_for_cards(
     message_text: str,
     results: Optional[List[RAGSearchResult]],
@@ -307,16 +367,25 @@ def filter_results_for_cards(
     hits = _dedupe_product_hits(_product_hits(results))
     if not hits:
         return []
-    token = _normalize_product_query(message_text)
-    if len(token) >= 2:
+    tokens = _card_query_tokens(message_text)
+    if tokens:
         matched = []
         for r in hits:
             title = re.sub(r"\s+", "", r.document.title or "")
             snippet = re.sub(r"\s+", "", (r.document.content or "")[:200])
-            if token in title or token in snippet or title in token:
+            if any(t in title or t in snippet or title in t for t in tokens):
                 matched.append(r)
         if matched:
             return matched[:max_cards]
+        # "건성/보습 추천" → soft fallback. "콜라겐 에센스" → never show aloe.
+        def _soft(t: str) -> bool:
+            if t in _CARD_SOFT_TOKENS or t in _CARD_QUERY_STOP:
+                return True
+            return any(s in t for s in _CARD_SOFT_TOKENS)
+
+        if tokens and all(_soft(t) for t in tokens):
+            return hits[:max_cards]
+        return []
     return hits[:max_cards]
 
 
@@ -389,12 +458,16 @@ class ChatService:
 
     @staticmethod
     def _shipping_reject_prices(store_obj: Optional[StoreModel]) -> set:
+        from app.application.product_price_enrich import _SHIPPING_LOOKALIKE_PRICES
         from app.application.product_price_extract import reject_price_set
 
         policy = ChatService._parse_policy_dict(store_obj)
         ship = policy.get("shipping_policy")
         ship = ship if isinstance(ship, dict) else {}
-        return reject_price_set(ship.get("delivery_fee"), ship.get("free_over_amount"))
+        # Always drop common Cafe24 shipping fees mistaken as sale price
+        return reject_price_set(
+            ship.get("delivery_fee"), ship.get("free_over_amount")
+        ) | set(_SHIPPING_LOOKALIKE_PRICES)
 
     @staticmethod
     def _build_product_cards(

@@ -3,3 +3,5 @@
 {"id": "beauty-recommend", "industry": "beauty", "message": "건성인데 보습 추천해줘", "titles": ["히알루론 크림", "시카 앰플"], "expect_attach": true, "min_cards": 1}
 {"id": "general-find", "industry": "general", "message": "솜통 찾아줘", "titles": ["순면 솜통 100매", "화장솜"], "expect_card_titles_contains": ["솜통"]}
 {"id": "dedupe-same-title", "industry": "general", "message": "솜통 찾아줘", "titles": ["솜통", "솜통"], "expect_card_titles": ["솜통"]}
+{"id": "collagen-not-aloe", "industry": "beauty", "message": "콜라겐 에센스 추천해줘", "titles": ["루이셀 알로에베라겔", "루이셀 피토알개마", "루이셀 콜라겐 플루이드 에센스"], "expect_card_titles": ["루이셀 콜라겐 플루이드 에센스"]}
+{"id": "named-miss-no-wrong-cards", "industry": "beauty", "message": "콜라겐 에센스", "titles": ["루이셀 알로에베라겔", "루이셀 피토알개마"], "expect_card_titles": []}

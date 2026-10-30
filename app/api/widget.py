@@ -956,44 +956,45 @@ async def get_dynamic_widget_script(
     .fresh-card-carousel::-webkit-scrollbar {{ height: 4px; }}
     .fresh-card-carousel::-webkit-scrollbar-thumb {{ background: #CBD5E1; border-radius: 999px; }}
     .fresh-carousel-nav {{
-      position: absolute; top: 36%; transform: translateY(-50%); z-index: 2;
-      width: 28px; height: 28px; border-radius: 50%; border: 1px solid #E2E8F0;
+      position: absolute; top: 32%; transform: translateY(-50%); z-index: 2;
+      width: 24px; height: 24px; border-radius: 50%; border: 1px solid #E2E8F0;
       background: rgba(255,255,255,0.95); color: #475569; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; font-size: 16px; line-height: 1;
+      display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1;
       box-shadow: 0 1px 4px rgba(15,23,42,0.08); padding: 0;
     }}
     .fresh-carousel-nav.prev {{ left: -4px; }}
     .fresh-carousel-nav.next {{ right: -4px; }}
     .fresh-carousel-nav[hidden] {{ display: none; }}
     .fresh-product-card {{
-      flex: 0 0 118px; width: 118px; max-width: 118px; scroll-snap-align: start;
-      background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 0;
-      box-shadow: 0 1px 4px rgba(15,23,42,0.06); font-size: 11.5px;
+      flex: 0 0 96px; width: 96px; max-width: 96px; scroll-snap-align: start;
+      background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 0;
+      box-shadow: 0 1px 3px rgba(15,23,42,0.05); font-size: 11px;
       display: flex; flex-direction: column; overflow: hidden; cursor: pointer;
     }}
     .fresh-product-card .pc-media {{
-      position: relative; width: 100%; height: 118px; background: #F3F4F6;
+      position: relative; width: 100%; height: 84px; background: #F3F4F6;
       border-bottom: 1px solid #F1F5F9; overflow: hidden; flex-shrink: 0;
     }}
     .fresh-product-card .pc-media img {{
       width: 100%; height: 100%; object-fit: cover; display: block;
     }}
     .fresh-product-card .pc-bag {{
-      position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 50%;
+      position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%;
       border: none; background: rgba(255,255,255,0.95); color: #0F172A; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       box-shadow: 0 1px 3px rgba(15,23,42,0.12); padding: 0;
     }}
-    .fresh-product-card .pc-bag svg {{ width: 13px; height: 13px; }}
-    .fresh-product-card .pc-meta {{ padding: 6px 8px 7px; display: flex; flex-direction: column; gap: 2px; }}
+    .fresh-product-card .pc-bag svg {{ width: 11px; height: 11px; }}
+    .fresh-product-card .pc-meta {{ padding: 5px 6px 6px; display: flex; flex-direction: column; gap: 1px; }}
     .fresh-product-card .pc-title {{
-      margin: 0; font-size: 11.5px; color: #111827; line-height: 1.25; font-weight: 700;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin: 0; font-size: 10.5px; color: #111827; line-height: 1.25; font-weight: 700;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; word-break: keep-all;
     }}
-    .fresh-product-card .price {{ font-weight: 800; color: #111827; font-size: 13px; }}
-    .fresh-product-card .price-row {{ display:flex; flex-wrap:wrap; align-items:center; gap:4px; }}
-    .fresh-product-card .price-orig {{ font-size:10px; color:#9CA3AF; text-decoration:line-through; font-weight:500; }}
-    .fresh-product-card .sale-badge {{ font-size:10px; font-weight:800; color:#B91C1C; background:#FEF2F2; padding:1px 5px; border-radius:999px; }}
+    .fresh-product-card .price {{ font-weight: 800; color: #111827; font-size: 12px; }}
+    .fresh-product-card .price-row {{ display:flex; flex-wrap:wrap; align-items:center; gap:3px; }}
+    .fresh-product-card .price-orig {{ font-size:9px; color:#9CA3AF; text-decoration:line-through; font-weight:500; }}
+    .fresh-product-card .sale-badge {{ font-size:9px; font-weight:800; color:#B91C1C; background:#FEF2F2; padding:1px 4px; border-radius:999px; }}
     .fresh-follow-chips {{ width: 94%; align-self: flex-start; margin-top: 4px; }}
     .fresh-contact-bar {{
       background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 7px 14px;

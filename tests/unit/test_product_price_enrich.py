@@ -20,6 +20,8 @@ def test_product_no_from_cafe24_path():
 def test_needs_enrichment_when_missing_or_rejected():
     assert needs_price_enrichment(ProductPriceInfo(price=None)) is True
     assert needs_price_enrichment(ProductPriceInfo(price=3000), {3000}) is True
+    # 3000 looks like Cafe24 shipping even when not in store reject set
+    assert needs_price_enrichment(ProductPriceInfo(price=3000), set()) is True
     assert needs_price_enrichment(ProductPriceInfo(price=18500), {3000}) is False
 
 

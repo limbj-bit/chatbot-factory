@@ -22,6 +22,10 @@ from app.application.product_price_extract import (
 
 logger = logging.getLogger(__name__)
 
+# Cafe24 themes almost always print these as 배송비; treat as untrusted until
+# Front API / Playwright fills a real sale node.
+_SHIPPING_LOOKALIKE_PRICES = frozenset({2500, 3000})
+
 _CAFE24_PRICE_WAIT_JS = """
 () => {
   const ids = [
@@ -62,11 +66,14 @@ def needs_price_enrichment(
     info: ProductPriceInfo,
     reject_prices: Optional[Set[int]] = None,
 ) -> bool:
-    """True when sale price missing (static crawl failed or only shipping rejected)."""
+    """True when sale price missing, rejected, or looks like Cafe24 shipping fee."""
     if info.price is None:
         return True
     reject = reject_prices or set()
-    return info.price in reject
+    if info.price in reject:
+        return True
+    # Static HTML often scrapes 배송비 3,000 as the only digit — force JS/API.
+    return info.price in _SHIPPING_LOOKALIKE_PRICES
 
 
 def _cafe24_api_mall_id() -> Optional[str]:
@@ -211,10 +218,18 @@ async def enrich_product_prices(
     rendered = await fetch_js_rendered_html(page_url)
     if rendered:
         js_info = extract_product_prices(rendered, None, reject_prices=reject)
-        if js_info.price is not None and js_info.price not in reject:
+        if (
+            js_info.price is not None
+            and js_info.price not in reject
+            and js_info.price not in _SHIPPING_LOOKALIKE_PRICES
+        ):
             return js_info, rendered, "playwright"
-        # Prefer JS info even if still empty (may have cleared bad static 3000)
-        if needs_price_enrichment(info, reject):
-            return js_info, rendered, "playwright"
+        # Playwright ran but still only shipping-like digits — hide price vs lie
+        if js_info.price is None or js_info.price in _SHIPPING_LOOKALIKE_PRICES | reject:
+            return ProductPriceInfo(price=None, original_price=None), rendered, "playwright"
+        return js_info, rendered, "playwright"
 
+    # Static-only 3,000원 lookalike: never persist as sale price
+    if info.price is not None and info.price in _SHIPPING_LOOKALIKE_PRICES | reject:
+        return ProductPriceInfo(price=None, original_price=None), raw_html, "static_cleared"
     return info, raw_html, "static"
