@@ -86,6 +86,12 @@ class Settings(BaseSettings):
     CAFE24_CLIENT_SECRET: Optional[str] = None
     CAFE24_ACCESS_TOKEN: Optional[str] = None
     CAFE24_API_VERSION: str = "2024-06-01"
+    # Front API price enrich: https://{CAFE24_API_MALL_ID}.cafe24api.com/api/v2/products/{no}
+    # Client id: CAFE24_FRONT_CLIENT_ID or fallback CAFE24_CLIENT_ID (개발자센터 발급)
+    CAFE24_API_MALL_ID: Optional[str] = None
+    CAFE24_FRONT_CLIENT_ID: Optional[str] = None
+    # When static HTML lacks sale price: try Playwright Chromium (optional dep)
+    PRICE_ENRICH_PLAYWRIGHT: bool = True
 
     # Refund Policy Thresholds
     POLICY_FULL_REFUND_DAMAGE_RATIO: int = 30

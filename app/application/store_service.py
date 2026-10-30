@@ -1057,11 +1057,14 @@ class StoreService:
             title = html.unescape(title_match.group(1).strip()) if title_match else crawl_req.url
 
         # ---- Price: sale + list (skip shipping/point; reject store delivery_fee) ----
+        # Live crawl: Cafe24 Front API (if client_id set) → Playwright JS render.
+        # raw_html_override (tests/fixtures): static extract only — no network enrich.
         from app.application.product_price_extract import (
             extract_product_image_url,
             extract_product_prices,
             reject_price_set,
         )
+        from app.application.product_price_enrich import enrich_product_prices
 
         reject_prices = set()
         try:
@@ -1077,11 +1080,28 @@ class StoreService:
         except Exception:
             reject_prices = set()
 
-        price_info = extract_product_prices(
-            raw_html, jsonld_data, reject_prices=reject_prices
-        )
+        if crawl_req.raw_html_override:
+            price_info = extract_product_prices(
+                raw_html, jsonld_data, reject_prices=reject_prices
+            )
+            price_source = "static_override"
+        else:
+            price_info, raw_html, price_source = await enrich_product_prices(
+                crawl_req.url,
+                raw_html,
+                jsonld_data,
+                reject_prices=reject_prices,
+            )
         price = price_info.price
         original_price = price_info.original_price
+        if price_source not in ("static", "static_override"):
+            logger.info(
+                "[crawl] price enriched via %s mall_id=%s url=%s price=%s",
+                price_source,
+                mall_id,
+                crawl_req.url,
+                price,
+            )
 
         # ---- Image: Cafe24 bigImage → JSON-LD/extruct → og:image ----
         image_url = extract_product_image_url(raw_html)
