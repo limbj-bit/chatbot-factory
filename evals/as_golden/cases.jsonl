@@ -1,0 +1,5 @@
+{"id": "cancel_happy", "intent": "cancel", "turns": ["주문 취소해줘", "ORD-NORMAL", "변심", "네"], "expect_final_status": "done", "expect_substrings": ["취소"]}
+{"id": "cancel_decline", "intent": "cancel", "turns": ["주문 취소해줘", "ORD-NORMAL", "변심", "아니요"], "expect_final_status": "handoff", "expect_substrings": ["직원"]}
+{"id": "handoff_direct", "intent": "handoff", "turns": ["상담원 연결해주세요"], "expect_final_status": "handoff", "expect_substrings": ["직원"]}
+{"id": "policy_not_as", "intent": null, "turns": ["반품 정책이 어떻게 되나요?"], "expect_detect": null}
+{"id": "partial_start", "intent": "partial_return", "turns": ["일부 반품하고 싶어요"], "expect_final_status": "identify_order", "expect_substrings": ["주문번호"]}

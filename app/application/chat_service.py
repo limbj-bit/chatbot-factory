@@ -370,10 +370,17 @@ class ChatService:
         message_text: str,
         store_obj: Optional[StoreModel],
     ) -> Optional[Tuple[str, str]]:
-        """Store policy → order tracking → global FAQ. Returns (intent, text) or None."""
+        """Store policy → AS scenario → order tracking → global FAQ."""
+        from app.application.as_chat_bridge import handle_as_turn
+
         store_faq = self._lookup_store_policy_faq(message_text, store_obj)
         if store_faq:
             return "store_policy_faq", store_faq
+
+        # Cancel / exchange / return / staff handoff (multi-turn machine)
+        as_reply = await handle_as_turn(session_db, rate_key, mall_id, message_text)
+        if as_reply:
+            return as_reply
 
         if self._is_order_tracking_intent(message_text):
             reply = await self._lookup_order_reply(

@@ -126,5 +126,15 @@ class Settings(BaseSettings):
     STATIC_OUTBOUND_IPS: str = "74.220.49.0/24, 74.220.57.0/24"
     OUTBOUND_PROXY_URL: Optional[str] = None
 
+    # Store-staff AS alerts (optional). Telegram uses store.webhook_url;
+    # email uses store.contact_email when SMTP is set.
+    STAFF_ALERT_SMTP_HOST: str = ""
+    STAFF_ALERT_SMTP_PORT: int = 587
+    STAFF_ALERT_SMTP_USER: str = ""
+    STAFF_ALERT_SMTP_PASSWORD: str = ""
+    STAFF_ALERT_FROM: str = "noreply@chatbot-factory.local"
+    # Absolute origin for staff inbox links in Telegram/email (e.g. https://….onrender.com)
+    PUBLIC_BASE_URL: str = ""
+
 
 settings = Settings()

@@ -12,6 +12,7 @@ from app.api import (
     claims_router,
     health_router,
     orders_router,
+    staff_inbox_router,
     stores_router,
     widget_router,
 )
@@ -66,6 +67,7 @@ app.include_router(orders_router)
 app.include_router(admin_router)
 app.include_router(stores_router)
 app.include_router(widget_router)
+app.include_router(staff_inbox_router)
 
 # Mount static files for embeddable widget and demo page
 static_dir = os.path.abspath("static")

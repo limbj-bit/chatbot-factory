@@ -1,14 +1,19 @@
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from app.domain.orders.models import Order, OrderChannel, OrderItem, OrderStatus
-from app.domain.ports.channel_port import ClaimChannelPort, OrderChannelPort
+from app.domain.ports.channel_port import (
+    AsMutationPort,
+    ClaimChannelPort,
+    OrderChannelPort,
+)
 
 
-class MockCafe24Adapter(OrderChannelPort, ClaimChannelPort):
+class MockCafe24Adapter(OrderChannelPort, ClaimChannelPort, AsMutationPort):
     """Deterministic Mock Adapter for Cafe24 (and general e-commerce) channel operations."""
 
     def __init__(self):
         self._submitted_returns: Dict[str, dict] = {}
+        self._submitted_mutations: Dict[str, dict] = {}
 
     async def get_order(self, order_id: str) -> Optional[Order]:
         now = datetime.now(timezone.utc)
@@ -122,4 +127,60 @@ class MockCafe24Adapter(OrderChannelPort, ClaimChannelPort):
             "reason": reason,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
+        return True
+
+    async def cancel_order(
+        self, order_id: str, reason: str, idempotency_key: str
+    ) -> bool:
+        return self._record_mutation(
+            idempotency_key,
+            {"type": "cancel", "order_id": order_id, "reason": reason},
+        )
+
+    async def request_exchange(
+        self,
+        order_id: str,
+        line_ids: List[str],
+        exchange_option: str,
+        reason: str,
+        idempotency_key: str,
+    ) -> bool:
+        return self._record_mutation(
+            idempotency_key,
+            {
+                "type": "exchange",
+                "order_id": order_id,
+                "line_ids": list(line_ids),
+                "exchange_option": exchange_option,
+                "reason": reason,
+            },
+        )
+
+    async def request_partial_return(
+        self,
+        order_id: str,
+        line_ids: List[str],
+        quantities: Dict[str, int],
+        reason: str,
+        idempotency_key: str,
+    ) -> bool:
+        return self._record_mutation(
+            idempotency_key,
+            {
+                "type": "partial_return",
+                "order_id": order_id,
+                "line_ids": list(line_ids),
+                "quantities": dict(quantities),
+                "reason": reason,
+            },
+        )
+
+    def _record_mutation(self, idempotency_key: str, body: dict) -> bool:
+        if idempotency_key in self._submitted_mutations:
+            return True
+        body = {
+            **body,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        self._submitted_mutations[idempotency_key] = body
         return True
