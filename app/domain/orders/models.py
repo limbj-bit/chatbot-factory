@@ -24,12 +24,13 @@ class OrderChannel(str, Enum):
 
 @dataclass(frozen=True)
 class OrderItem:
-    item_id: str
+    item_id: str  # prefer Cafe24 order_item_code (mutations); else product_no
     product_name: str
     quantity: int
     unit_price: int
     category: str = "fresh_food"
     total_price: int = 0
+    product_no: str = ""  # Cafe24 product_no (exchange_items)
 
     def __post_init__(self):
         if not self.total_price:

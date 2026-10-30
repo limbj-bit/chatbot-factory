@@ -21,10 +21,20 @@ def test_detect_as_intent_actions_not_policy():
 async def test_chat_bridge_cancel_flow(monkeypatch):
     clear_active("sess-as-1")
     session = object()
+    from app.infrastructure.channels.mock_cafe24 import MockCafe24Adapter
+
+    mock = MockCafe24Adapter()
+
+    async def fake_ports(*a, **k):
+        return mock, mock
 
     async def fake_notify(*args, **kwargs):
         return None
 
+    monkeypatch.setattr(
+        "app.application.as_scenario_service.resolve_as_ports",
+        fake_ports,
+    )
     monkeypatch.setattr(
         "app.application.as_scenario_service.notification_service.notify_merchant_alert",
         fake_notify,

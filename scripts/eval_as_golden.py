@@ -38,10 +38,19 @@ async def _run_case(case: dict) -> list[str]:
     async def _noop_notify(*a, **k):
         return None
 
+    from app.infrastructure.channels.mock_cafe24 import MockCafe24Adapter
+
+    mock = MockCafe24Adapter()
+
+    async def _mock_ports(*a, **k):
+        return mock, mock
+
     import app.application.as_scenario_service as svc_mod
 
-    orig = svc_mod.notification_service.notify_merchant_alert
+    orig_notify = svc_mod.notification_service.notify_merchant_alert
+    orig_ports = svc_mod.resolve_as_ports
     svc_mod.notification_service.notify_merchant_alert = _noop_notify  # type: ignore
+    svc_mod.resolve_as_ports = _mock_ports  # type: ignore
     try:
         for turn in case.get("turns") or []:
             out = await handle_as_turn(session, sid, "golden_mall", turn)
@@ -66,7 +75,8 @@ async def _run_case(case: dict) -> list[str]:
             if sub not in last_text:
                 errors.append(f"{cid}: missing substring {sub!r} in {last_text!r}")
     finally:
-        svc_mod.notification_service.notify_merchant_alert = orig  # type: ignore
+        svc_mod.notification_service.notify_merchant_alert = orig_notify  # type: ignore
+        svc_mod.resolve_as_ports = orig_ports  # type: ignore
         clear_active(sid)
     return errors
 

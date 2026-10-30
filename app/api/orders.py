@@ -27,7 +27,7 @@ async def cafe24_oauth_start(
     mall_id: str = Query(..., description="Our store mall_id (not the Cafe24 mall id)"),
     session: AsyncSession = Depends(get_db),
 ):
-    """Redirect the store owner to Cafe24's authorization screen (scope: mall.read_order)."""
+    """Redirect owner to Cafe24 OAuth (read_order + write_order for AS cancel/return)."""
     if not encryption_available():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -43,10 +43,15 @@ async def cafe24_oauth_start(
 
     state = await commerce_service.create_oauth_state(mall_id)
     redirect_uri = _redirect_uri(request)
+    # write_order required for cancel / return / exchange; re-auth if app scope was read-only
+    scope = "mall.read_order,mall.write_order"
+    from urllib.parse import quote
+
     authorize_url = (
         f"https://{conn.cafe24_mall_id}.cafe24api.com/api/v2/oauth/authorize"
         f"?response_type=code&client_id={conn.client_id}"
-        f"&state={state}&redirect_uri={redirect_uri}"
+        f"&state={state}&redirect_uri={quote(redirect_uri, safe='')}"
+        f"&scope={quote(scope, safe=',')}"
     )
     return RedirectResponse(authorize_url)
 

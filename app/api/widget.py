@@ -1076,7 +1076,7 @@ async def get_dynamic_widget_script(
       <div class="fresh-bot-block">
         <div class="fresh-bot-meta">
           <div class="fresh-bot-sq-avatar">${{iconGraphicHtml}}</div>
-          <span class="fresh-bot-meta-name">AI 챗봇 (${{config.botName}})</span>
+          <span class="fresh-bot-meta-name">${{config.botName}}</span>
           <span class="fresh-bot-meta-time">방금 전</span>
         </div>
         <div class="fresh-msg bot">${{initialBodyMessage}}</div>
@@ -1226,7 +1226,7 @@ async def get_dynamic_widget_script(
       block.innerHTML = `
         <div class="fresh-bot-meta">
           <div class="fresh-bot-sq-avatar">${{iconGraphicHtml}}</div>
-          <span class="fresh-bot-meta-name">AI 챗봇 (${{config.botName}})</span>
+          <span class="fresh-bot-meta-name">${{config.botName}}</span>
           <span class="fresh-bot-meta-time">방금 전</span>
         </div>
       `;
