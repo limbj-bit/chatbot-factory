@@ -14,14 +14,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv for fast dependency resolution
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-# Shared browser path so appuser can run Playwright after install-as-root
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-
-# Copy project definition and install dependencies
+# Copy project definition and install dependencies.
+# Do NOT bake Playwright Chromium here — Free Render builds stall 10+ min.
+# Price enrich: Cafe24 sale span + Front API; optional Playwright only on paid/local.
+ENV PRICE_ENRICH_PLAYWRIGHT=false
 COPY pyproject.toml README.md ./
-RUN uv pip install --system --no-cache ".[dev]" greenlet \
-    && playwright install --with-deps chromium \
-    && chmod -R a+rX /ms-playwright
+RUN uv pip install --system --no-cache ".[dev]" greenlet
 
 # Copy application source code (cache-bust: rebuild on every deploy)
 ARG RENDER_GIT_COMMIT=unknown
