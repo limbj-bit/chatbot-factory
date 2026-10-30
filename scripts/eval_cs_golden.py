@@ -87,6 +87,8 @@ def main() -> int:
             errors.append(f"prompt:{ind}: missing competitive CS bench block")
         if "긴환영멘트" in prompt:
             errors.append(f"prompt:{ind}: welcome spam still injected")
+        if "**볼드**" not in prompt and "볼드" not in prompt:
+            errors.append(f"prompt:{ind}: missing typography emphasis guidance")
         if "배송비" not in prompt or "판매가" not in prompt:
             # shipping-as-price rule lives in rules section
             if "배송비 금액을 상품" not in prompt and "배송비·무료배송 기준" not in prompt:

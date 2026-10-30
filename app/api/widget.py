@@ -916,6 +916,14 @@ async def get_dynamic_widget_script(
     .fresh-msg.bot {{
       background: #FFFFFF; color: #1E293B; border: 1px solid #E2E8F0;
       box-shadow: 0 1px 3px rgba(0,0,0,0.03); border-top-left-radius: 4px;
+      white-space: normal;
+    }}
+    .fresh-msg.bot strong {{ font-weight: 700; color: #0F172A; }}
+    .fresh-bot-li {{
+      position: relative; padding-left: 0.95em; margin: 0.28em 0; color: #1E293B;
+    }}
+    .fresh-bot-li::before {{
+      content: "·"; position: absolute; left: 0; top: 0; color: #64748B; font-weight: 700;
     }}
     .fresh-msg.user {{ background: ${{config.primaryColor}}; color: #FFFFFF; align-self: flex-end; border-bottom-right-radius: 4px; }}
     .fresh-cosraw-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 94%; margin-top: 2px; }}
@@ -955,7 +963,8 @@ async def get_dynamic_widget_script(
     .fresh-product-card .price {{ font-weight: 800; color: #111827; font-size: 15px; }}
     .fresh-product-card .price-row {{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:6px; }}
     .fresh-product-card .price-orig {{ font-size:12px; color:#9CA3AF; text-decoration:line-through; font-weight:500; }}
-    .fresh-product-card .sale-badge {{ font-size:11px; font-weight:800; color:#FFFFFF; background:#EF4444; padding:2px 7px; border-radius:999px; }}
+    /* Color only on discount cue + buy CTA — keep fatigue low */
+    .fresh-product-card .sale-badge {{ font-size:11px; font-weight:800; color:#B91C1C; background:#FEF2F2; padding:2px 7px; border-radius:999px; }}
     .fresh-product-card .pc-summary {{ font-size: 12px; color: #6B7280; line-height: 1.4; margin-bottom: 8px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }}
     .fresh-product-card .buy-link {{
       display: block; text-align:center; margin-top:auto; background: ${{config.primaryColor}}; color: #FFFFFF;
@@ -1375,6 +1384,18 @@ async def get_dynamic_widget_script(
     }});
   }});
 
+  function formatBotHtml(text) {{
+    // Escape first, then apply typography-only emphasis (bold + bullets). No color markup.
+    let s = String(text == null ? "" : text);
+    s = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    s = s.replace(/\\*\\*([^*\\n]+)\\*\\*/g, "<strong>$1</strong>");
+    s = s.replace(/^[\-\u00b7\u2022]\s+(.+)$/gm, '<div class="fresh-bot-li">$1</div>');
+    s = s.replace(/\\n/g, "<br>");
+    s = s.replace(/(?:<br>\\s*)+(?=<div class="fresh-bot-li">)/g, "");
+    s = s.replace(/(<\\/div>)(?:<br>\\s*)+/g, "$1");
+    return s;
+  }}
+
   function appendMessage(text, sender) {{
     if (sender === "bot") {{
       const block = document.createElement("div");
@@ -1388,7 +1409,7 @@ async def get_dynamic_widget_script(
       `;
       const msg = document.createElement("div");
       msg.className = "fresh-msg bot";
-      msg.innerHTML = text.replace(/\\n/g, "<br>");
+      msg.innerHTML = formatBotHtml(text);
       block.appendChild(msg);
       messagesContainer.appendChild(block);
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -1396,7 +1417,8 @@ async def get_dynamic_widget_script(
     }} else {{
       const msg = document.createElement("div");
       msg.className = "fresh-msg user";
-      msg.innerHTML = text.replace(/\\n/g, "<br>");
+      const esc = String(text == null ? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      msg.innerHTML = esc.replace(/\\n/g, "<br>");
       messagesContainer.appendChild(msg);
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
       return msg;
@@ -1495,13 +1517,13 @@ async def get_dynamic_widget_script(
               if (data.replace) {{
                 fullText = data.replace;
                 gotToken = true;
-                botMsg.innerHTML = fullText.replace(/\\n/g, "<br>");
+                botMsg.innerHTML = formatBotHtml(fullText);
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
               }} else if (data.token) {{
                 if (!gotToken) botMsg.innerHTML = "";
                 fullText += data.token;
                 gotToken = true;
-                botMsg.innerHTML = fullText.replace(/\\n/g, "<br>");
+                botMsg.innerHTML = formatBotHtml(fullText);
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
               }}
               if (data.recommended_products) {{
