@@ -118,7 +118,8 @@ class StoreKnowledgeCreateRequest(BaseModel):
     doc_type: str = Field("product", description="지식 유형 (product, policy, faq, crawled_url)")
     title: str = Field(..., min_length=1, max_length=256, description="상품명 또는 규정 제목")
     content: str = Field(..., min_length=1, description="상품 상세 설명, 전성분, 주의사항 또는 규정 본문")
-    price: Optional[int] = Field(None, ge=0, description="상품 판매가 (원)")
+    price: Optional[int] = Field(None, ge=0, description="상품 판매가/할인가 (원)")
+    original_price: Optional[int] = Field(None, ge=0, description="정상가/소비자가 (원)")
     purchase_url: Optional[str] = Field(None, description="상품 바로 구매하기 링크 URL")
     image_url: Optional[str] = Field(None, description="상품 썸네일 이미지 URL")
     tags: Optional[str] = Field(None, description="검색/추천 키워드 태그 (예: 건성,민감성,진정,시카,임산부)")
@@ -156,6 +157,7 @@ class StoreKnowledgeResponse(BaseModel):
     content: str
     source_url: Optional[str] = None
     price: Optional[int] = None
+    original_price: Optional[int] = None
     purchase_url: Optional[str] = None
     image_url: Optional[str] = None
     tags: Optional[str] = None

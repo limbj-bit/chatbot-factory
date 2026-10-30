@@ -158,6 +158,25 @@ _FNB_DETAIL = [
 _GENERAL_RECOMMEND = ["추천", "선물", "뭐가", "고르", "어떤"]
 _GENERAL_DETAIL = ["가격", "얼마", "사용법", "어떻게", "스펙", "구성", "옵션"]
 
+# Explicit product lookup / buy intent — always attach cards when RAG hits products.
+_PRODUCT_LOOKUP_KW = (
+    "찾아",
+    "검색",
+    "있냐",
+    "있나요",
+    "있어요",
+    "있어?",
+    "상품",
+    "제품",
+    "구매",
+    "링크",
+    "상세",
+    "사는곳",
+    "어디서",
+    "품번",
+    "재고",
+)
+
 _INDUSTRY_COUNSEL: Dict[str, Tuple[List[str], List[str]]] = {
     "beauty": (RECOMMENDATION_KEYWORDS, SKIN_DETAIL_KEYWORDS),
     "fresh_food": (_FRESH_RECOMMEND, _FRESH_DETAIL),
@@ -182,6 +201,24 @@ def _counsel_keywords(industry: Optional[str]) -> Tuple[List[str], List[str]]:
     """Return (recommendation_keywords, detail_keywords) for the store industry."""
     key = normalize_industry_key(industry)
     return _INDUSTRY_COUNSEL.get(key, _INDUSTRY_COUNSEL["general"])
+
+
+def wants_product_cards(
+    message_text: str,
+    convo_text: str,
+    industry: Optional[str],
+) -> bool:
+    """True when lookup/recommend/detail intent should attach product cards."""
+    msg = message_text or ""
+    convo = convo_text or msg
+    rec_kw, detail_kw = _counsel_keywords(industry)
+    if any(k in msg for k in _PRODUCT_LOOKUP_KW):
+        return True
+    if any(k in msg for k in rec_kw):
+        return True
+    if any(k in convo for k in detail_kw):
+        return True
+    return False
 
 
 class ChatService:
@@ -234,16 +271,49 @@ class ChatService:
         return chat_session
 
     @staticmethod
-    def _build_product_cards(search_results: List[RAGSearchResult]) -> List[ProductRecommendationCard]:
+    def _shipping_reject_prices(store_obj: Optional[StoreModel]) -> set:
+        from app.application.product_price_extract import reject_price_set
+
+        policy = ChatService._parse_policy_dict(store_obj)
+        ship = policy.get("shipping_policy")
+        ship = ship if isinstance(ship, dict) else {}
+        return reject_price_set(ship.get("delivery_fee"), ship.get("free_over_amount"))
+
+    @staticmethod
+    def _build_product_cards(
+        search_results: List[RAGSearchResult],
+        *,
+        reject_prices: Optional[set] = None,
+    ) -> List[ProductRecommendationCard]:
         cards: List[ProductRecommendationCard] = []
+        reject = reject_prices or set()
         for r in search_results:
             doc = r.document
             if doc.source in ("product", "crawled_url"):
+                price = doc.metadata.get("price")
+                orig = doc.metadata.get("original_price")
+                try:
+                    price_i = int(price) if price is not None else None
+                except (TypeError, ValueError):
+                    price_i = None
+                try:
+                    orig_i = int(orig) if orig is not None else None
+                except (TypeError, ValueError):
+                    orig_i = None
+                if price_i is not None and price_i in reject:
+                    price_i = None
+                if orig_i is not None and orig_i in reject:
+                    orig_i = None
+                on_sale = bool(price_i and orig_i and orig_i > price_i)
+                if not on_sale:
+                    orig_i = None
                 cards.append(
                     ProductRecommendationCard(
                         product_id=doc.product_id or doc.document_id,
                         title=doc.title,
-                        price=doc.metadata.get("price"),
+                        price=price_i,
+                        original_price=orig_i,
+                        on_sale=on_sale,
                         summary=doc.content[:140] + ("..." if len(doc.content) > 140 else ""),
                         purchase_url=doc.metadata.get("purchase_url"),
                         image_url=doc.metadata.get("image_url"),
@@ -519,9 +589,9 @@ class ChatService:
                     "피부 고민에 공감하며 근거 있는 추천을 합니다. 부드러운 존댓말을 씁니다."
                 ),
                 "",
-                "### 인테이크 (모호하면 추천·카드 금지)",
-                "- 피부타입(건성/지성/복합성/민감성)과 주요 고민이 없으면 1~2개만 먼저 질문하세요.",
-                "- 정보가 쌓이기 전 '맞춤 추천' 나열·상품 카드 톤을 쓰지 마세요.",
+                "### 추천 요청 시",
+                "- '추천해줘'에도 학습된 상품으로 전문가 상담·추천 이유·사용 팁을 답하세요(카드는 시스템이 표시).",
+                "- 피부타입·고민이 없으면 답변 끝에 1~2개만 짧게 물어 다음 추천을 정교화하세요.",
                 "",
                 "### 추천 시 답변 구조",
                 "1) 고객 상황 한 줄 요약 2) 상품 1~3개(이유·핵심 성분·사용법·가격) "
@@ -537,9 +607,9 @@ class ChatService:
                     "보관·후숙·섭취·제철 추천과 품질 클레임 안내를 정확히 합니다."
                 ),
                 "",
-                "### 인테이크 (모호하면 추천·카드 금지)",
-                "- '추천해줘/뭐가 맛있어요'만 있으면 용도(선물/바로 섭취), 인원, 선호 맛(당도/산미)을 먼저 물으세요.",
-                "- 충분하기 전에는 상품 카드·나열형 추천을 하지 마세요.",
+                "### 추천 요청 시",
+                "- 추천 요청에는 학습된 상품으로 이유와 함께 안내하세요(카드는 시스템이 표시).",
+                "- 용도·인원이 불명확하면 답변 끝에만 짧게 확인하세요.",
                 "",
                 "### 추천·안내 답변 구조",
                 "1) 상황 요약 2) 상품 1~3개(이유) 3) 보관·후숙·손질 4) 섭취 기한 "
@@ -559,9 +629,9 @@ class ChatService:
                     "사이즈·핏·코디·소재를 근거 있게 안내합니다."
                 ),
                 "",
-                "### 인테이크",
-                "- 모호한 추천에는 사이즈/키·몸무게 감안 여부, 선호 핏, 착용 상황을 먼저 확인하세요.",
-                "- 정보 부족 시 카드·단정 추천을 하지 마세요.",
+                "### 추천 요청 시",
+                "- 추천 요청에는 학습된 상품으로 이유와 함께 안내하세요(카드는 시스템이 표시).",
+                "- 사이즈·핏이 없으면 답변 끝에만 짧게 확인하세요.",
                 "",
                 "### 답변 구조",
                 "1) 요구 요약 2) 상품 1~3개(핏·소재·상황 적합성) 3) 사이즈/세탁 팁 4) 교환은 스토어 정책만 인용",
@@ -784,8 +854,7 @@ class ChatService:
             lines.append(f"- 운영시간: {store_obj.business_hours}")
         if store_obj.contact_email:
             lines.append(f"- 고객문의: {store_obj.contact_email}")
-        if store_obj.welcome_message:
-            lines.append(f"- 인사말: {store_obj.welcome_message}")
+        # Do NOT inject full welcome_message — models then paste it on every turn.
 
         # Per-mall claim policy. The showroom writes the owner's overrides under
         # policy_config.claim_policy; the top level holds industry defaults. The
@@ -873,6 +942,18 @@ class ChatService:
         lines.append(
             "5. 답변은 두세 문장 이내의 간결한 존댓말로 하고, 필요 시 다음 단계"
             "(주문번호 안내 등)를 제시합니다."
+        )
+        lines.append(
+            f"6. 매 답변 앞에 '안녕하세요, 상담사 {bot_display_name}입니다' 또는 "
+            "긴 환영/소개 멘트를 반복하지 마세요. 이름은 필요할 때만 한 번 짧게 언급합니다."
+        )
+        lines.append(
+            "7. 고객이 상품을 찾거나 추천을 요청하면, 학습된 상품을 근거로 추천 이유를 "
+            "말하고(카드는 시스템이 별도 표시), 없는 가격·스펙은 지어내지 마세요."
+        )
+        lines.append(
+            "8. 지식에 '할인 중'·정상가·판매가가 있으면 구분해 안내하세요. "
+            "배송비 금액을 상품 가격처럼 말하지 마세요."
         )
         return "\n".join(lines)
 
@@ -1028,17 +1109,13 @@ class ChatService:
                 convo_text = message_text + " " + " ".join(
                     h.get("content", "") for h in history if h.get("role") == "user"
                 )
-                # Cards are gated: attach product cards ONLY when the customer
-                # has shared enough detail. Vague "추천해줘" must NOT trigger
-                # cards — the counselor first asks for skin type/concern.
                 industry = (store_obj.industry if store_obj else None)
-                rec_kw, detail_kw = _counsel_keywords(industry)
-                is_specific_query = any(k in convo_text for k in detail_kw)
-                is_counselor_query = any(k in message_text for k in rec_kw)
+                rec_kw, _detail_kw = _counsel_keywords(industry)
+                attach_cards = wants_product_cards(message_text, convo_text, industry)
+                is_counselor_query = any(k in message_text for k in rec_kw) or attach_cards
 
                 # 4b. ALWAYS search store knowledge — advice/usage questions must
-                # be answered with real product data. The gate above only controls
-                # whether CARDS are attached.
+                # be answered with real product data.
                 results = await self.rag.search_with_store_knowledge(
                     session_db,
                     mall_id,
@@ -1049,16 +1126,22 @@ class ChatService:
 
                 if results:
                     intent = "ai_counselor_recommendation" if is_counselor_query else "rag_product_inquiry"
-                    if is_specific_query:
-                        recommended_products = self._build_product_cards(results)
-                    context = self.rag.assemble_context(results)
+                    reject_prices = self._shipping_reject_prices(store_obj)
+                    if attach_cards:
+                        recommended_products = self._build_product_cards(
+                            results,
+                            reject_prices=reject_prices,
+                        )
+                    context = self.rag.assemble_context(
+                        results,
+                        reject_prices=reject_prices,
+                    )
                     system_prompt = self._build_store_system_prompt(store_obj, rag_context=context)
                     response_text = await self.ai_router.generate_text(
                         message_text, system_prompt=system_prompt, history=history
                     )
                 else:
-                    # Nothing learned matches: plain conversational CS with the
-                    # counselor persona (asks intake questions, no cards).
+                    # Nothing learned matches: plain conversational CS (no cards).
                     intent = "general_cs"
                     system_prompt = self._build_store_system_prompt(store_obj)
                     response_text = await self.ai_router.generate_text(
@@ -1177,37 +1260,14 @@ class ChatService:
             yield quota_msg
             return
 
-        # RAG context only when the dialogue carries enough skin/concern detail.
-        # Vague intake-phase messages must not drag in product knowledge.
-        # BUT: for expert consultations (skin/ingredient/usage questions), we
-        # ALWAYS search RAG so the bot can answer with real product data —
-        # we just don't attach product CARDS unless the customer shared enough.
         convo_text = message_text + " " + " ".join(
             h.get("content", "") for h in history if h.get("role") == "user"
         )
         industry = (store_obj.industry if store_obj else None)
-        rec_kw, detail_kw = _counsel_keywords(industry)
-        is_specific_query = any(k in convo_text for k in detail_kw)
-        is_counselor_query = any(k in message_text for k in rec_kw)
-
-        # Deterministic intake: vague "추천" quick-taps must never show an empty
-        # bubble or jump to product cards before we know skin type / concern.
-        intake = ChatService._deterministic_intake_reply(
-            industry=industry, message_text=message_text, convo_text=convo_text
-        )
-        if intake:
-            yield intake
-            assistant_msg = MessageModel(
-                id=str(uuid.uuid4()),
-                session_id=chat_session.id,
-                role="assistant",
-                content=intake,
-                intent="counselor_intake",
-                detected_language=detected_lang,
-            )
-            session_db.add(assistant_msg)
-            await session_db.commit()
-            return
+        rec_kw, _detail_kw = _counsel_keywords(industry)
+        attach_cards = wants_product_cards(message_text, convo_text, industry)
+        is_counselor_query = any(k in message_text for k in rec_kw) or attach_cards
+        reject_prices = self._shipping_reject_prices(store_obj)
 
         # Always search RAG so expert answers are grounded in real product data.
         results = await self.rag.search_with_store_knowledge(
@@ -1218,11 +1278,17 @@ class ChatService:
             industry=industry,
         )
 
-        # Attach product cards ONLY when the customer has shared enough detail.
-        if results and cards_out is not None and is_specific_query:
-            cards_out.extend(self._build_product_cards(results))
+        # 찾아/추천/디테일 의도 + 상품 RAG 히트 → 카드(이미지·링크·설명)
+        if results and cards_out is not None and attach_cards:
+            cards_out.extend(
+                self._build_product_cards(results, reject_prices=reject_prices)
+            )
 
-        context = self.rag.assemble_context(results) if results else None
+        context = (
+            self.rag.assemble_context(results, reject_prices=reject_prices)
+            if results
+            else None
+        )
         system_prompt = self._build_store_system_prompt(store_obj, rag_context=context)
 
         collected = []

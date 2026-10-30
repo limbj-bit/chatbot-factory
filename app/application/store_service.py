@@ -977,6 +977,7 @@ class StoreService:
             content=req.content,
             source_url=source_url,
             price=req.price,
+            original_price=req.original_price,
             purchase_url=req.purchase_url or source_url,
             image_url=req.image_url,
             tags=req.tags,
@@ -992,6 +993,7 @@ class StoreService:
             content=doc.content,
             source_url=doc.source_url,
             price=doc.price,
+            original_price=getattr(doc, "original_price", None),
             purchase_url=doc.purchase_url,
             image_url=doc.image_url,
             tags=doc.tags,
@@ -1030,13 +1032,6 @@ class StoreService:
             except Exception:
                 jsonld_data = None
 
-        def _parse_price_val(v) -> Optional[int]:
-            try:
-                p = int(str(v).replace(",", ""))
-            except (ValueError, TypeError):
-                return None
-            return p if p > 0 else None
-
         # Title: ProductGroup.name (clean) → variant name → og:title → <title>
         title = None
         if jsonld_data:
@@ -1061,46 +1056,31 @@ class StoreService:
             title_match = re.search(r"<title>(.*?)</title>", raw_html, re.IGNORECASE | re.DOTALL)
             title = html.unescape(title_match.group(1).strip()) if title_match else crawl_req.url
 
-        # ---- Price: JSON-LD offers → meta → Cafe24 JS (reject 0) → body text (skip delivery/point context) ----
-        price: Optional[int] = None
-        if jsonld_data:
-            offers = jsonld_data.get("offers")
-            if isinstance(offers, dict):
-                price = _parse_price_val(offers.get("price"))
-            if price is None:
-                for v in jsonld_data.get("hasVariant") or []:
-                    off = (v or {}).get("offers") or {}
-                    p = _parse_price_val(off.get("price") if isinstance(off, dict) else None)
-                    if p:
-                        price = p
-                        break
-        if price is None:
-            price_meta = re.search(
-                r'property=["\'](?:product:price:amount|og:price:amount)["\']\s+content=["\']([0-9,]+)["\']',
-                raw_html,
-                re.IGNORECASE,
+        # ---- Price: sale + list (skip shipping/point; reject store delivery_fee) ----
+        from app.application.product_price_extract import (
+            extract_product_prices,
+            reject_price_set,
+        )
+
+        reject_prices = set()
+        try:
+            store_row = await self.get_store_by_mall_id(session, mall_id)
+            pol = {}
+            if store_row and store_row.policy_config_json:
+                pol = json.loads(store_row.policy_config_json or "{}") or {}
+            ship = pol.get("shipping_policy") if isinstance(pol, dict) else {}
+            ship = ship if isinstance(ship, dict) else {}
+            reject_prices = reject_price_set(
+                ship.get("delivery_fee"), ship.get("free_over_amount")
             )
-            if price_meta:
-                price = _parse_price_val(price_meta.group(1))
-        if price is None:
-            cafe24_price = re.search(
-                r'(?:product_price|productPrice|sale_price|salePrice)\s*[=:]\s*["\']?([0-9,]+)',
-                raw_html,
-                re.IGNORECASE,
-            )
-            if cafe24_price:
-                price = _parse_price_val(cafe24_price.group(1))
-        if price is None:
-            # Body text "28,000원" — but skip delivery-fee / point contexts:
-            # Cafe24 pages load the real price via JS, so the first 원-token is
-            # usually the 배송비 (e.g. "3,000원 (60,000원 이상 구매 시 무료)").
-            for m in re.finditer(r"([0-9]{1,3}(?:,[0-9]{3})+)\s*원", raw_html):
-                ctx = raw_html[max(0, m.start() - 150):m.start()]
-                if any(k in ctx for k in ("배송비", "delivery_cost", "무료배송", "적립", "마일리지", "포인트", "리뷰")):
-                    continue
-                price = _parse_price_val(m.group(1))
-                if price:
-                    break
+        except Exception:
+            reject_prices = set()
+
+        price_info = extract_product_prices(
+            raw_html, jsonld_data, reject_prices=reject_prices
+        )
+        price = price_info.price
+        original_price = price_info.original_price
 
         # ---- Image: JSON-LD variant image (real product photo) → og:image (skip logos/SVG) ----
         image_url: Optional[str] = None
@@ -1200,6 +1180,12 @@ class StoreService:
         # the cleaned body text — but only if it survived junk filtering and
         # carries real sentences (Cafe24 nav/banner debris fails this check).
         content_bits = [title]
+        if price_info.on_sale:
+            content_bits.append(
+                f"판매가: {price:,}원 (정상가 {original_price:,}원, 할인 중)"
+            )
+        elif price:
+            content_bits.append(f"판매가: {price:,}원")
         if spec_parts:
             content_bits.append(" | ".join(spec_parts))
         if ingredient_snip:
@@ -1221,6 +1207,7 @@ class StoreService:
             title=title[:256],
             content=summary_content,
             price=price,
+            original_price=original_price,
             purchase_url=crawl_req.url,
             image_url=image_url,
             tags=crawl_req.tags,
@@ -1237,23 +1224,25 @@ class StoreService:
             existing_doc.title = create_req.title[:256]
             existing_doc.content = create_req.content
             existing_doc.price = create_req.price
+            existing_doc.original_price = create_req.original_price
             existing_doc.purchase_url = create_req.purchase_url or crawl_req.url
             existing_doc.image_url = create_req.image_url
             existing_doc.tags = create_req.tags
             await session.commit()
             await session.refresh(existing_doc)
             return StoreKnowledgeResponse(
-            id=existing_doc.id,
-            mall_id=existing_doc.mall_id,
-            doc_type=existing_doc.doc_type,
-            title=existing_doc.title,
-            content=existing_doc.content,
-            source_url=existing_doc.source_url,
-            price=existing_doc.price,
-            purchase_url=existing_doc.purchase_url,
-            image_url=existing_doc.image_url,
-            tags=existing_doc.tags,
-            created_at=existing_doc.created_at.isoformat(),
+                id=existing_doc.id,
+                mall_id=existing_doc.mall_id,
+                doc_type=existing_doc.doc_type,
+                title=existing_doc.title,
+                content=existing_doc.content,
+                source_url=existing_doc.source_url,
+                price=existing_doc.price,
+                original_price=getattr(existing_doc, "original_price", None),
+                purchase_url=existing_doc.purchase_url,
+                image_url=existing_doc.image_url,
+                tags=existing_doc.tags,
+                created_at=existing_doc.created_at.isoformat(),
             )
         return await self.add_knowledge(session, mall_id, create_req, source_url=crawl_req.url)
 
@@ -2078,6 +2067,7 @@ class StoreService:
                 content=d.content,
                 source_url=d.source_url,
                 price=d.price,
+                original_price=getattr(d, "original_price", None),
                 purchase_url=d.purchase_url,
                 image_url=d.image_url,
                 tags=d.tags,

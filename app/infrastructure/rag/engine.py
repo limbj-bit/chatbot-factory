@@ -215,6 +215,7 @@ class RAGEngine:
                 metadata={
                     "mall_id": sdoc.mall_id,
                     "price": sdoc.price,
+                    "original_price": getattr(sdoc, "original_price", None),
                     "purchase_url": sdoc.purchase_url or sdoc.source_url,
                     "image_url": sdoc.image_url,
                     "tags": sdoc.tags,
@@ -236,15 +237,39 @@ class RAGEngine:
         results.sort(key=lambda r: r.score, reverse=True)
         return results[:top_k]
 
-    def assemble_context(self, search_results: List[RAGSearchResult]) -> str:
+    def assemble_context(
+        self,
+        search_results: List[RAGSearchResult],
+        reject_prices: Optional[set] = None,
+    ) -> str:
         """Assemble retrieved documents into context with strict citation format."""
         if not search_results:
             return ""
 
+        reject = reject_prices or set()
         context_lines = ["--- [참고 공식 지식 베이스] ---"]
         for res in search_results:
             doc = res.document
-            price_info = f" | 판매가: {doc.metadata.get('price'):,}원" if doc.metadata.get("price") else ""
+            raw_price = doc.metadata.get("price")
+            raw_orig = doc.metadata.get("original_price")
+            try:
+                price_i = int(raw_price) if raw_price is not None else None
+            except (TypeError, ValueError):
+                price_i = None
+            try:
+                orig_i = int(raw_orig) if raw_orig is not None else None
+            except (TypeError, ValueError):
+                orig_i = None
+            if price_i is not None and price_i in reject:
+                price_i = None
+            if orig_i is not None and orig_i in reject:
+                orig_i = None
+            if price_i and orig_i and orig_i > price_i:
+                price_info = f" | 판매가: {price_i:,}원 (정상가 {orig_i:,}원, 할인 중)"
+            elif price_i:
+                price_info = f" | 판매가: {price_i:,}원"
+            else:
+                price_info = ""
             context_lines.append(
                 f"[문서 ID: {doc.document_id} | 제목: {doc.title}{price_info} | 출처: {doc.source} | 일치도: {res.score}]\n{doc.content}\n"
             )

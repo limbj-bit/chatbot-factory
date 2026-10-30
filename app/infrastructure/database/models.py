@@ -87,6 +87,7 @@ class StoreKnowledgeModel(Base):
     content: Mapped[str] = mapped_column(Text)
     source_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     price: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    original_price: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     purchase_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     image_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     tags: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)

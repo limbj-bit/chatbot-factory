@@ -28,7 +28,7 @@ class _EmptyRAG:
     async def search_with_store_knowledge(self, session, mall_id, message, top_k=2, industry=None):
         return []
 
-    def assemble_context(self, results):
+    def assemble_context(self, results, reject_prices=None):
         return ""
 
 

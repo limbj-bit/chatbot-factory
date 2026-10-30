@@ -953,6 +953,9 @@ async def get_dynamic_widget_script(
     .fresh-product-card .pc-body {{ flex: 1; min-width: 0; }}
     .fresh-product-card h4 {{ margin: 0 0 3px 0; font-size: 13px; color: #111827; line-height: 1.3; }}
     .fresh-product-card .price {{ font-weight: 700; color: ${{config.primaryColor}}; margin-bottom: 4px; font-size: 13px; }}
+    .fresh-product-card .price-row {{ display:flex; flex-wrap:wrap; align-items:baseline; gap:6px; margin-bottom:4px; }}
+    .fresh-product-card .price-orig {{ font-size:12px; color:#9CA3AF; text-decoration:line-through; font-weight:500; }}
+    .fresh-product-card .sale-badge {{ font-size:11px; font-weight:700; color:#B91C1C; background:#FEE2E2; padding:1px 6px; border-radius:4px; }}
     .fresh-product-card .pc-summary {{ font-size: 12px; color: #6B7280; line-height: 1.4; margin-bottom: 6px; }}
     .fresh-product-card .buy-link {{
       display: inline-block; background: ${{config.primaryColor}}; color: #FFFFFF;
@@ -1405,7 +1408,14 @@ async def get_dynamic_widget_script(
     cards.forEach(c => {{
       const cardEl = document.createElement("div");
       cardEl.className = "fresh-product-card";
-      const priceHtml = c.price ? `<div class="price">${{c.price.toLocaleString()}}원</div>` : "";
+      let priceHtml = "";
+      if (c.price) {{
+        const saleBadge = c.on_sale ? `<span class="sale-badge">할인 중</span>` : "";
+        const orig = (c.on_sale && c.original_price)
+          ? `<span class="price-orig">${{c.original_price.toLocaleString()}}원</span>`
+          : "";
+        priceHtml = `<div class="price-row">${{saleBadge}}<span class="price">${{c.price.toLocaleString()}}원</span>${{orig}}</div>`;
+      }}
       const linkHtml = c.purchase_url ? `<a class="buy-link" href="${{c.purchase_url}}" target="_blank">🛒 상품 상세 / 바로 구매하기</a>` : "";
       const imgHtml = c.image_url
         ? `<div class="pc-img"><img src="${{c.image_url}}" alt="${{c.title}}" onerror="this.parentElement.style.display='none'" /></div>`

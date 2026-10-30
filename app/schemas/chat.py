@@ -6,6 +6,8 @@ class ProductRecommendationCard(BaseModel):
     product_id: str
     title: str
     price: Optional[int] = None
+    original_price: Optional[int] = None
+    on_sale: bool = False
     summary: str
     purchase_url: Optional[str] = None
     image_url: Optional[str] = None

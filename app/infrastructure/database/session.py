@@ -71,6 +71,7 @@ LIGHTWEIGHT_ALTERS = (
     "ALTER TABLE messages ADD COLUMN translation_ko TEXT",
     "ALTER TABLE sessions ADD COLUMN mall_id VARCHAR(64) DEFAULT 'demo_mall'",
     "ALTER TABLE stores ADD COLUMN brand_logo_url TEXT",
+    "ALTER TABLE store_knowledge ADD COLUMN original_price INTEGER",
 )
 
 
