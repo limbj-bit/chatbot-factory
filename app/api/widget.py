@@ -1474,10 +1474,46 @@ async def get_dynamic_widget_script(
 
   function appendFollowChips(cards) {{
     const firstTitle = (cards[0] && cards[0].title) ? String(cards[0].title) : "";
-    const shortTitle = firstTitle.length > 18 ? firstTitle.slice(0, 18) + "…" : firstTitle;
-    const chips = ["비슷한 상품 추천"];
-    if (shortTitle) chips.push(shortTitle + " 효과 알려줘");
-    chips.push("배송·교환 문의");
+    const shortTitle = firstTitle.length > 16 ? firstTitle.slice(0, 16) + "…" : firstTitle;
+    const ind = String(config.industry || "").toLowerCase();
+    let chips = [];
+    if (ind.includes("beauty") || ind.includes("cosmetic")) {{
+      chips = [
+        shortTitle ? `💧 ${{shortTitle}} 사용법&루틴` : "💧 올바른 사용법 및 뷰티 루틴",
+        "🌿 민감성 피부도 안심하고 쓸 수 있나요?",
+        "✨ 함께 쓰면 시너지 나는 추천템"
+      ];
+    }} else if (ind.includes("fresh") || ind.includes("food") || ind.includes("농수산")) {{
+      chips = [
+        shortTitle ? `❄️ ${{shortTitle}} 신선 보관법` : "❄️ 최적의 보관법 및 섭취 팁",
+        "🚚 당일 출고 및 배송 일정 안내",
+        "🎁 선물용/세트 구성 추천"
+      ];
+    }} else if (ind.includes("fashion") || ind.includes("의류")) {{
+      chips = [
+        shortTitle ? `📏 ${{shortTitle}} 사이즈&핏 팁` : "📏 상세 사이즈 및 핏 가이드",
+        "✨ 어울리는 코디 아이템 추천",
+        "🔄 교환 및 반품 규정 안내"
+      ];
+    }} else if (ind.includes("elec") || ind.includes("가전")) {{
+      chips = [
+        shortTitle ? `⚙️ ${{shortTitle}} 스펙&호환성` : "⚙️ 주요 스펙 및 호환 기기",
+        "🛠️ A/S 보증 및 자가진단 안내",
+        "💬 함께 쓰기 좋은 주변기기"
+      ];
+    }} else if (ind.includes("pet") || ind.includes("반려")) {{
+      chips = [
+        shortTitle ? `🐾 ${{shortTitle}} 급여/연령 기준` : "🐾 권장 연령 및 급여 팁",
+        "🌿 알레르기 및 주요 성분 안내",
+        "📦 배송 및 정기배송 문의"
+      ];
+    }} else {{
+      chips = [
+        shortTitle ? `✨ ${{shortTitle}} 핵심 특징` : "✨ 핵심 특징 및 사용 팁",
+        "💬 함께 둘러보기 좋은 추천 제품",
+        "🚚 배송 및 교환/환불 정책"
+      ];
+    }}
     const row = document.createElement("div");
     row.className = "fresh-chips-row fresh-follow-chips";
     row.innerHTML = chips.map(label =>
