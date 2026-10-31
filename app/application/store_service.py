@@ -1216,22 +1216,47 @@ class StoreService:
             image_url=image_url,
             tags=merge_price_source_tags(crawl_req.tags, psrc),
         )
-        # Update existing entry if same URL already learned
+        # Update existing entry if same URL, canonical product URL, or title already learned
+        target_norm = self._normalize_product_url(crawl_req.url)
         existing_res = await session.execute(
             select(StoreKnowledgeModel).where(
                 StoreKnowledgeModel.mall_id == mall_id,
-                StoreKnowledgeModel.source_url == crawl_req.url,
             )
         )
-        existing_doc = existing_res.scalar_one_or_none()
+        all_existing = existing_res.scalars().all()
+        existing_doc = None
+        for doc in all_existing:
+            if doc.source_url == crawl_req.url:
+                existing_doc = doc
+                break
+            if target_norm and doc.source_url and self._normalize_product_url(doc.source_url) == target_norm:
+                existing_doc = doc
+                break
+            if doc.title and create_req.title and doc.title.strip() == create_req.title.strip():
+                existing_doc = doc
+                break
+
         if existing_doc:
             existing_doc.title = create_req.title[:256]
             existing_doc.content = create_req.content
             existing_doc.price = create_req.price
             existing_doc.original_price = create_req.original_price
+            existing_doc.source_url = crawl_req.url
             existing_doc.purchase_url = create_req.purchase_url or crawl_req.url
             existing_doc.image_url = create_req.image_url
             existing_doc.tags = create_req.tags
+
+            # Clean up any leftover duplicate rows with the same canonical URL or title
+            for other in all_existing:
+                if other.id != existing_doc.id:
+                    is_dup = False
+                    if target_norm and other.source_url and self._normalize_product_url(other.source_url) == target_norm:
+                        is_dup = True
+                    elif other.title and create_req.title and other.title.strip() == create_req.title.strip():
+                        is_dup = True
+                    if is_dup:
+                        await session.delete(other)
+
             await session.commit()
             await session.refresh(existing_doc)
             return StoreKnowledgeResponse(
