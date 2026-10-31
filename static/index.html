@@ -858,11 +858,17 @@
           💡 <b>사이트맵 URL을 넣으면 더 빠르고 정확합니다.</b> (예: https://myshop.com/sitemap.xml)
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <input type="text" id="catalogUrl" style="flex:2;min-width:240px;" placeholder="👉 스토어/목록/카테고리 URL 또는 sitemap.xml 주소" />
+          <input type="text" id="catalogUrl" style="flex:2;min-width:240px;" placeholder="👉 스토어/사이트맵 URL 또는 단일 상품 상세 URL" />
           <input type="number" id="catalogMax" style="flex:0 0 90px;" min="1" max="50" value="10" placeholder="최대 개수" />
           <input type="text" id="catalogTags" style="flex:1;min-width:120px;" placeholder="태그 (선택)" />
-          <button class="btn" style="padding:10px 20px;" onclick="crawlCatalog(false)">전체 상품 자동 학습</button>
-          <button class="btn" style="padding:10px 20px;background:#64748B;" onclick="crawlCatalog(true)">이어서 학습</button>
+          <button class="btn" style="padding:10px 18px;" onclick="crawlCatalog(false)">전체/단일 자동 학습</button>
+          <button class="btn" style="padding:10px 18px;background:#64748B;" onclick="crawlCatalog(true)">이어서 학습</button>
+        </div>
+        <div style="margin-top:10px;background:#FFFFFF;border:1px dashed #93C5FD;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="catalogExpandCategory" style="width:16px;height:16px;cursor:pointer;" />
+          <label for="catalogExpandCategory" style="font-size:12.5px;color:#1E293B;cursor:pointer;line-height:1.4;">
+            <b>🔍 [아이디어 특화] 단일 상품 URL 입력 시:</b> 소속 카테고리 연관 상품도 함께 발굴 학습 (사이트맵 누락 상품 자동 보충)
+          </label>
         </div>
         <div id="catalogStatus" style="margin-top:10px;font-size:13.5px;font-weight:700;color:#1D4ED8;"></div>
       </div>
@@ -1917,6 +1923,7 @@
             offset: off,
             tags: tags,
             force_refresh: false,
+            expand_category: Boolean(document.getElementById("catalogExpandCategory") && document.getElementById("catalogExpandCategory").checked),
           }),
           signal: controller.signal,
         });

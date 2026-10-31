@@ -1414,6 +1414,42 @@ class StoreService:
         return product_urls[:max_urls]
 
     @staticmethod
+    def _extract_parent_category_url(url: str, html: str = "") -> Optional[str]:
+        """Extract the specific parent category URL of a single product page."""
+        try:
+            parsed = urlparse(url)
+            base = f"{parsed.scheme}://{parsed.netloc}"
+
+            # 1. Look for /category/(\d+) in path
+            m = re.search(r"/category/(\d+)", parsed.path, re.IGNORECASE)
+            if m:
+                return f"{base}/product/list.html?cate_no={m.group(1)}"
+
+            # 2. Look for cate_no in query
+            qs = parse_qs(parsed.query)
+            if "cate_no" in qs and qs["cate_no"]:
+                return f"{base}/product/list.html?cate_no={qs['cate_no'][0]}"
+
+            # 3. Look in HTML breadcrumbs (.path or breadcrumb)
+            if html:
+                bc_match = re.search(
+                    r'class=["\'](?:path|breadcrumb)[^"\']*["\']([\s\S]*?)</(?:div|ol|ul)>',
+                    html,
+                    re.IGNORECASE,
+                )
+                if bc_match:
+                    links = re.findall(r'href=["\']([^"\']+)["\']', bc_match.group(1), re.IGNORECASE)
+                    for link in reversed(links):
+                        if "/category/" in link or "cate_no=" in link:
+                            if link.startswith("/"):
+                                return f"{base}{link}"
+                            elif link.startswith("http"):
+                                return link
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
     def _normalize_product_url(url: str) -> str:
         """Collapse Cafe24 product URL variants to a stable dedupe key."""
         raw = (url or "").strip()
@@ -1785,8 +1821,29 @@ class StoreService:
             urls: List[str] = []
 
             if is_single_product:
-                urls = [crawl_req.url]
-                category_urls = []
+                if getattr(crawl_req, "expand_category", False):
+                    cat_url = self._extract_parent_category_url(crawl_req.url, raw_html)
+                    if cat_url:
+                        urls, expand_stats = await self._expand_catalog_from_categories(
+                            category_urls=[cat_url],
+                            seed_urls=[crawl_req.url],
+                            budget_seconds=15.0,
+                            max_categories=1,
+                            max_pages=3,
+                        )
+                        category_count = 1
+                        category_urls = [cat_url]
+                        logger.info(
+                            "[CatalogCrawl] Single product category expand: %s → %d sibling URLs found",
+                            cat_url,
+                            len(urls),
+                        )
+                    else:
+                        urls = [crawl_req.url]
+                        category_urls = []
+                else:
+                    urls = [crawl_req.url]
+                    category_urls = []
             elif is_sitemap:
                 sub_sitemaps = re.findall(
                     r"<sitemap>\s*<loc>\s*(.*?)\s*</loc>", raw_html, re.IGNORECASE

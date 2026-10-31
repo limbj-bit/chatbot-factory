@@ -266,3 +266,57 @@ async def test_single_product_url_fast_path():
 
     await engine.dispose()
 
+
+
+@pytest.mark.asyncio
+async def test_single_product_url_with_category_expand():
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+    async with factory() as session:
+        session.add(
+            StoreModel(
+                id="s-sp-exp",
+                mall_id="sp_exp_mall",
+                store_name="SP Exp Mall",
+                industry="beauty",
+            )
+        )
+        await session.commit()
+
+        sp_url = "https://rooicellmall.co.kr/product/알뜰장터-루이셀-수딩클렌저/3099/category/1/display/5/?icid=MAIN"
+        req = StoreCatalogCrawlRequest(
+            url=sp_url,
+            max_products=20,
+            offset=0,
+            force_refresh=False,
+            expand_category=True,
+            raw_html_override="<html><head><title>Product</title></head><body>Detail</body></html>",
+        )
+
+        async def _mock_cat_expand(category_urls, seed_urls, budget_seconds, max_categories, max_pages):
+            # Returns the seed URL plus 2 sibling products found in category 1
+            return seed_urls + [
+                "https://rooicellmall.co.kr/product/item2/3100/",
+                "https://rooicellmall.co.kr/product/item3/3101/",
+            ], {"categories_visited": 1, "pages_fetched": 1, "product_urls": 3}
+
+        with patch.object(
+            store_service, "_expand_catalog_from_categories", AsyncMock(side_effect=_mock_cat_expand)
+        ) as mock_expand, patch.object(
+            store_service, "crawl_and_learn_url", AsyncMock(side_effect=_fake_learn)
+        ) as mock_learn:
+            resp = await store_service.crawl_store_catalog(session, "sp_exp_mall", req)
+
+        # Category expansion must have been targeted to category 1
+        assert mock_expand.call_count == 1
+        called_cats = mock_expand.call_args[1]["category_urls"]
+        assert any("cate_no=1" in c or "/category/1" in c for c in called_cats)
+        # Should have learned all 3 products (seed + 2 siblings)
+        assert mock_learn.call_count == 3
+        assert resp.total_products == 3
+        assert resp.learned == 3
+
+    await engine.dispose()

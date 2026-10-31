@@ -147,6 +147,10 @@ class StoreCatalogCrawlRequest(BaseModel):
         None,
         description="테스트 시 직접 주입할 HTML 본문 (생략 시 URL에서 직접 수집)",
     )
+    expand_category: bool = Field(
+        False,
+        description="단일 상품 URL인 경우, 해당 상품이 속한 소속 카테고리 연관 상품도 함께 발굴 학습",
+    )
 
 
 class StoreKnowledgeResponse(BaseModel):
