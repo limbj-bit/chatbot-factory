@@ -220,3 +220,49 @@ def test_normalize_product_url_collapses_cafe24_variants():
         "https://shop.example.com/product/detail.html?product_no=12345"
     )
     assert a == b == c
+
+
+@pytest.mark.asyncio
+async def test_single_product_url_fast_path():
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+    async with factory() as session:
+        session.add(
+            StoreModel(
+                id="s-sp",
+                mall_id="sp_mall",
+                store_name="SP Mall",
+                industry="beauty",
+            )
+        )
+        await session.commit()
+
+        sp_url = "https://rooicellmall.co.kr/product/알뜰장터-루이셀-수딩클렌저/3099/category/1/display/5/?icid=MAIN"
+        req = StoreCatalogCrawlRequest(
+            url=sp_url,
+            max_products=20,
+            offset=0,
+            force_refresh=False,
+            raw_html_override="<html><head><title>Product</title></head><body>Detail</body></html>",
+        )
+
+        with patch.object(
+            store_service, "_expand_catalog_from_categories", AsyncMock()
+        ) as mock_expand, patch.object(
+            store_service, "crawl_and_learn_url", AsyncMock(side_effect=_fake_learn)
+        ) as mock_learn:
+            resp = await store_service.crawl_store_catalog(session, "sp_mall", req)
+
+        # Must NOT run category expansion across the whole store
+        mock_expand.assert_not_called()
+        # Must learn the single product
+        assert mock_learn.call_count == 1
+        assert resp.total_products == 1
+        assert resp.learned == 1
+        assert not resp.has_more
+
+    await engine.dispose()
+

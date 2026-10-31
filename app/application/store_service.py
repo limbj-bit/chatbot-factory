@@ -1736,7 +1736,13 @@ class StoreService:
         used_cache = False
         expand_partial = False
 
-        cached = None if offset == 0 else self._catalog_cache_get(mall_id, crawl_req.url)
+        is_single_product = (
+            bool(re.search(r"/product/[^/]+/(\d+)", crawl_req.url or "", re.IGNORECASE))
+            or bool(re.search(r"[?&](?:product_no|productno|goods_no|goodsno)=\d+", crawl_req.url or "", re.IGNORECASE))
+            or bool(re.search(r"/product/detail\.html", crawl_req.url or "", re.IGNORECASE))
+        )
+
+        cached = None if (offset == 0 or is_single_product) else self._catalog_cache_get(mall_id, crawl_req.url)
         if cached and cached.get("urls"):
             urls = list(cached["urls"])
             sitemap_count = int(cached.get("sitemap_count") or 0)
@@ -1778,7 +1784,10 @@ class StoreService:
             category_urls: List[str] = []
             urls: List[str] = []
 
-            if is_sitemap:
+            if is_single_product:
+                urls = [crawl_req.url]
+                category_urls = []
+            elif is_sitemap:
                 sub_sitemaps = re.findall(
                     r"<sitemap>\s*<loc>\s*(.*?)\s*</loc>", raw_html, re.IGNORECASE
                 )
@@ -1872,7 +1881,7 @@ class StoreService:
             category_count = len(category_urls)
 
             # Always expand via categories when present — Cafe24 sitemaps are often incomplete.
-            if category_urls:
+            if category_urls and not is_single_product:
                 before = len(urls)
                 urls, expand_stats = await self._expand_catalog_from_categories(
                     category_urls=category_urls,
@@ -1890,7 +1899,7 @@ class StoreService:
                     expand_partial = True
 
             # Thin fallback only when still almost empty (avoid long deep crawl after rich sitemap).
-            if len(urls) < max(max_products, 3):
+            if not is_single_product and len(urls) < max(max_products, 3):
                 urls = await self._deep_crawl_product_urls(
                     seed_url=crawl_req.url,
                     urls=urls,
@@ -1968,7 +1977,7 @@ class StoreService:
         failed = 0
         timed_out = False
         cursor = offset
-        force_refresh = bool(getattr(crawl_req, "force_refresh", False))
+        force_refresh = bool(getattr(crawl_req, "force_refresh", False)) or is_single_product
         learn_deadline = _asyncio.get_event_loop().time() + 40.0
 
         for u in urls[offset:]:
