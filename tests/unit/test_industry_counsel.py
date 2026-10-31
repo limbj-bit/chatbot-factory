@@ -72,3 +72,10 @@ def test_persona_lines_by_industry_depth():
 
     hotel = "\n".join(ChatService._industry_persona_lines("hotel", "호텔봇", "호텔"))
     assert "체크인" in hotel or "예약" in hotel
+
+
+def test_sanitize_no_ai_jargon():
+    raw = '안녕하세요! 관련 학습된 상품이 총 5개 있으며, 학습된 지식에 따라 안내해 드립니다.'
+    sanitized = ChatService._sanitize_no_ai_jargon(raw)
+    assert '학습' not in sanitized
+    assert '관련 제품이' in sanitized

@@ -420,9 +420,9 @@ def catalog_match_preamble(total_n: int, top_hits: List[RAGSearchResult]) -> str
     return "\n".join(
         [
             "## 카탈로그 매칭 (필수 반영)",
-            f"- 고객 키워드와 맞는 학습 상품: 총 {total_n}개",
+            f"- 고객 키워드와 맞는 추천 가능 제품: 총 {total_n}개",
             f"- 이번 답변 추천 후보(상위 {k}개): " + ", ".join(titles),
-            f"- 첫머리에 관련 상품이 {total_n}개 있음을 말하고, 위 상위 {k}개만 한 줄 이유와 함께 추천하세요.",
+            f"- 첫머리에 관련 제품이 총 {total_n}가지 준비되어 있음을 전문 상담사 톤으로 자연스럽게 안내하고(절대 '학습'이나 '학습된'이라는 AI 기술 용어를 쓰지 마세요), 위 상위 {k}개만 한 줄 추천 이유와 함께 소개하세요.",
             f"- N={total_n}과 상품명은 이 목록 밖으로 늘리거나 바꾸지 마세요.",
         ]
     )
@@ -854,18 +854,18 @@ class ChatService:
                 "",
                 "## 뷰티 전문 상담사 페르소나",
                 (
-                    f"당신은 {bot_display_name}. 뷰티&코스메틱 전문 상담사로서 "
-                    "피부 고민에 공감하며 근거 있는 추천을 합니다. 부드러운 존댓말을 씁니다."
+                    f"당신은 {bot_display_name}. 뷰티&코스메틱 전문 카운슬러로서 "
+                    "고객의 피부 고민에 공감하며 전문적인 추천을 합니다. 품격 있는 존댓말을 씁니다."
                 ),
                 "",
-                "### 추천 요청 시",
-                "- '추천해줘'에도 학습된 상품으로 전문가 상담·추천 이유·사용 팁을 답하세요(카드는 시스템이 표시).",
-                "- 피부타입·고민이 없으면 답변 끝에 1~2개만 짧게 물어 다음 추천을 정교화하세요.",
+                "### 추천 요청 및 인테이크",
+                "- 고객 질문에 맞는 스토어 준비 제품으로 전문가 상담·추천 이유·사용 팁을 답하세요(카드는 시스템이 표시).",
+                "- 피부타입·고민이 없으면 답변 끝에 1~2개만 짧게 확인해 다음 추천을 정교화하세요.",
                 "",
                 "### 추천 시 답변 구조",
-                "1) 고객 상황 한 줄 요약 2) 상품 1~3개(이유·핵심 성분·사용법·가격) "
-                "3) 아침/저녁 루틴(가능 시) 4) 추가 질문 유도",
-                "- 학습 지식에 없는 성분·효능은 지어내지 마세요. 피부 무관 상품은 추천 금지.",
+                "1) 고객 상황 한 줄 요약 2) 추천 제품 1~3개(선정 이유·핵심 성분·사용법·가격) "
+                "3) 아침/저녁 뷰티 루틴 제안(가능 시) 4) 추가 질문 유도",
+                "- 공식 제품 정보에 없는 성분·효능은 지어내지 마세요. 피부 무관 상품은 추천 금지.",
             ]
         elif key == "fresh_food":
             lines += [
@@ -876,7 +876,7 @@ class ChatService:
                     "보관·후숙·섭취·제철 추천과 품질 클레임 안내를 정확히 합니다."
                 ),
                 "",
-                "### 추천 요청 시",
+                "### 추천 요청 및 인테이크",
                 "- 추천 요청에는 학습된 상품으로 이유와 함께 안내하세요(카드는 시스템이 표시).",
                 "- 용도·인원이 불명확하면 답변 끝에만 짧게 확인하세요.",
                 "",
@@ -898,7 +898,7 @@ class ChatService:
                     "사이즈·핏·코디·소재를 근거 있게 안내합니다."
                 ),
                 "",
-                "### 추천 요청 시",
+                "### 추천 요청 및 인테이크",
                 "- 추천 요청에는 학습된 상품으로 이유와 함께 안내하세요(카드는 시스템이 표시).",
                 "- 사이즈·핏이 없으면 답변 끝에만 짧게 확인하세요.",
                 "",
@@ -1209,7 +1209,7 @@ class ChatService:
         if rag_context:
             lines.append("")
             lines.append(
-                "## 학습된 상품/스토어 지식 (상품 질문 시 근거로 사용, 지식에 없는 내용은 지어내지 말 것)"
+                "## 스토어 공식 제품/정책 지식 (학습된 상품/스토어 지식 근거 — 고객 대화 시에는 '학습' 용어를 쓰지 말고 '준비된 제품'으로 응대)"
             )
             lines.append(rag_context)
 
@@ -1223,7 +1223,7 @@ class ChatService:
         lines.append("")
         lines.append("## 답변 규칙 (필수)")
         lines.append(
-            "1. 위 '정책'과 '학습된 지식'에 적힌 숫자·금액·기간만 그대로 인용합니다. "
+            "1. 위 '정책'과 '공식 제품 정보'에 적힌 숫자·금액·기간만 그대로 인용합니다. "
             "절대로 임의로 배송비·기간·환불 비율을 만들거나 바꾸지 않습니다."
         )
         lines.append(
@@ -1249,7 +1249,7 @@ class ChatService:
             "긴 환영/소개 멘트를 반복하지 마세요. 이름은 필요할 때만 한 번 짧게 언급합니다."
         )
         lines.append(
-            "7. 고객이 상품을 찾거나 추천을 요청하면, 학습된 상품을 근거로 추천 이유를 "
+            "7. 고객이 상품을 찾거나 추천을 요청하면, 스토어 공식 제품 정보를 근거로 추천 이유를 "
             "말하고(카드는 시스템이 별도 표시), 없는 가격·스펙은 지어내지 마세요."
         )
         lines.append(
@@ -1258,7 +1258,31 @@ class ChatService:
             "지식에 판매가가 없거나 불확실하면 가격을 숫자로 단정하지 말고 "
             "'상품 카드/상세 페이지에서 확인해 주세요'라고 안내하세요."
         )
+        lines.append(
+            "9. [AI/기계어 발화 절대 금지] 고객 응대 시 '학습된', '학습 데이터', '학습 상품', "
+            "'지식 베이스', 'AI 모델', '시스템 프롬프트' 등 내부 기술/AI 용어를 절대 말하지 마세요. "
+            "대신 '저희 스토어에 준비된 제품', '루이셀의 대표 라인 중 추천해 드리는 제품'처럼 "
+            "백화점/부티크 전문 카운슬러로서 품격 있고 자연스럽게 응대하세요."
+        )
         return "\n".join(lines)
+
+    @classmethod
+    def _sanitize_no_ai_jargon(cls, reply: str) -> str:
+        """Remove robotic AI jargon like '학습된 상품' so replies sound like a professional human consultant."""
+        if not reply:
+            return reply
+        out = reply
+        out = re.sub(r"관련\s*학습된\s*상품이", "관련 제품이", out)
+        out = re.sub(r"관련\s*학습된\s*제품이", "관련 제품이", out)
+        out = re.sub(r"학습된\s*상품이\s*총\s*", "준비된 제품이 총 ", out)
+        out = re.sub(r"학습된\s*제품이\s*총\s*", "준비된 제품이 총 ", out)
+        out = re.sub(r"학습된\s*상품", "준비된 제품", out)
+        out = re.sub(r"학습된\s*제품", "준비된 제품", out)
+        out = re.sub(r"학습된\s*지식", "공식 제품 정보", out)
+        out = re.sub(r"학습된\s*내용", "제품 정보", out)
+        out = re.sub(r"학습\s*데이터", "제품 정보", out)
+        out = re.sub(r"학습된", "안내된", out)
+        return out
 
     @classmethod
     def _guardrail_shipping_not_product_price(
@@ -1690,6 +1714,7 @@ class ChatService:
             intent = "ai_counselor_recommendation" if is_counselor_query else "rag_product_inquiry"
         full_content = self._guardrail_fix_claim_window(raw_content, store_obj)
         full_content = self._guardrail_shipping_not_product_price(full_content, store_obj)
+        full_content = self._sanitize_no_ai_jargon(full_content)
         # Live correction for the widget: replace on-screen text if policy was re-anchored.
         if full_content != raw_content:
             yield {"__stream_replace__": full_content}

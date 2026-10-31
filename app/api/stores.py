@@ -1,3 +1,4 @@
+import re
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -167,14 +168,30 @@ async def upload_store_bot_avatar_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Avatar image file must be under 10MB.",
         )
-    try:
-        data, mime = compress_avatar_bytes(raw_bytes)
-        data_uri = bytes_to_data_uri(data, mime)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Avatar image could not be processed. Use JPG/PNG under 10MB. ({exc})",
-        ) from exc
+
+    is_svg = (
+        (file.content_type and "svg" in file.content_type.lower())
+        or (file.filename and file.filename.lower().endswith(".svg"))
+        or raw_bytes.strip().startswith(b"<svg")
+        or b"<svg" in raw_bytes[:200].lower()
+    )
+    if is_svg:
+        svg_text = raw_bytes.decode("utf-8", errors="ignore")
+        if re.search(r"<\s*script|javascript:|onload=|onerror=", svg_text, re.IGNORECASE):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Malicious script tags detected in SVG file.",
+            )
+        data_uri = bytes_to_data_uri(raw_bytes, "image/svg+xml")
+    else:
+        try:
+            data, mime = compress_avatar_bytes(raw_bytes)
+            data_uri = bytes_to_data_uri(data, mime)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Avatar image could not be processed. Use JPG/PNG under 10MB. ({exc})",
+            ) from exc
 
     updated = await store_service.update_subscription(
         session,

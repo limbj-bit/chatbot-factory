@@ -302,7 +302,15 @@ def extract_product_prices(
     sale = c24_sale
     original = c24_list
 
-    # 2) Explicit sale JS / 할인가 labels only (not generic product_price → sale)
+    # 2) Standard e-commerce product:price:amount (canonical catalog price tag)
+    if sale is None:
+        pat1 = r'<meta\s+[^>]*property=["\']product:price:amount["\'][^>]*content=["\']([^"\']+)["\']'
+        pat2 = r'<meta\s+[^>]*content=["\']([^"\']+)["\'][^>]*property=["\']product:price:amount["\']'
+        m = re.search(pat1, raw_html, re.IGNORECASE) or re.search(pat2, raw_html, re.IGNORECASE)
+        if m:
+            sale = _ok(parse_price_val(m.group(1)), reject)
+
+    # 2.1) Explicit sale JS / 할인가 labels only (not generic product_price → sale)
     if sale is None:
         sale = _ok(
             _js_assigned(raw_html, ("sale_price", "salePrice", "prd_price_sale")),

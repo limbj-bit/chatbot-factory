@@ -1419,7 +1419,7 @@ async def get_dynamic_widget_script(
     let s = String(text == null ? "" : text);
     s = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     s = s.replace(/\\*\\*([^*\\n]+)\\*\\*/g, "<strong>$1</strong>");
-    s = s.replace(/^[\-\u00b7\u2022]\s+(.+)$/gm, '<div class="fresh-bot-li">$1</div>');
+    s = s.replace(/^[-_\u00b7\u2022]\\s+(.+)$/gm, '<div class="fresh-bot-li">$1</div>');
     s = s.replace(/\\n/g, "<br>");
     s = s.replace(/(?:<br>\\s*)+(?=<div class="fresh-bot-li">)/g, "");
     s = s.replace(/(<\\/div>)(?:<br>\\s*)+/g, "$1");
