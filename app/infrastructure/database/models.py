@@ -1,5 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+import time
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -132,6 +133,26 @@ class SessionModel(Base):
     )
 
 
+_LAST_MESSAGE_US: int = 0
+
+
+def _next_message_timestamp() -> datetime:
+    """Strictly increasing timestamp for chat messages.
+
+    Windows clocks can return the same value for inserts a few ms apart; with
+    tied timestamps, `ORDER BY created_at, id` becomes random (UUIDs) and
+    multi-turn history arrives out of order. Two calls can also land inside the
+    same microsecond, which `fromtimestamp` rounds into an identical datetime —
+    so track integer microseconds and bump by at least 1µs.
+    """
+    global _LAST_MESSAGE_US
+    us = time.time_ns() // 1000
+    if us <= _LAST_MESSAGE_US:
+        us = _LAST_MESSAGE_US + 1
+    _LAST_MESSAGE_US = us
+    return datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(microseconds=us)
+
+
 class MessageModel(Base):
     __tablename__ = "messages"
 
@@ -147,7 +168,7 @@ class MessageModel(Base):
     detected_language: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
     translation_ko: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=_next_message_timestamp
     )
 
     session: Mapped["SessionModel"] = relationship("SessionModel", back_populates="messages")

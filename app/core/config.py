@@ -49,6 +49,12 @@ class Settings(BaseSettings):
 
     AI_DEFAULT_PROVIDER: str = "groq"
     AI_FALLBACK_PROVIDER: str = "nvidia"
+    # Streaming UX: a provider that doesn't emit the first token within this
+    # window is skipped so the customer never stares at a silent bubble.
+    AI_STREAM_FIRST_TOKEN_TIMEOUT: float = 8.0
+    # Any provider error benches that provider briefly, preventing every
+    # request from re-waiting on the same broken/slow endpoint.
+    AI_FAILURE_COOLDOWN_SEC: float = 60.0
     # Free vision preferred; Gemini remains last resort in get_vision_provider_chain()
     AI_VISION_PROVIDER: str = "nvidia"
     # Per-provider models (task-tuned). Override via env without code changes.

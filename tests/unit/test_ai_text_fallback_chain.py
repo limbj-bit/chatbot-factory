@@ -1,4 +1,6 @@
 """Text/vision chains: rotate free APIs; Gemini always last paid resort."""
+import asyncio
+
 from app.core.config import settings
 from app.infrastructure.ai.router import AIProviderRouter
 
@@ -23,13 +25,19 @@ def test_text_chain_includes_all_free_and_gemini_last(monkeypatch):
     assert chain[-1] == "gemini"
 
 
-def test_text_chain_rotates_free_start(monkeypatch):
+def test_text_chain_is_speed_first_not_round_robin(monkeypatch):
+    """Regression: round-robin caused 3/4 messages to start on a buffering
+    provider, making the first token appear 5-12s late. Groq must always lead."""
     router = _live_router(monkeypatch)
     starts = [router.get_text_provider_chain()[0] for _ in range(8)]
-    # Round-robin should use more than one free provider as the first hop
-    assert len(set(starts)) >= 2
-    for _ in range(4):
-        assert router.get_text_provider_chain()[-1] == "gemini"
+    assert set(starts) == {"groq"}
+    assert router.get_text_provider_chain() == [
+        "groq",
+        "nvidia",
+        "openrouter",
+        "mistral",
+        "gemini",
+    ]
 
 
 def test_gemini_stays_last_even_if_set_as_default(monkeypatch):
@@ -71,6 +79,29 @@ def test_vision_chain_nvidia_openrouter_then_gemini(monkeypatch):
     router = AIProviderRouter(mock_mode=False)
     chain = router.get_vision_provider_chain()
     assert chain == ["nvidia", "openrouter", "gemini"]
+
+
+async def test_stream_skips_provider_that_misses_first_token_timeout(monkeypatch):
+    """A silent/buffering provider must not block the customer past the limit."""
+
+    class _SlowProvider:
+        async def stream_text(self, prompt, system_prompt=None, history=None):
+            await asyncio.sleep(5)
+            yield "늦은 답변"
+
+    class _FastProvider:
+        async def stream_text(self, prompt, system_prompt=None, history=None):
+            yield "빠른"
+            yield " 답변"
+
+    monkeypatch.setattr(settings, "AI_STREAM_FIRST_TOKEN_TIMEOUT", 0.05)
+    router = AIProviderRouter(mock_mode=False)
+    router.providers = {"groq": _SlowProvider(), "nvidia": _FastProvider()}
+    router.mock_mode = False
+
+    tokens = [t async for t in router.stream_text("질문")]
+    assert "".join(tokens) == "빠른 답변"
+    assert "groq" in router.provider_cooldowns
 
 
 def test_parse_model_pool_csv_and_single():

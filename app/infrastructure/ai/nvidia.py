@@ -153,11 +153,65 @@ class NvidiaProvider(AIProviderPort):
         system_prompt: Optional[str] = None,
         history: Optional[List[Dict[str, str]]] = None,
     ) -> AsyncIterator[str]:
-        # Simple streaming fallback or direct full-text yield
-        full_text = await self.generate_text(prompt, system_prompt, history)
-        words = full_text.split(" ")
-        for i, word in enumerate(words):
-            yield word + (" " if i < len(words) - 1 else "")
+        """Real SSE streaming from NVIDIA NIM (was buffering the full answer)."""
+        messages = build_openai_messages(prompt, system_prompt, history)
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        last_error: Optional[Exception] = None
+        for model in self._next_text_order():
+            try:
+                payload = {
+                    "model": model,
+                    "messages": messages,
+                    "temperature": 0.3,
+                    "max_tokens": 1024,
+                    "stream": True,
+                }
+                got = False
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    async with client.stream(
+                        "POST", self.BASE_URL, json=payload, headers=headers
+                    ) as response:
+                        if response.status_code == 429:
+                            raise RuntimeError("429 Too Many Requests: NVIDIA NIM rate limit")
+                        if response.status_code == 404:
+                            raise RuntimeError(f"404 NVIDIA model unavailable: {model}")
+                        response.raise_for_status()
+                        async for line in response.aiter_lines():
+                            if not line.startswith("data:"):
+                                continue
+                            data = line[5:].strip()
+                            if not data or data == "[DONE]":
+                                continue
+                            try:
+                                chunk = json.loads(data)
+                                delta = (
+                                    chunk["choices"][0].get("delta", {}).get("content") or ""
+                                )
+                            except Exception:
+                                continue
+                            if delta:
+                                got = True
+                                yield delta
+                if got:
+                    return
+                last_error = RuntimeError(f"NVIDIA stream returned no tokens for {model}")
+            except Exception as exc:
+                last_error = exc
+                err = str(exc).lower()
+                # Soft-fail across the model pool on rate limit / missing model / HTTP errors
+                if (
+                    "429" in err
+                    or "404" in err
+                    or "rate limit" in err
+                    or "status" in err
+                    or "http" in err
+                ):
+                    continue
+                raise
+        raise last_error or RuntimeError("NVIDIA text pool exhausted")
 
     async def analyze_claim_image(
         self, image_bytes: bytes, mime_type: str, industry: Optional[str] = None

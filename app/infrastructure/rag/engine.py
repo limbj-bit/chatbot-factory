@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import re
 from typing import Any, Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +21,38 @@ class RAGDocument:
 class RAGSearchResult:
     document: RAGDocument
     score: float
+
+
+# Beauty concern → ingredient/category vocabulary. Naive token overlap cannot
+# connect "지성·모공" to "퓨리파잉 세럼"; this expansion makes the catalog
+# searchable the way a human consultant thinks.
+BEAUTY_CONCERN_EXPANSIONS = {
+    "모공": ["모공", "피지", "세럼", "퓨리파잉", "클렌징", "BHA", "살리실"],
+    "지성": ["지성", "피지", "모공", "세럼", "클렌징", "BHA"],
+    "건성": ["건성", "보습", "수분", "히알루론", "세라마이드", "크림", "앰플"],
+    "건조": ["건조", "보습", "수분", "히알루론", "세라마이드", "크림"],
+    "민감": ["민감", "진정", "시카", "아줄렌", "판테놀", "순한"],
+    "홍조": ["홍조", "진정", "시카", "아줄렌", "판테놀"],
+    "미백": ["미백", "나이아신", "비타민C", "화이트닝", "톤업", "색소"],
+    "기미": ["기미", "미백", "나이아신", "화이트닝", "색소"],
+    "주름": ["주름", "탄력", "콜라겐", "펩타이드", "레티놀", "EGF"],
+    "탄력": ["탄력", "주름", "콜라겐", "펩타이드", "EGF"],
+    "여드름": ["여드름", "트러블", "진정", "시카", "BHA", "살리실"],
+    "트러블": ["트러블", "진정", "시카", "BHA"],
+    "각질": ["각질", "필링", "AHA", "BHA", "PHA"],
+}
+
+
+def expand_query_tokens(query: str, industry: Optional[str] = None) -> set:
+    """Query tokens + concern synonyms (beauty only)."""
+    tokens = set((query or "").lower().split())
+    if normalize_industry_key(industry or "") != "beauty":
+        return tokens
+    q = (query or "").lower()
+    for concern, extras in BEAUTY_CONCERN_EXPANSIONS.items():
+        if concern in q:
+            tokens.update(t.lower() for t in extras)
+    return tokens
 
 
 # Deterministic FAQ dictionary for 0-token answers
@@ -156,9 +189,50 @@ class RAGEngine:
         for word in clean_q.split():
             if len(word) >= 2 and word[:2] in doc_text:
                 matches += 1
+        # A token in the product NAME is a much stronger signal than a passing
+        # mention in a long description (junk pages otherwise outrank products).
+        title_text = (doc.title or "").lower()
+        title_hits = sum(1 for token in query_tokens if len(token) >= 2 and token in title_text)
+        matches += title_hits * 2
         if matches > 0:
             return round(matches / (len(query_tokens) + 1), 2)
         return 0.0
+
+    @staticmethod
+    def _digest_doc_content(text: str, head: int = 600, extra: int = 400) -> str:
+        """Keep the useful head of a long crawled page plus its ingredient block.
+
+        Crawled Cafe24 pages carry nav/footer/options noise that bloats the
+        prompt and delays the first token. The head holds title, price, volume
+        and the product summary; if the ingredient/summary section appears
+        later, keep a window around it so answer quality does not drop.
+        """
+        body = (text or "").strip()
+        if len(body) <= 1200:
+            return body
+        parts = [body[:head].rstrip()]
+        for marker in ("전성분", "상품요약정보", "사용법", "성분", "효능"):
+            idx = body.find(marker)
+            if idx >= head:
+                parts.append(body[idx : idx + extra].strip())
+                break
+        return (" … ".join(parts))[: head + extra + 5].rstrip()
+
+    @staticmethod
+    def _dedupe_results(results: List[RAGSearchResult], top_k: int) -> List[RAGSearchResult]:
+        """Same product crawled under several URLs must not eat multiple slots."""
+        out: List[RAGSearchResult] = []
+        seen: set = set()
+        for r in results:
+            title = re.sub(r"\s+", "", (r.document.title or "").lower())
+            key = title or r.document.document_id
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(r)
+            if len(out) >= top_k:
+                break
+        return out
 
     @staticmethod
     def _doc_matches_industry(doc: RAGDocument, industry: Optional[str]) -> bool:
@@ -175,7 +249,7 @@ class RAGEngine:
         self, query: str, top_k: int = 2, industry: Optional[str] = None
     ) -> List[RAGSearchResult]:
         """Search default in-memory documents using token overlap & keyword relevance scoring."""
-        query_tokens = set(query.lower().split())
+        query_tokens = expand_query_tokens(query, industry)
         results: List[RAGSearchResult] = []
 
         for doc in self.documents:
@@ -186,7 +260,7 @@ class RAGEngine:
                 results.append(RAGSearchResult(document=doc, score=score))
 
         results.sort(key=lambda r: r.score, reverse=True)
-        return results[:top_k]
+        return self._dedupe_results(results, top_k)
 
     async def search_with_store_knowledge(
         self,
@@ -198,7 +272,7 @@ class RAGEngine:
     ) -> List[RAGSearchResult]:
         """Store DB knowledge first. Default demo docs only if store has zero rows,
         and only docs tagged for the same industry (prevents strawberry leaking into beauty)."""
-        query_tokens = set(query.lower().split())
+        query_tokens = expand_query_tokens(query, industry)
         results: List[RAGSearchResult] = []
 
         q = select(StoreKnowledgeModel).where(StoreKnowledgeModel.mall_id == mall_id)
@@ -206,6 +280,8 @@ class RAGEngine:
         store_docs = db_res.scalars().all()
 
         for sdoc in store_docs:
+            if not (sdoc.title or "").strip():
+                continue
             rag_doc = RAGDocument(
                 document_id=sdoc.id,
                 source=sdoc.doc_type,
@@ -235,7 +311,7 @@ class RAGEngine:
                     results.append(RAGSearchResult(document=doc, score=score))
 
         results.sort(key=lambda r: r.score, reverse=True)
-        return results[:top_k]
+        return self._dedupe_results(results, top_k)
 
     def assemble_context(
         self,
@@ -248,7 +324,10 @@ class RAGEngine:
 
         reject = reject_prices or set()
         context_lines = ["--- [참고 공식 지식 베이스] ---"]
-        for res in search_results:
+        # Long crawled pages (nav/footer/options) bloat the prompt and slow the
+        # first token. Keep the head of each doc — title, price, summary and
+        # ingredients appear there — and cap how many docs reach the model.
+        for res in search_results[:12]:
             doc = res.document
             raw_price = doc.metadata.get("price")
             raw_orig = doc.metadata.get("original_price")
@@ -270,10 +349,14 @@ class RAGEngine:
                 price_info = f" | 판매가: {price_i:,}원"
             else:
                 price_info = ""
+            body = self._digest_doc_content(doc.content)
             context_lines.append(
-                f"[문서 ID: {doc.document_id} | 제목: {doc.title}{price_info} | 출처: {doc.source} | 일치도: {res.score}]\n{doc.content}\n"
+                f"[문서 ID: {doc.document_id} | 제목: {doc.title}{price_info} | 출처: {doc.source} | 일치도: {res.score}]\n{body}\n"
             )
-        context_lines.append("--- [지침: 위 참고 지식 베이스에 명시된 사실만 답변하십시오] ---")
+        context_lines.append(
+            "--- [지침: 위 참고 지식 베이스에 명시된 사실만 답변하십시오. "
+            "여기에 없는 상품명은 절대 새로 만들어내지 마십시오.] ---"
+        )
         return "\n".join(context_lines)
 
 

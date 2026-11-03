@@ -321,6 +321,86 @@ _CARD_QUERY_STOP = frozenset(
         "인데",
     }
 )
+
+# Korean speech particles attach to nouns ("모공이", "피부인데"). Without
+# stripping them, a skin-concern sentence looks like a product name and the
+# card filter wrongly returns no context — the model then invents products.
+_KO_QUERY_SUFFIXES = (
+    "이에요",
+    "예요",
+    "입니다",
+    "인데요",
+    "인데",
+    "에서",
+    "에게",
+    "으로",
+    "어서",
+    "으면",
+    "지만",
+    "까요",
+    "네요",
+    "군요",
+    "나요",
+    "가요",
+    "해요",
+    "한테",
+    "부터",
+    "까지",
+    "처럼",
+    "보다",
+    "이랑",
+    "랑",
+    "은",
+    "는",
+    "이",
+    "가",
+    "을",
+    "를",
+    "의",
+    "에",
+    "도",
+    "와",
+    "과",
+    "로",
+    "서",
+    "요",
+)
+
+# Conversational filler — never a product name.
+_GENERIC_QUERY_WORDS = frozenset(
+    {
+        "어떤",
+        "좋을",
+        "좋은",
+        "좋아",
+        "넓어",
+        "부탁",
+        "궁금",
+        "문의",
+        "관련",
+        "비슷",
+        "다른",
+        "이런",
+        "저런",
+        "그런",
+        "혹시",
+        "지금",
+        "오늘",
+        "제일",
+        "가장",
+        "정말",
+        "너무",
+        "많이",
+        "조금",
+        "성분",
+        "맞는",
+        "맞춤",
+        "그리고",
+        "그럼",
+        "근데",
+        "저기",
+    }
+)
 # Skin/need words: allow RAG top cards when these don't match a title
 _CARD_SOFT_TOKENS = frozenset(
     {
@@ -342,15 +422,25 @@ _CARD_SOFT_TOKENS = frozenset(
 )
 
 
+def _strip_ko_suffix(token: str) -> str:
+    """'모공이'→'모공', '피부인데'→'피부' (particles are not product names)."""
+    t = (token or "").strip(" .,!?~…·\"'()[]{}")
+    for suffix in _KO_QUERY_SUFFIXES:
+        if t.endswith(suffix) and len(t) - len(suffix) >= 2:
+            return t[: -len(suffix)]
+    return t
+
+
 def _card_query_tokens(message_text: str) -> List[str]:
     """Tokens used to keep carousel on the named product (e.g. 콜라겐)."""
     primary = _normalize_product_query(message_text)
     out: List[str] = []
-    if len(primary) >= 2:
+    # A whole sentence collapsed into one long token is not a product name.
+    if 2 <= len(primary) <= 12:
         out.append(primary)
     for w in re.findall(r"[가-힣A-Za-z0-9]{2,}", message_text or ""):
-        wl = re.sub(r"\s+", "", w)
-        if len(wl) < 2 or wl in _CARD_QUERY_STOP:
+        wl = _strip_ko_suffix(re.sub(r"\s+", "", w))
+        if len(wl) < 2 or wl in _CARD_QUERY_STOP or wl in _GENERIC_QUERY_WORDS:
             continue
         if wl not in out:
             out.append(wl)
@@ -1271,6 +1361,11 @@ class ChatService:
             "대신 '저희 스토어에 준비된 제품', '루이셀의 대표 라인 중 추천해 드리는 제품'처럼 "
             "백화점/부티크 전문 카운슬러로서 품격 있고 자연스럽게 응대하세요."
         )
+        lines.append(
+            "10. [상품명 환각 금지] 상품명은 위 '스토어 공식 제품/정책 지식' 또는 상품 카드에 "
+            "실제로 적힌 이름만 사용하세요. 거기에 없는 제품명을 새로 만들어 언급하지 말고, "
+            "마땅한 제품이 없으면 특정 상품명 없이 일반적인 성분·사용 루틴 조언만 하세요."
+        )
         return "\n".join(lines)
 
     @classmethod
@@ -1517,8 +1612,12 @@ class ChatService:
                         card_hits = filter_results_for_cards(
                             dialogue_query, results, max_cards=5
                         )
-                        # Named dialogue cue with no title match → do not dump unrelated RAG
-                        context_results = card_hits if named else results
+                        # Never send an empty knowledge context to the LLM:
+                        # named queries with no title match (e.g. ingredient
+                        # questions) still get grounded catalog results, and
+                        # the prompt forbids inventing product names. Cap the
+                        # docs so the prompt (and first token) stays fast.
+                        context_results = card_hits if card_hits else results[:8]
                     if attach_cards:
                         recommended_products = self._build_product_cards(
                             card_hits,
@@ -1687,7 +1786,10 @@ class ChatService:
             context_results = card_hits
         else:
             card_hits = filter_results_for_cards(dialogue_query, results, max_cards=5)
-            context_results = card_hits if named else results
+            # Never send an empty knowledge context to the LLM: named queries
+            # with no title match still get grounded catalog results. Cap the
+            # docs to keep the prompt (and first token) fast.
+            context_results = card_hits if card_hits else results[:8]
         if results and cards_out is not None and attach_cards:
             cards_out.extend(
                 self._build_product_cards(card_hits, reject_prices=reject_prices)

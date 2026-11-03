@@ -128,6 +128,30 @@ def test_greeting_not_in_system_prompt():
     assert "루이" in prompt
 
 
+def test_skin_concern_sentence_attaches_relevant_cards():
+    """'지성 피부인데 모공이...' is a concern, not a product name.
+
+    Regression: particles made every word look like a product token, the card
+    filter returned [], the LLM got no catalog context and invented products.
+    """
+    results = [
+        _hit("루이셀 퓨리파잉 세럼", content="모공과 피지를 케어하는 세럼", doc_id="p1"),
+        _hit("루이셀 화이트닝 세럼", content="미백과 색소 케어", doc_id="p2"),
+        _hit("루이셀 콜라겐 크림", content="탄력 케어", doc_id="p3"),
+    ]
+    msg = "지성 피부인데 모공이 넓어서 고민이에요. 어떤 제품이 좋을까요?"
+    assert should_attach_product_cards(msg, msg, "beauty", results) is True
+    cards = filter_results_for_cards(msg, results, max_cards=5)
+    assert len(cards) >= 1
+    assert "모공" in cards[0].document.content
+
+
+def test_named_product_without_match_does_not_dump_unrelated_cards():
+    results = [_hit("루이셀 알로에 젤", content="수분 진정", doc_id="p1")]
+    cards = filter_results_for_cards("콜라겐 에센스 추천해줘", results, max_cards=5)
+    assert cards == []
+
+
 def test_card_price_stripped_when_matches_shipping():
     doc = RAGDocument(
         document_id="D1",

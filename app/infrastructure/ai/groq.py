@@ -14,6 +14,18 @@ class GroqProvider(AIProviderPort):
         self.api_key = api_key
         self.default_model = default_model
 
+    @staticmethod
+    def _reasoning_params(model: str) -> dict:
+        """Qwen3.8 can spend seconds in thinking mode before the first visible token.
+
+        Customer CS needs an immediate, direct answer, so explicitly disable
+        reasoning for Qwen3 models. The parameter is omitted for other models
+        because Groq rejects unsupported values with HTTP 400.
+        """
+        if "qwen3" in (model or "").lower():
+            return {"reasoning_effort": "none"}
+        return {}
+
     async def generate_text(
         self,
         prompt: str,
@@ -31,6 +43,7 @@ class GroqProvider(AIProviderPort):
             "messages": messages,
             "temperature": 0.3,
             "max_tokens": 1024,
+            **self._reasoning_params(self.default_model),
         }
 
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -59,6 +72,7 @@ class GroqProvider(AIProviderPort):
             "temperature": 0.3,
             "max_tokens": 1024,
             "stream": True,
+            **self._reasoning_params(self.default_model),
         }
 
         async with httpx.AsyncClient(timeout=15.0) as client:

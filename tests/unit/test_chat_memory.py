@@ -322,6 +322,15 @@ async def _add_store(session, mall_id="memory_test_mall"):
     await session.commit()
 
 
+def test_message_timestamps_strictly_increase():
+    """Tied timestamps + random UUID ids used to scramble chat history order."""
+    from app.infrastructure.database.models import _next_message_timestamp
+
+    stamps = [_next_message_timestamp() for _ in range(10)]
+    assert stamps == sorted(stamps)
+    assert len(set(stamps)) == len(stamps)
+
+
 @pytest.mark.asyncio
 async def test_second_message_receives_prior_turn_as_history(db_session):
     router = _RecordingRouter()

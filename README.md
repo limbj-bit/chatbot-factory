@@ -19,7 +19,7 @@ AI가 직접 환불 승인 여부를 결정하지 않습니다.
 ## 🛠️ 기술 스택
 
 - **Core Backend**: Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy 2.0 (Async), aiosqlite / asyncpg, Redis, httpx, pytest
-- **AI Providers**: Groq (초저지연 CS), NVIDIA NIM (복합 추론), Google Gemini 1.5 Flash (Vision 손상 계측), Multi-Provider Router with 429 Fallback
+- **AI Providers**: Groq Qwen3.8-27B (속도 우선, thinking off, 실제 SSE) → NVIDIA NIM → OpenRouter → Mistral 폴백 → Gemini (최후). 실시간 라우팅 확인: `/health/ai`
 - **E-Commerce**: Cafe24 Open API Adapter (향후 네이버 스마트스토어, 쿠팡 등으로 확장 가능한 Hexagonal Port 구조)
 - **Frontend**: 독립형 임베더블 JavaScript 위젯 (`chatbot-widget.js`) + SSE 실시간 스트리밍
 - **Infrastructure**: Docker, docker-compose, Structured JSON Logging, Correlation ID
