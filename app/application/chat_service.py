@@ -515,6 +515,15 @@ _CARD_CATEGORY_TOKENS = frozenset(
 
 
 
+# Synonyms for category tokens: a customer asking for "클렌징" should also see
+# products whose title says "클렌저/폼/워시/파우더".
+_CATEGORY_SYNONYMS = {
+    "클렌징": ["클렌징", "클렌저", "폼", "워시", "파우더", "세안"],
+    "클렌저": ["클렌징", "클렌저", "폼", "워시", "파우더", "세안"],
+}
+
+
+
 def _strip_ko_suffix(token: str) -> str:
     """'모공이'→'모공', '피부인데'→'피부' (particles are not product names)."""
     t = (token or "").strip(" .,!?~…·\"'()[]{}")
@@ -605,10 +614,19 @@ def filter_results_for_cards(
         # unrelated top hits just to fill the carousel.
         category_tokens = [t for t in tokens if t in _CARD_CATEGORY_TOKENS]
         if category_tokens:
+            matched_all = []
+            seen = set()
             for cat in sorted(category_tokens, key=len, reverse=True):
-                matched = [r for r in hits if cat in _normalized(r)[0]]
-                if matched:
-                    return matched[:max_cards]
+                syns = _CATEGORY_SYNONYMS.get(cat, [cat])
+                for r in hits:
+                    title = _normalized(r)[0]
+                    if any(syn in title for syn in syns):
+                        key = id(r)
+                        if key not in seen:
+                            seen.add(key)
+                            matched_all.append(r)
+            if matched_all:
+                return matched_all[:max_cards]
             return []
         # "건성/보습 추천" → soft fallback to top hits.
         return hits[:max_cards]
