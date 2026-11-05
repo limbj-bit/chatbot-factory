@@ -1942,6 +1942,23 @@ class ChatService:
             top_k=_recall_k,
             industry=industry,
         )
+        # When a category is explicitly requested, also pull that category on
+        # its own so cleansers/serums/etc. are not drowned by the prior turn's
+        # skin-concern keywords in the top-k.
+        if _category_requested:
+            _cat_query = " ".join(t for t in tokens if t in _CARD_CATEGORY_TOKENS)
+            _cat_results = await self.rag.search_with_store_knowledge(
+                session_db,
+                mall_id,
+                _cat_query,
+                top_k=20,
+                industry=industry,
+            )
+            _seen = {r.document.document_id for r in results}
+            for _r in _cat_results:
+                if _r.document.document_id not in _seen:
+                    results.append(_r)
+                    _seen.add(_r.document.document_id)
         attach_cards = should_attach_product_cards(
             message_text, convo_text, industry, results
         )
@@ -1953,7 +1970,9 @@ class ChatService:
             _n, card_hits = plan
             context_results = card_hits
         else:
-            card_hits = filter_results_for_cards(dialogue_query, results, max_cards=5)
+            card_hits = filter_results_for_cards(
+                dialogue_query, results, max_cards=8 if _category_requested else 5
+            )
             # Never send an empty knowledge context to the LLM: named queries
             # with no title match still get grounded catalog results. Cap the
             # docs to keep the prompt (and first token) fast.
