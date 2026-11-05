@@ -1737,14 +1737,15 @@ class ChatService:
                 # be answered with real product data.
                 # Wide recall for named keywords (콜라겐 등) so N = mall matches, not top_k=5
                 tokens = _card_query_tokens(dialogue_query)
-                wide = (bool(tokens) and not _tokens_are_soft_only(tokens)) or any(
-                    t in _CARD_CATEGORY_TOKENS for t in tokens
-                )
+                _named_query = bool(tokens) and not _tokens_are_soft_only(tokens)
+                _category_requested = any(t in _CARD_CATEGORY_TOKENS for t in tokens)
+                wide = _named_query or _category_requested
+                _recall_k = 80 if _named_query else (20 if _category_requested else 5)
                 results = await self.rag.search_with_store_knowledge(
                     session_db,
                     mall_id,
                     dialogue_query,
-                    top_k=80 if wide else 5,
+                    top_k=_recall_k,
                     industry=industry,
                 )
                 attach_cards = should_attach_product_cards(
@@ -1920,14 +1921,15 @@ class ChatService:
 
         # Always search RAG on recent dialogue; widen for named product cues.
         tokens = _card_query_tokens(dialogue_query)
-        wide = (bool(tokens) and not _tokens_are_soft_only(tokens)) or any(
-            t in _CARD_CATEGORY_TOKENS for t in tokens
-        )
+        _named_query = bool(tokens) and not _tokens_are_soft_only(tokens)
+        _category_requested = any(t in _CARD_CATEGORY_TOKENS for t in tokens)
+        wide = _named_query or _category_requested
+        _recall_k = 80 if _named_query else (20 if _category_requested else 5)
         results = await self.rag.search_with_store_knowledge(
             session_db,
             mall_id,
             dialogue_query,
-            top_k=80 if wide else 5,
+            top_k=_recall_k,
             industry=industry,
         )
         attach_cards = should_attach_product_cards(
