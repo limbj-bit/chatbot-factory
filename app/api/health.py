@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,6 +40,7 @@ async def health_check(session: AsyncSession = Depends(get_db)):
         "mock_cafe24": settings.MOCK_CAFE24,
         "ai_provider_order": ai_status.get("provider_order"),
         "live_provider_count": ai_status.get("live_provider_count"),
+        "git_commit": os.getenv("APP_GIT_COMMIT", "unknown"),
         "deploy_marker": "schema-heal-v3",
     }
 
