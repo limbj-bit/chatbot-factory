@@ -146,6 +146,15 @@ def test_skin_concern_sentence_attaches_relevant_cards():
     assert "모공" in cards[0].document.content
 
 
+def test_requested_category_absent_returns_no_unrelated_cards():
+    results = [
+        _hit("루이셀 아이리뉴얼 크림", content="배송비 3,000원", doc_id="p1"),
+        _hit("루이셀 EGF 앰플", content="배송비 3,000원", doc_id="p2"),
+    ]
+    msg = "클렌징 폼 추천해줘"
+    assert filter_results_for_cards(msg, results, max_cards=5) == []
+
+
 def test_concern_sentence_with_boilerplate_content_still_attaches_top_cards():
     """Real crawled products rarely mention '모공' in the first 200 chars.
 
@@ -219,7 +228,7 @@ def test_concern_sentence_with_particles_is_treated_as_soft_query():
         _hit("루이셀 아이리뉴얼 크림", content="배송비 3,000원", doc_id="p1"),
         _hit("루이셀 EGF 앰플", content="배송비 3,000원", doc_id="p2"),
     ]
-    msg = "건성 피부라 속건조가 심해요. 수분 세럼 추천해주세요."
+    msg = "건성 피부라 속건조가 심해요."
     cards = filter_results_for_cards(msg, results, max_cards=5)
     assert len(cards) == 2
 

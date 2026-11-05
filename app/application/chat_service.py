@@ -421,6 +421,19 @@ _GENERIC_QUERY_WORDS = frozenset(
         "해주세",
         "심해",
         "심해요",
+        "그중",
+        "순한",
+        "같이",
+        "뭐",
+        "뭐가",
+        "해줘",
+        "사용",
+        "추천",
+        "추천해",
+        "추천해줘",
+        "알려",
+        "알려줘",
+        "폼",
     }
 )
 # Skin/need words: allow RAG top cards when these don't match a title
@@ -448,6 +461,11 @@ _CARD_SOFT_TOKENS = frozenset(
         "칙칙",
         "다크서클",
         "속건조",
+        "젤",
+        "오일",
+        "밤",
+        "스틱",
+        "파우더",
         # Category words — browsing intent, not a named product.
         "세럼",
         "앰플",
@@ -466,6 +484,35 @@ _CARD_SOFT_TOKENS = frozenset(
         "필링",
     }
 )
+
+
+# Category tokens that, when requested, must actually exist in the catalog;
+# otherwise we must NOT fall back to unrelated top hits.
+_CARD_CATEGORY_TOKENS = frozenset(
+    {
+        "세럼",
+        "앰플",
+        "크림",
+        "토너",
+        "로션",
+        "에센스",
+        "마스크",
+        "클렌저",
+        "클렌징",
+        "스킨",
+        "미스트",
+        "선크림",
+        "아이크림",
+        "패드",
+        "필링",
+        "젤",
+        "오일",
+        "밤",
+        "스틱",
+        "파우더",
+    }
+)
+
 
 
 def _strip_ko_suffix(token: str) -> str:
@@ -553,7 +600,17 @@ def filter_results_for_cards(
         if precise_ordered:
             # "콜라겐 에센스" → never show aloe just because RAG surfaced it.
             return []
-        # "건성/보습/세럼 추천" → soft fallback.
+        # Soft/category-only query: if the customer named a category (클렌징,
+        # 세럼, ...), only attach products from that category; never dump
+        # unrelated top hits just to fill the carousel.
+        category_tokens = [t for t in tokens if t in _CARD_CATEGORY_TOKENS]
+        if category_tokens:
+            for cat in sorted(category_tokens, key=len, reverse=True):
+                matched = [r for r in hits if cat in _normalized(r)[0]]
+                if matched:
+                    return matched[:max_cards]
+            return []
+        # "건성/보습 추천" → soft fallback to top hits.
         return hits[:max_cards]
     return hits[:max_cards]
 
@@ -1438,7 +1495,10 @@ class ChatService:
         lines.append(
             "10. [상품명 환각 금지] 상품명은 위 '스토어 공식 제품/정책 지식' 또는 상품 카드에 "
             "실제로 적힌 이름만 사용하세요. 거기에 없는 제품명을 새로 만들어 언급하지 말고, "
-            "마땅한 제품이 없으면 특정 상품명 없이 일반적인 성분·사용 루틴 조언만 하세요."
+            "마땅한 제품이 없으면 특정 상품명 없이 일반적인 성분·사용 루틴 조언만 하세요. "
+            "고객이 요청한 카테고리(예: 클렌징, 세럼)에 해당하는 제품이 위 지식에 없으면 "
+            "'해당 카테고리 제품은 현재 준비 중입니다'라고 안내하고, 다른 카테고리 제품을 "
+            "그 카테고리 이름으로 부르지 마세요."
         )
         return "\n".join(lines)
 
