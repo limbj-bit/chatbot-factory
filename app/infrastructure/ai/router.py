@@ -106,6 +106,17 @@ class AIProviderRouter(AIProviderPort):
             self.mock_provider = MockAIProvider(provider_name="mock")
             self.providers["mock"] = self.mock_provider
 
+    @property
+    def effective_mock_mode(self) -> bool:
+        """True when the *router* will actually answer with MockAIProvider.
+
+        `self.mock_mode` alone is the configured intent (settings.MOCK_AI).
+        If no provider keys exist, `_setup_providers()` silently installs the
+        mock provider without flipping `mock_mode`, so health checks that read
+        the config flag can claim "live" while answering with canned text.
+        """
+        return bool(self.mock_mode or "mock" in self.providers)
+
     def is_provider_available(self, name: str) -> bool:
         if name not in self.providers:
             return False
@@ -172,7 +183,9 @@ class AIProviderRouter(AIProviderPort):
             else:
                 models[name] = "n/a"
         return {
-            "mock_mode": self.mock_mode,
+            "mock_mode": self.effective_mock_mode,
+            "configured_mock": self.mock_mode,
+            "live_provider_count": len([p for p in self.providers if p != "mock"]),
             "provider_order": self.get_text_provider_chain(),
             "vision_order": self.get_vision_provider_chain(),
             "models": models,

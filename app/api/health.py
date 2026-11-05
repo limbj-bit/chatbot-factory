@@ -16,14 +16,29 @@ async def health_check(session: AsyncSession = Depends(get_db)):
     except Exception:
         db_ok = False
 
+    # Report the *effective* AI mode, not the config flag. The router silently
+    # falls back to MockAIProvider when no provider key is present, so reading
+    # settings.MOCK_AI alone can claim "live" while answering with canned text.
+    ai_status: dict = {}
+    try:
+        from app.api.chat import chat_service
+
+        ai_status = chat_service.ai_router.get_status()
+    except Exception as exc:  # pragma: no cover - health must never raise
+        ai_status = {"status_error": f"{type(exc).__name__}: {exc}"}
+    effective_mock_ai = bool(ai_status.get("mock_mode", settings.MOCK_AI))
+
     return {
         "status": "healthy" if db_ok else "degraded",
         "service": settings.APP_NAME,
         "environment": settings.APP_ENV,
         "database": "connected" if db_ok else "disconnected",
-        "mock_ai": settings.MOCK_AI,
+        "mock_ai": effective_mock_ai,
+        "configured_mock_ai": settings.MOCK_AI,
         "mock_cafe24": settings.MOCK_CAFE24,
-        "deploy_marker": "schema-heal-v2",
+        "ai_provider_order": ai_status.get("provider_order"),
+        "live_provider_count": ai_status.get("live_provider_count"),
+        "deploy_marker": "schema-heal-v3",
     }
 
 

@@ -100,54 +100,72 @@ async def serve_master_admin_console():
 
 @app.get("/api/system/schema-status", tags=["System"])
 async def get_schema_status():
-    """Diagnose stores.brand_logo_url drift and self-heal lightweight ALTERs."""
+    """Diagnose stores.brand_logo_url drift and self-heal lightweight ALTERs.
+
+    Each probe runs in its own transaction. On PostgreSQL a failed statement
+    aborts the current transaction, so reusing one session after a failed
+    PRAGMA/information_schema probe made every later query silently fail and
+    produced the misleading ``stores_columns: null`` response.
+    """
     from sqlalchemy import text
-    from app.infrastructure.database.session import apply_lightweight_migrations, async_session_factory
+    from app.infrastructure.database.session import (
+        apply_lightweight_migrations,
+        async_session_factory,
+        engine,
+    )
 
     out: dict = {
-        "deploy_marker": "schema-heal-v1",
+        "deploy_marker": "schema-heal-v3",
         "ok": False,
+        "dialect": engine.dialect.name,
         "stores_columns": None,
         "probe_error": None,
         "migrate_ran": False,
+        "probe_error_after_migrate": None,
     }
-    async with async_session_factory() as session:
-        try:
-            try:
-                rows = (await session.execute(text("PRAGMA table_info(stores)"))).fetchall()
-                out["stores_columns"] = [r[1] for r in rows]
-            except Exception:
-                rows = (
-                    await session.execute(
-                        text(
-                            "SELECT column_name FROM information_schema.columns "
-                            "WHERE table_name = 'stores'"
-                        )
-                    )
-                ).fetchall()
-                out["stores_columns"] = [r[0] for r in rows]
 
-            await session.execute(text("SELECT brand_logo_url FROM stores LIMIT 1"))
-            out["ok"] = True
-        except Exception as e:
-            out["probe_error"] = f"{type(e).__name__}: {e}"
+    async def _probe() -> tuple[list[str] | None, bool, str | None]:
+        """Return (columns, brand_logo_url_ok, error) using a fresh transaction."""
+        async with async_session_factory() as session:
             try:
-                await session.rollback()
-            except Exception:
-                pass
-            await apply_lightweight_migrations()
-            out["migrate_ran"] = True
-            try:
-                await session.execute(text("SELECT brand_logo_url FROM stores LIMIT 1"))
-                out["ok"] = True
-                out["probe_error_after_migrate"] = None
-                try:
+                dialect = session.bind.dialect.name if session.bind else engine.dialect.name
+                out["dialect"] = dialect
+                if dialect == "sqlite":
                     rows = (await session.execute(text("PRAGMA table_info(stores)"))).fetchall()
-                    out["stores_columns"] = [r[1] for r in rows]
+                    columns = [row[1] for row in rows]
+                else:
+                    rows = (
+                        await session.execute(
+                            text(
+                                "SELECT column_name FROM information_schema.columns "
+                                "WHERE table_name = 'stores' ORDER BY ordinal_position"
+                            )
+                        )
+                    ).fetchall()
+                    columns = [row[0] for row in rows]
+                await session.execute(text("SELECT brand_logo_url FROM stores LIMIT 1"))
+                return columns, True, None
+            except Exception as exc:
+                return None, False, f"{type(exc).__name__}: {exc}"
+            finally:
+                try:
+                    await session.rollback()
                 except Exception:
                     pass
-            except Exception as e2:
-                out["probe_error_after_migrate"] = f"{type(e2).__name__}: {e2}"
+
+    columns, column_ok, error = await _probe()
+    out["stores_columns"] = columns
+    out["ok"] = bool(column_ok)
+    out["probe_error"] = error
+
+    if not out["ok"]:
+        out["migrate_ran"] = True
+        await apply_lightweight_migrations()
+        columns2, column_ok2, error2 = await _probe()
+        out["stores_columns"] = columns2 or out["stores_columns"]
+        out["ok"] = bool(column_ok2)
+        out["probe_error_after_migrate"] = error2
+
     return out
 
 
