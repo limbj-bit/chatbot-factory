@@ -146,10 +146,82 @@ def test_skin_concern_sentence_attaches_relevant_cards():
     assert "모공" in cards[0].document.content
 
 
+def test_concern_sentence_with_boilerplate_content_still_attaches_top_cards():
+    """Real crawled products rarely mention '모공' in the first 200 chars.
+
+    Regression: the query had soft tokens (지성/모공/피지) plus conversational
+    tokens (넓고/써야/할까). The filter treated the sentence as a named-product
+    query, returned [], and the live answer had zero cards.
+    """
+    results = [
+        _hit(
+            "루이셀 퓨리파잉 세럼",
+            content=(
+                "루이셀 퓨리파잉 세럼. 배송비: 3,000원 (60,000원 이상 구매 시 무료) | "
+                "용량: 100ml | 상품명: 루이셀 퓨리파잉 세럼. 고객님을 위한 추천상품 "
+                "루이셀 화이트닝 세럼 루이셀 비타C 세럼"
+            ),
+            doc_id="p1",
+        ),
+        _hit(
+            "퓨리파잉 앰플",
+            content="퓨리파잉 앰플. 배송비: 3,000원 | 용량: 2ml x 20ea",
+            doc_id="p2",
+        ),
+        _hit(
+            "루이셀 콜라겐 크림",
+            content="루이셀 콜라겐 크림. 배송비: 3,000원 | 용량: 50g",
+            doc_id="p3",
+        ),
+    ]
+    msg = "지성 피부인데 모공이 넓고 피지가 많아요. 어떤 제품을 써야 할까요?"
+    assert should_attach_product_cards(msg, msg, "beauty", results) is True
+    cards = filter_results_for_cards(msg, results, max_cards=5)
+    assert len(cards) >= 2
+    assert cards[0].document.title == "루이셀 퓨리파잉 세럼"
+
+
 def test_named_product_without_match_does_not_dump_unrelated_cards():
     results = [_hit("루이셀 알로에 젤", content="수분 진정", doc_id="p1")]
     cards = filter_results_for_cards("콜라겐 에센스 추천해줘", results, max_cards=5)
     assert cards == []
+
+
+def test_named_query_with_generic_predicate_still_does_not_fallback():
+    """A named query with a conversational ending must not fall back to top hits."""
+    results = [
+        _hit("루이셀 알로에 젤", content="수분 진정", doc_id="p1"),
+        _hit("루이셀 퓨리파잉 앰플", content="트러블 진정", doc_id="p2"),
+    ]
+    msg = "콜라겐 에센스 없어요?"
+    assert filter_results_for_cards(msg, results, max_cards=5) == []
+
+
+def test_named_product_exact_title_returns_only_that_product():
+    """'루이셀 퓨리파잉 세럼' must not widen to every serum in the catalog."""
+    results = [
+        _hit("루이셀 퓨리파잉 세럼", content="트러블 진정 세럼", doc_id="p1"),
+        _hit("루이셀 EGF 세럼", content="추천상품: 루이셀 퓨리파잉 세럼", doc_id="p2"),
+        _hit("루이셀 콜라겐 세럼", content="탄력 세럼", doc_id="p3"),
+    ]
+    msg = "루이셀 퓨리파잉 세럼 있어요?"
+    cards = filter_results_for_cards(msg, results, max_cards=5)
+    assert [c.document.title for c in cards] == ["루이셀 퓨리파잉 세럼"]
+
+
+def test_concern_sentence_with_particles_is_treated_as_soft_query():
+    """'건성 피부라 속건조가 심해요' must not be mistaken for a product name.
+
+    Regression: '피부라'/'심해'/'추천해주세' survived token cleanup, so the
+    soft-only fallback never fired and an unrelated catalog hit list stayed empty.
+    """
+    results = [
+        _hit("루이셀 아이리뉴얼 크림", content="배송비 3,000원", doc_id="p1"),
+        _hit("루이셀 EGF 앰플", content="배송비 3,000원", doc_id="p2"),
+    ]
+    msg = "건성 피부라 속건조가 심해요. 수분 세럼 추천해주세요."
+    cards = filter_results_for_cards(msg, results, max_cards=5)
+    assert len(cards) == 2
 
 
 def test_card_price_stripped_when_matches_shipping():

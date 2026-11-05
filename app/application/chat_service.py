@@ -399,11 +399,35 @@ _GENERIC_QUERY_WORDS = frozenset(
         "그럼",
         "근데",
         "저기",
+        # Conversational predicates/adjectives — not product names.
+        "넓고",
+        "많아",
+        "많아요",
+        "써야",
+        "할까",
+        "할까요",
+        "고민",
+        "고민이에요",
+        "있어요",
+        "없어요",
+        "같아요",
+        "싶어요",
+        "주세요",
+        "해주세요",
+        "알려주세요",
+        "추천해주세요",
+        "추천해주세",
+        "해주세요",
+        "해주세",
+        "심해",
+        "심해요",
     }
 )
 # Skin/need words: allow RAG top cards when these don't match a title
 _CARD_SOFT_TOKENS = frozenset(
     {
+        "피부",
+        "피부라",
         "건성",
         "지성",
         "복합성",
@@ -418,6 +442,28 @@ _CARD_SOFT_TOKENS = frozenset(
         "여드름",
         "진정",
         "수분",
+        "트러블",
+        "각질",
+        "홍조",
+        "칙칙",
+        "다크서클",
+        "속건조",
+        # Category words — browsing intent, not a named product.
+        "세럼",
+        "앰플",
+        "크림",
+        "토너",
+        "로션",
+        "에센스",
+        "마스크",
+        "클렌저",
+        "클렌징",
+        "스킨",
+        "미스트",
+        "선크림",
+        "아이크림",
+        "패드",
+        "필링",
     }
 )
 
@@ -454,7 +500,18 @@ def _token_is_soft(t: str) -> bool:
 
 
 def _tokens_are_soft_only(tokens: List[str]) -> bool:
-    return bool(tokens) and all(_token_is_soft(t) for t in tokens)
+    """True when the query has no product-name signal (skin concern/category only).
+
+    Generic conversational tokens ("넓고", "써야") are ignored rather than
+    treated as product names; otherwise a normal concern sentence never gets
+    its top catalog cards and the model answers without grounding.
+    """
+    meaningful = [
+        t
+        for t in tokens
+        if t not in _GENERIC_QUERY_WORDS and t not in _CARD_QUERY_STOP
+    ]
+    return bool(meaningful) and all(_token_is_soft(t) for t in meaningful)
 
 
 def filter_results_for_cards(
@@ -469,18 +526,35 @@ def filter_results_for_cards(
         return []
     tokens = _card_query_tokens(message_text)
     if tokens:
-        matched = []
-        for r in hits:
+        precise = [t for t in tokens if not _token_is_soft(t)]
+        ordered = sorted(tokens, key=len, reverse=True)
+        precise_ordered = [t for t in ordered if t in precise]
+
+        def _normalized(r: RAGSearchResult) -> tuple:
             title = re.sub(r"\s+", "", r.document.title or "")
             snippet = re.sub(r"\s+", "", (r.document.content or "")[:200])
-            if any(t in title or t in snippet or title in t for t in tokens):
-                matched.append(r)
-        if matched:
-            return matched[:max_cards]
-        # "건성/보습 추천" → soft fallback. "콜라겐 에센스" → never show aloe.
-        if _tokens_are_soft_only(tokens):
-            return hits[:max_cards]
-        return []
+            return title, snippet
+
+        # 1) Exact product title ("루이셀 퓨리파잉 세럼").
+        for token in ordered:
+            matched = [r for r in hits if _normalized(r)[0] == token]
+            if matched:
+                return matched[:max_cards]
+        # 2) Named tokens: title first, then body. Never widen to every serum
+        #    because '세럼' also appears in a long crawled page.
+        for token in precise_ordered:
+            matched = [r for r in hits if token in _normalized(r)[0] or _normalized(r)[0] in token]
+            if matched:
+                return matched[:max_cards]
+        for token in precise_ordered:
+            matched = [r for r in hits if token in _normalized(r)[1]]
+            if matched:
+                return matched[:max_cards]
+        if precise_ordered:
+            # "콜라겐 에센스" → never show aloe just because RAG surfaced it.
+            return []
+        # "건성/보습/세럼 추천" → soft fallback.
+        return hits[:max_cards]
     return hits[:max_cards]
 
 
