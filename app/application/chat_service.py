@@ -1784,6 +1784,16 @@ class ChatService:
                     )
                     if plan:
                         context = catalog_match_preamble(plan[0], plan[1]) + "\n\n" + context
+                    if card_hits and context:
+                        _allowed = ", ".join(
+                            getattr(r.document, "title", "") for r in card_hits if getattr(r.document, "title", "")
+                        )
+                        if _allowed:
+                            context = (
+                                context
+                                + "\n\n[이번 답변 허용 제품명 — 이 목록에 없는 상품명은 절대 사용 금지] "
+                                + _allowed
+                            )
                     system_prompt = self._build_store_system_prompt(store_obj, rag_context=context)
                     response_text = await self.ai_router.generate_text(
                         message_text, system_prompt=system_prompt, history=history
@@ -1960,6 +1970,16 @@ class ChatService:
         )
         if plan and context:
             context = catalog_match_preamble(plan[0], plan[1]) + "\n\n" + context
+        if card_hits and context:
+            _allowed = ", ".join(
+                getattr(r.document, "title", "") for r in card_hits if getattr(r.document, "title", "")
+            )
+            if _allowed:
+                context = (
+                    context
+                    + "\n\n[이번 답변 허용 제품명 — 이 목록에 없는 상품명은 절대 사용 금지] "
+                    + _allowed
+                )
         system_prompt = self._build_store_system_prompt(store_obj, rag_context=context)
 
         collected = []
