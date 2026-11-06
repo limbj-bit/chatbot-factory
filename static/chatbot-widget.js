@@ -9,6 +9,50 @@
     primaryColor: "#2E7D32",
   };
 
+  // Defensive: never let untrusted config inject CSS/HTML.
+  function safeColor(value) {
+    return /^#[0-9a-fA-F]{3,8}$/.test(String(value || "")) ? String(value) : "#2E7D32";
+  }
+  function escapeHtml(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+  const primaryColor = safeColor(config && config.primaryColor);
+  async function compressImage(file) {
+    if (!file || !file.type || !file.type.startsWith("image/") || file.size < 1024 * 1024) return file;
+    try {
+      const img = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        i.src = URL.createObjectURL(file);
+      });
+      const maxDim = 1280;
+      let width = img.width;
+      let height = img.height;
+      if (width > maxDim || height > maxDim) {
+        const ratio = Math.min(maxDim / width, maxDim / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.82));
+      URL.revokeObjectURL(img.src);
+      if (!blob || blob.size >= file.size) return file;
+      return new File([blob], String(file.name || "upload.jpg").replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" });
+    } catch (e) {
+      return file;
+    }
+  }
+
+
   let sessionId = localStorage.getItem("claim_chat_session_id") || "";
   let activeClaimId = null;
 
@@ -22,7 +66,7 @@
       width: 60px;
       height: 60px;
       border-radius: 50%;
-      background: ${config.primaryColor};
+      background: ${primaryColor};
       box-shadow: 0 4px 14px rgba(0,0,0,0.25);
       cursor: pointer;
       display: flex;
@@ -58,7 +102,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     .fresh-widget-header {
-      background: ${config.primaryColor};
+      background: ${primaryColor};
       color: #ffffff;
       padding: 16px 20px;
       display: flex;
@@ -108,7 +152,7 @@
       border-bottom-left-radius: 4px;
     }
     .fresh-msg.user {
-      background: ${config.primaryColor};
+      background: ${primaryColor};
       color: #FFFFFF;
       align-self: flex-end;
       border-bottom-right-radius: 4px;
@@ -116,7 +160,7 @@
     .fresh-claim-card {
       background: #FFFFFF;
       border: 1px solid #E5E7EB;
-      border-left: 4px solid ${config.primaryColor};
+      border-left: 4px solid ${primaryColor};
       border-radius: 8px;
       padding: 12px;
       font-size: 13px;
@@ -155,9 +199,9 @@
       font-size: 14px;
       outline: none;
     }
-    .fresh-input:focus { border-color: ${config.primaryColor}; }
+    .fresh-input:focus { border-color: ${primaryColor}; }
     .fresh-btn-send {
-      background: ${config.primaryColor};
+      background: ${primaryColor};
       color: #ffffff;
       border: none;
       border-radius: 20px;
@@ -222,6 +266,7 @@
   const userInput = chatWindow.querySelector("#fresh-user-input");
   const sendBtn = chatWindow.querySelector("#fresh-send-btn");
   const fileInput = chatWindow.querySelector("#fresh-file-input");
+  if (fileInput) fileInput.setAttribute("multiple", "multiple");
   const uploadTrigger = chatWindow.querySelector("#fresh-upload-trigger");
   const closeBtn = chatWindow.querySelector("#fresh-close");
 
@@ -235,7 +280,7 @@
   function appendMessage(text, sender) {
     const msg = document.createElement("div");
     msg.className = `fresh-msg ${sender}`;
-    msg.innerHTML = text.replace(/\n/g, "<br>");
+    msg.innerHTML = escapeHtml(text).replace(/\n/g, "<br>");
     messagesContainer.appendChild(msg);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
     return msg;
@@ -280,11 +325,11 @@
               const data = JSON.parse(raw);
               if (data.replace) {
                 fullText = data.replace;
-                botMsg.innerHTML = fullText.replace(/\n/g, "<br>");
+                botMsg.innerHTML = escapeHtml(fullText).replace(/\n/g, "<br>");
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
               } else if (data.token) {
                 fullText += data.token;
-                botMsg.innerHTML = fullText.replace(/\n/g, "<br>");
+                botMsg.innerHTML = escapeHtml(fullText).replace(/\n/g, "<br>");
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
               }
             } catch (e) {}
@@ -302,14 +347,13 @@
   });
 
   fileInput.addEventListener("change", async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
-    appendMessage(`[사진 업로드] ${file.name} 분석 중...`, "user");
+    appendMessage(`[사진 업로드] ${files.length}장 분석 중...`, "user");
     const analyzingMsg = appendMessage("Vision AI가 상품 손상 상태를 정밀 계측하고 있습니다. 잠시만 기다려 주세요...", "bot");
 
     try {
-      // 1. Create Claim (using demo order if not initiated)
       const claimResp = await fetch(`${config.apiBase}/api/claims`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -323,19 +367,25 @@
       const claimData = await claimResp.json();
       activeClaimId = claimData.claim_id;
 
-      // 2. Upload Image
-      const formData = new FormData();
-      formData.append("file", file);
+      const roles = ["primary", "closeup", "packaging"];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const role = roles[i] || "primary";
+        const formData = new FormData();
+        const uploadFile = await compressImage(file);
+        formData.append("file", uploadFile);
+        await fetch(`${config.apiBase}/api/claims/${activeClaimId}/images?role=${encodeURIComponent(role)}`, {
+          method: "POST",
+          body: formData,
+        });
+      }
 
-      const uploadResp = await fetch(`${config.apiBase}/api/claims/${activeClaimId}/images`, {
+      const finResp = await fetch(`${config.apiBase}/api/claims/${activeClaimId}/finalize`, {
         method: "POST",
-        body: formData,
       });
-
-      const result = await uploadResp.json();
+      const result = await finResp.json();
       analyzingMsg.remove();
 
-      // Render Card
       const card = document.createElement("div");
       card.className = "fresh-claim-card";
       let badgeClass = "badge-approved";
@@ -343,11 +393,11 @@
       if (result.decision === "RETAKE_IMAGE") badgeClass = "badge-retake";
 
       card.innerHTML = `
-        <div class="badge ${badgeClass}">${result.decision}</div>
-        <div class="title">판독 결과: 손상률 ${result.observation.damage_ratio || 0}% (${result.observation.defect_type || '식별'})</div>
-        <p>${result.customer_message}</p>
+        <div class="badge ${escapeHtml(badgeClass)}">${escapeHtml(result.decision)}</div>
+        <div class="title">판독 결과: 손상률 ${escapeHtml(result.observation && result.observation.damage_ratio || 0)}% (${escapeHtml((result.observation && result.observation.defect_type) || '식별')})</div>
+        <p>${escapeHtml(result.customer_message)}</p>
         <div style="font-size: 11px; color: #6B7280; margin-top: 6px;">
-          접수번호: ${result.claim_id.slice(0, 8)}... | 환불 예정액: ${result.refund_amount.toLocaleString()}원
+          접수번호: ${escapeHtml(String(result.claim_id || "").slice(0, 8))}... | 환불 예정액: ${escapeHtml(Number(result.refund_amount || 0).toLocaleString())}원
         </div>
       `;
       messagesContainer.appendChild(card);

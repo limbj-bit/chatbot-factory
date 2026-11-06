@@ -1,10 +1,12 @@
 import json
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.chat_service import ChatService
+from app.application.store_service import store_service
+from app.core.security import rate_limiter
 from app.infrastructure.database.session import get_db
 from app.schemas.chat import ChatRequest, ChatResponse, ProductRecommendationCard
 
@@ -12,9 +14,13 @@ router = APIRouter(prefix="/api/chat", tags=["Chat"])
 chat_service = ChatService()
 
 
-@router.post("", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest, session: AsyncSession = Depends(get_db)):
+@router.post("", response_model=ChatResponse, dependencies=[Depends(rate_limiter(60, 60))])
+async def chat_endpoint(request: ChatRequest, http_request: Request, session: AsyncSession = Depends(get_db)):
     """Synchronous chat endpoint with FAQ, Multi-tenant RAG, AI Counselor product cards, and Daily Quota gating."""
+    store = await store_service.get_store_by_mall_id(session, request.mall_id)
+    origin = http_request.headers.get("origin") or http_request.headers.get("referer")
+    if origin and not store_service.is_domain_allowed(store, origin):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Origin not allowed")
     session_id, response_text, intent, recommended_products = await chat_service.handle_message(
         session_db=session,
         session_id=request.session_id,
@@ -30,8 +36,12 @@ async def chat_endpoint(request: ChatRequest, session: AsyncSession = Depends(ge
     )
 
 
-@router.post("/stream")
-async def chat_stream_endpoint(request: ChatRequest, session: AsyncSession = Depends(get_db)):
+@router.post("/stream", dependencies=[Depends(rate_limiter(60, 60))])
+async def chat_stream_endpoint(request: ChatRequest, http_request: Request, session: AsyncSession = Depends(get_db)):
+    store = await store_service.get_store_by_mall_id(session, request.mall_id)
+    origin = http_request.headers.get("origin") or http_request.headers.get("referer")
+    if origin and not store_service.is_domain_allowed(store, origin):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Origin not allowed")
     """SSE streaming chat endpoint.
 
     Product cards are decided INSIDE stream_chat_response (the same

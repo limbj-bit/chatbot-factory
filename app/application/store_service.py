@@ -1000,6 +1000,67 @@ class StoreService:
             created_at=doc.created_at.isoformat(),
         )
 
+    async def bootstrap_store(self, session, mall_id):
+        store = await self.get_store_by_mall_id(session, mall_id)
+        if not store:
+            raise ValueError(f"Store '{mall_id}' not found.")
+
+        try:
+            policy = json.loads(store.policy_config_json or "{}")
+        except Exception:
+            policy = {}
+        if not isinstance(policy, dict):
+            policy = {}
+        if not (policy.get("policy_text") or "").strip():
+            policy["policy_text"] = (
+                "신선식품 특성상 배송 완료 후 2일 이내 사진과 함께 접수해 주세요. "
+                "파손/변질/이물은 사진으로 접수하면 빠르게 처리됩니다. "
+                "고객센터 운영시간 내 문의 주시면 신속히 도와드립니다."
+            )
+            store.policy_config_json = json.dumps(policy, ensure_ascii=False)
+
+        from app.infrastructure.database.models import StoreKnowledgeModel
+        from sqlalchemy import select, func
+        cnt_q = await session.execute(
+            select(func.count(StoreKnowledgeModel.id)).where(StoreKnowledgeModel.mall_id == mall_id)
+        )
+        if (cnt_q.scalar_one() or 0) == 0:
+            industry = (store.industry or "fresh_food").lower()
+            if "beauty" in industry:
+                samples = [
+                    ("운영시간", "고객센터 운영시간은 평일 10:00~17:00입니다."),
+                    ("배송비", "기본 배송비 3,000원, 50,000원 이상 무료배송."),
+                    ("반품정책", "수령 후 7일 이내 미개봉 상품에 한해 반품/교환 가능합니다."),
+                    ("사용법", "세안 후 토너-세럼-크림 순서로 사용하세요."),
+                ]
+            elif "fashion" in industry:
+                samples = [
+                    ("운영시간", "고객센터 운영시간은 평일 10:00~17:00입니다."),
+                    ("배송비", "기본 배송비 3,000원, 50,000원 이상 무료배송."),
+                    ("교환정책", "수령 후 7일 이내 미착용 상품 교환 가능합니다."),
+                    ("사이즈", "상세 페이지 사이즈 가이드를 확인해 주세요."),
+                ]
+            else:
+                samples = [
+                    ("운영시간", "고객센터 운영시간은 평일 10:00~17:00입니다. 주말/공휴일은 휴무입니다."),
+                    ("배송비", "기본 배송비는 3,000원이며 50,000원 이상 구매 시 무료배송입니다."),
+                    ("반품정책", "신선식품 특성상 수령 후 2일 이내 접수 가능합니다. 사진과 함께 접수해 주세요."),
+                    ("보관법", "수령 후 냉장 보관을 권장하며, 상온 방치 시 변질이 빠를 수 있습니다."),
+                ]
+            for title, content in samples:
+                doc = StoreKnowledgeModel(
+                    id=f"DOC-{uuid.uuid4().hex[:8].upper()}",
+                    mall_id=mall_id,
+                    doc_type="faq",
+                    title=title,
+                    content=content,
+                )
+                session.add(doc)
+
+        await session.commit()
+        await session.refresh(store)
+        return store
+
     async def crawl_and_learn_url(
         self,
         session: AsyncSession,

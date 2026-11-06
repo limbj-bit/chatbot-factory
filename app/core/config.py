@@ -132,6 +132,9 @@ class Settings(BaseSettings):
         # Production must not ship with DEBUG left on by accident.
         if (self.APP_ENV or "").lower() == "production":
             self.DEBUG = False
+            # Refuse the well-known dev admin key in production.
+            if (self.ADMIN_API_KEY or "").strip() == "admin-dev-secret-key-change-in-prod":
+                self.ADMIN_API_KEY = ""
         return self
 
     # Static Outbound IPs for Coupang Wing / Cafe24 / SmartStore IP Whitelist

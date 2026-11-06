@@ -18,6 +18,7 @@ dependencies = [
     "python-multipart>=0.0.12",
     "cryptography>=42.0.0",
     "pillow>=10.0.0",
+    "pillow-heif>=1.8.0",
     "price-parser>=0.3.4",
     "extruct>=0.18.0",
     # Cafe24 JS sale prices during crawl (API 발급 전 보강)

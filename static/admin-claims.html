@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>클레임 검토 큐</title>
+  <style>
+    body { font-family: Pretendard, sans-serif; margin: 24px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px; font-size: 13px; }
+    .ok { color: #166534; }
+    .warning { color: #92400E; }
+    .breached { color: #991B1B; font-weight: 700; }
+    input { padding: 6px; width: 280px; }
+  </style>
+</head>
+<body>
+  <h1>클레임 검토 큐 (SLA)</h1>
+  <input id="adminKey" placeholder="X-Admin-Key" />
+  <button onclick="load()">조회</button>
+  <table>
+    <thead><tr><th>Claim</th><th>상태</th><th>SLA</th><th>경과(분)</th><th>손상률</th><th>설명</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <script>
+    async function load() {
+      const key = document.getElementById('adminKey').value;
+      const res = await fetch('/api/admin/claims', { headers: { 'X-Admin-Key': key } });
+      const data = await res.json();
+      const tbody = document.getElementById('rows');
+      tbody.innerHTML = (data || []).map(c => {
+        const img = (c.images || [])[0] || {};
+        const sla = c.sla_status || 'ok';
+        return `<tr>
+          <td>${(c.claim_id||'').slice(0,8)}</td>
+          <td>${c.status}</td>
+          <td class="${sla}">${sla}</td>
+          <td>${c.age_minutes || 0}</td>
+          <td>${img.damage_ratio || 0}%</td>
+          <td>${c.description || ''}</td>
+        </tr>`;
+      }).join('');
+    }
+  </script>
+</body>
+</html>

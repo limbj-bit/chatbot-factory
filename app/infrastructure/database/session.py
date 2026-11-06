@@ -72,6 +72,9 @@ LIGHTWEIGHT_ALTERS = (
     "ALTER TABLE sessions ADD COLUMN mall_id VARCHAR(64) DEFAULT 'demo_mall'",
     "ALTER TABLE stores ADD COLUMN brand_logo_url TEXT",
     "ALTER TABLE store_knowledge ADD COLUMN original_price INTEGER",
+    "ALTER TABLE claim_images ADD COLUMN role VARCHAR(32) DEFAULT 'primary'",
+    "ALTER TABLE claim_images ADD COLUMN perceptual_hash VARCHAR(32)",
+    "ALTER TABLE claim_images ADD COLUMN exif_json TEXT",
 )
 
 

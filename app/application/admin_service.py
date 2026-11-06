@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 from typing import List, Optional
 from sqlalchemy import desc, select
@@ -21,7 +22,7 @@ class AdminService:
             select(ClaimModel)
             .options(selectinload(ClaimModel.images), selectinload(ClaimModel.events))
             .where(ClaimModel.status.in_([ClaimStatus.MANUAL_REVIEW.value, ClaimStatus.RECEIVED.value]))
-            .order_by(desc(ClaimModel.created_at))
+            .order_by(ClaimModel.created_at.asc())
         )
         res = await session.execute(q)
         return list(res.scalars().all())
@@ -40,6 +41,17 @@ class AdminService:
         if not claim:
             raise ValueError(f"Claim not found: {claim_id}")
 
+        # Guard: do not re-execute a refund for an already-finalized claim.
+        if claim.status in (
+            ClaimStatus.AUTO_APPROVED.value,
+            ClaimStatus.COMPLETED.value,
+            ClaimStatus.REJECTED.value,
+        ):
+            logging.getLogger(__name__).warning(
+                "Admin approve ignored for finalized claim=%s status=%s", claim_id, claim.status
+            )
+            return True
+
         decision = PolicyDecisionResult(
             decision=PolicyDecisionType.FULL_REFUND if refund_amount >= claim.refund_amount else PolicyDecisionType.PARTIAL_REFUND,
             reason_code=PolicyReasonCode.SEVERE_DAMAGE,
@@ -50,14 +62,43 @@ class AdminService:
             calculated_amount=refund_amount,
         )
 
+        # Deterministic idempotency key so repeated approvals cannot double-refund.
         success = await self.refund_service.execute_refund(
             session=session,
             claim=claim,
             decision_result=decision,
-            operation_id=f"admin_override_{claim_id}_{uuid.uuid4().hex[:6]}",
+            operation_id=f"admin_override_{claim_id}",
             actor=actor,
         )
         return success
+
+    async def check_sla_alerts(self, session, sla_hours=24):
+        from datetime import datetime, timedelta, timezone
+
+        from app.application.notification_service import notification_service
+
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=sla_hours)
+        q = select(ClaimModel).where(
+            ClaimModel.status.in_([ClaimStatus.MANUAL_REVIEW.value, ClaimStatus.RECEIVED.value]),
+            ClaimModel.created_at < cutoff,
+        )
+        res = await session.execute(q)
+        claims = list(res.scalars().all())
+        count = 0
+        for c in claims:
+            try:
+                await notification_service.notify_merchant_alert(
+                    session=session,
+                    mall_id=c.mall_id or "demo_mall",
+                    alert_type="SLA_BREACH",
+                    title="SLA 초과 클레임",
+                    message=f"claim_id={c.id} status={c.status}",
+                    claim_id=c.id,
+                )
+                count += 1
+            except Exception:
+                continue
+        return count
 
     async def reject_claim(
         self,

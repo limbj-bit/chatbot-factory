@@ -1,11 +1,12 @@
 import json
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.admin_service import AdminService
 from app.application.store_service import store_service
 from app.core.config import settings
-from app.core.security import verify_admin_key
+from app.core.security import rate_limiter, verify_admin_key
 from app.core.language import LANGUAGE_NAMES, detect_language
 from app.infrastructure.database.session import get_db
 from app.schemas.admin import AdminClaimApproveRequest, AdminClaimRejectRequest
@@ -58,6 +59,8 @@ async def list_admin_claims(session: AsyncSession = Depends(get_db)) -> List[Dic
                 "refund_amount": c.refund_amount,
                 "description": c.description,
                 "created_at": c.created_at.isoformat(),
+                "age_minutes": int((datetime.now(timezone.utc) - (c.created_at if c.created_at.tzinfo else c.created_at.replace(tzinfo=timezone.utc))).total_seconds() / 60),
+                "sla_status": ("breached" if (datetime.now(timezone.utc) - (c.created_at if c.created_at.tzinfo else c.created_at.replace(tzinfo=timezone.utc))).total_seconds() > 24*3600 else ("warning" if (datetime.now(timezone.utc) - (c.created_at if c.created_at.tzinfo else c.created_at.replace(tzinfo=timezone.utc))).total_seconds() > 4*3600 else "ok")),
                 "images": images_data,
                 "events": events_data,
             }
@@ -197,7 +200,19 @@ async def admin_list_conversations_endpoint(
     return result
 
 
-@router.post("/translate")
+@router.post("/sla/check", dependencies=[Depends(verify_admin_key)])
+async def sla_check_endpoint(
+    sla_hours: int = 24,
+    session: AsyncSession = Depends(get_db),
+):
+    from app.application.admin_service import AdminService
+
+    svc = AdminService()
+    count = await svc.check_sla_alerts(session, sla_hours=sla_hours)
+    return {"alerts_sent": count, "sla_hours": sla_hours}
+
+
+@router.post("/translate", dependencies=[Depends(rate_limiter(20, 60))])
 async def admin_translate_endpoint(
     request: Dict[str, Any],
     session: AsyncSession = Depends(get_db),

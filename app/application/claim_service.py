@@ -6,8 +6,22 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.logging import logger
-from app.core.security import compute_sha256, validate_image_file
-from app.domain.claims.models import ClaimStatus, ClaimType
+from app.core.security import (
+    ai_generated_suspicion,
+    compute_perceptual_hash,
+    compute_sha256,
+    extract_image_metadata,
+    hamming_distance,
+    normalize_uploaded_image,
+    validate_image_file,
+)
+from app.domain.claims.models import (
+    ClaimStatus,
+    ClaimType,
+    ClaimVisionObservation,
+    DefectType,
+    ImageQuality,
+)
 from app.domain.policies.models import PolicyConfig, PolicyDecisionResult, PolicyDecisionType
 from app.domain.policies.refund_policy import RefundPolicyEngine
 from app.domain.ports.ai_port import AIProviderPort
@@ -144,12 +158,20 @@ class ClaimService:
         file_bytes: bytes,
         filename: str,
         declared_mime: str,
+        role: str = "primary",
     ) -> Tuple[ClaimModel, PolicyDecisionResult]:
         # 1. Fetch Claim
         claim_q = await session.execute(select(ClaimModel).where(ClaimModel.id == claim_id))
         claim = claim_q.scalar_one_or_none()
         if not claim:
             raise ValueError(f"Claim not found: {claim_id}")
+
+        # 1b. Normalize HEIC/HEIF to JPEG (mobile upload support)
+        file_bytes, declared_mime, norm_err = normalize_uploaded_image(
+            file_bytes, filename, declared_mime
+        )
+        if norm_err:
+            raise ValueError(norm_err)
 
         # 2. Security & MIME Magic Byte Validation
         is_valid, detected_mime, err = validate_image_file(file_bytes, filename, declared_mime)
@@ -169,13 +191,24 @@ class ClaimService:
             await session.commit()
             raise ValueError(err)
 
-        # 3. Check Duplicate Image Hash (Fraud Signal)
+        # 3. Check Duplicate Image Hash (Fraud Signal) + near-duplicate (pHash)
         img_hash = compute_sha256(file_bytes)
+        p_hash = compute_perceptual_hash(file_bytes)
         dup_q = await session.execute(
             select(func.count(ClaimImageModel.id)).where(ClaimImageModel.file_hash == img_hash)
         )
         duplicate_count = dup_q.scalar_one() or 0
         is_duplicate = duplicate_count > 0
+        if p_hash and not is_duplicate:
+            ph_q = await session.execute(
+                select(ClaimImageModel.perceptual_hash).where(
+                    ClaimImageModel.perceptual_hash.is_not(None)
+                )
+            )
+            for (existing_ph,) in ph_q.all():
+                if hamming_distance(existing_ph, p_hash) <= 5:
+                    is_duplicate = True
+                    break
 
         # Save image file to local uploads directory (basename only — block path traversal)
         os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
@@ -203,7 +236,13 @@ class ClaimService:
             claim_id=claim_id,
             file_path=saved_path,
             file_hash=img_hash,
-            is_primary=True,
+            role=role or "primary",
+            is_primary=(role in (None, "primary", "primary")),
+            perceptual_hash=p_hash,
+            exif_json=json.dumps(
+                {**extract_image_metadata(file_bytes), "ai_suspicion_score": ai_generated_suspicion(extract_image_metadata(file_bytes))},
+                ensure_ascii=False,
+            ),
             defect_type=observation.defect_type.value,
             damage_ratio=observation.damage_ratio_estimate,
             confidence=observation.confidence,
@@ -211,6 +250,54 @@ class ClaimService:
             image_quality=observation.image_quality.value,
         )
         session.add(image_record)
+
+        # 4b. Aggregate multi-image evidence bundle (max damage, min confidence,
+        # worst quality). Evaluation uses the aggregate, not just the latest image.
+        agg_images_q = await session.execute(
+            select(ClaimImageModel).where(ClaimImageModel.claim_id == claim_id)
+        )
+        agg_observations: list[ClaimVisionObservation] = []
+        for img in agg_images_q.scalars().all():
+            try:
+                dt = DefectType(img.defect_type) if img.defect_type else observation.defect_type
+            except ValueError:
+                dt = observation.defect_type
+            try:
+                iq = ImageQuality(img.image_quality) if img.image_quality else observation.image_quality
+            except ValueError:
+                iq = observation.image_quality
+            agg_observations.append(
+                ClaimVisionObservation(
+                    defect_type=dt,
+                    affected_items=observation.affected_items,
+                    damage_ratio_estimate=int(img.damage_ratio or 0),
+                    confidence=float(img.confidence or 0.0),
+                    visible_evidence=json.loads(img.evidence_json or "[]"),
+                    image_quality=iq,
+                )
+            )
+        if agg_observations:
+            max_damage = max(o.damage_ratio_estimate for o in agg_observations)
+            min_conf = min(o.confidence for o in agg_observations)
+            quality = observation.image_quality
+            for o in agg_observations:
+                if o.image_quality != ImageQuality.ACCEPTABLE:
+                    quality = o.image_quality
+                    break
+            primary_obs = max(agg_observations, key=lambda o: o.damage_ratio_estimate)
+            merged_evidence = []
+            for o in agg_observations:
+                for ev in o.visible_evidence:
+                    if ev not in merged_evidence:
+                        merged_evidence.append(ev)
+            observation = ClaimVisionObservation(
+                defect_type=primary_obs.defect_type,
+                affected_items=primary_obs.affected_items,
+                damage_ratio_estimate=max_damage,
+                confidence=min_conf,
+                visible_evidence=merged_evidence,
+                image_quality=quality,
+            )
 
         # 5. Order Verification & History
         order = await self.order_service.get_order_details(claim.order_id)
@@ -231,6 +318,7 @@ class ClaimService:
             observation=observation,
             customer_claim_count_30d=customer_claim_count,
             is_duplicate_image=is_duplicate,
+            is_suspicious_image=ai_generated_suspicion(extract_image_metadata(file_bytes)) >= 70,
         )
 
         # 7. Apply Decision
@@ -294,3 +382,124 @@ class ClaimService:
         await session.refresh(claim)
 
         return claim, decision
+
+    async def finalize_claim(
+        self,
+        session: AsyncSession,
+        claim_id: str,
+    ) -> Tuple[ClaimModel, PolicyDecisionResult, ClaimVisionObservation]:
+        claim_q = await session.execute(select(ClaimModel).where(ClaimModel.id == claim_id))
+        claim = claim_q.scalar_one_or_none()
+        if not claim:
+            raise ValueError(f"Claim not found: {claim_id}")
+
+        imgs_q = await session.execute(
+            select(ClaimImageModel).where(ClaimImageModel.claim_id == claim_id)
+        )
+        imgs = list(imgs_q.scalars().all())
+        if not imgs:
+            raise ValueError("No images uploaded for this claim.")
+
+        agg_observations = []
+        for img in imgs:
+            try:
+                dt = DefectType(img.defect_type) if img.defect_type else DefectType.UNCLEAR
+            except ValueError:
+                dt = DefectType.UNCLEAR
+            try:
+                iq = ImageQuality(img.image_quality) if img.image_quality else ImageQuality.ACCEPTABLE
+            except ValueError:
+                iq = ImageQuality.ACCEPTABLE
+            agg_observations.append(
+                ClaimVisionObservation(
+                    defect_type=dt,
+                    affected_items=1,
+                    damage_ratio_estimate=int(img.damage_ratio or 0),
+                    confidence=float(img.confidence or 0.0),
+                    visible_evidence=json.loads(img.evidence_json or "[]"),
+                    image_quality=iq,
+                )
+            )
+
+        max_damage = max(o.damage_ratio_estimate for o in agg_observations)
+        min_conf = min(o.confidence for o in agg_observations)
+        quality = ImageQuality.ACCEPTABLE
+        for o in agg_observations:
+            if o.image_quality != ImageQuality.ACCEPTABLE:
+                quality = o.image_quality
+                break
+        primary_obs = max(agg_observations, key=lambda o: o.damage_ratio_estimate)
+        merged_evidence = []
+        for o in agg_observations:
+            for ev in o.visible_evidence:
+                if ev not in merged_evidence:
+                    merged_evidence.append(ev)
+        observation = ClaimVisionObservation(
+            defect_type=primary_obs.defect_type,
+            affected_items=primary_obs.affected_items,
+            damage_ratio_estimate=max_damage,
+            confidence=min_conf,
+            visible_evidence=merged_evidence,
+            image_quality=quality,
+        )
+
+        hashes = [i.file_hash for i in imgs]
+        is_duplicate = len(hashes) != len(set(hashes))
+        phs = [i.perceptual_hash for i in imgs if i.perceptual_hash]
+        if not is_duplicate:
+            for i in range(len(phs)):
+                for j in range(i + 1, len(phs)):
+                    if hamming_distance(phs[i], phs[j]) <= 5:
+                        is_duplicate = True
+                        break
+                if is_duplicate:
+                    break
+        is_suspicious = False
+        for img in imgs:
+            try:
+                meta = json.loads(img.exif_json or "{}")
+            except Exception:
+                meta = {}
+            if ai_generated_suspicion(meta) >= 70:
+                is_suspicious = True
+                break
+
+        order = await self.order_service.get_order_details(claim.order_id)
+        prior_claims_q = await session.execute(
+            select(func.count(ClaimModel.id)).where(
+                ClaimModel.customer_id == claim.customer_id,
+                ClaimModel.id != claim_id,
+            )
+        )
+        customer_claim_count = prior_claims_q.scalar_one() or 0
+
+        claim.status = ClaimStatus.POLICY_EVALUATING.value
+        policy_engine = await self._policy_engine_for_mall(session, claim.mall_id)
+        decision = policy_engine.evaluate(
+            order=order,
+            observation=observation,
+            customer_claim_count_30d=customer_claim_count,
+            is_duplicate_image=is_duplicate,
+            is_suspicious_image=is_suspicious,
+        )
+
+        if decision.decision in (PolicyDecisionType.FULL_REFUND, PolicyDecisionType.PARTIAL_REFUND):
+            claim.status = ClaimStatus.AUTO_APPROVED.value
+            claim.refund_amount = decision.calculated_amount or 0
+            await self.refund_service.execute_refund(
+                session=session,
+                claim=claim,
+                decision_result=decision,
+                operation_id=f"auto_{claim_id}",
+                actor="RULE_ENGINE",
+            )
+        elif decision.decision == PolicyDecisionType.RETAKE_IMAGE:
+            claim.status = ClaimStatus.IMAGE_RETAKE_REQUIRED.value
+        elif decision.decision == PolicyDecisionType.MANUAL_REVIEW:
+            claim.status = ClaimStatus.MANUAL_REVIEW.value
+        elif decision.decision == PolicyDecisionType.REJECT:
+            claim.status = ClaimStatus.REJECTED.value
+
+        await session.commit()
+        await session.refresh(claim)
+        return claim, decision, observation

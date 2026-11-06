@@ -1450,7 +1450,18 @@ class ChatService:
                 lines.append(f"- 배송 소요일: {days_txt}")
             note_txt = (ship.get("note") or "").strip()
             if note_txt:
-                lines.append(f"- 배송 유의사항: {note_txt}")
+                lines.append(f"- 배송 참고사항: {note_txt}")
+
+        # Natural-language policy guidance entered by the store owner (P1).
+        policy_text = ""
+        if isinstance(policy, dict):
+            policy_text = (policy.get("policy_text") or "").strip()
+        if isinstance(claim, dict) and not policy_text:
+            policy_text = (claim.get("policy_text") or "").strip()
+        if policy_text:
+            lines.append("")
+            lines.append("## 매장 정책 안내 (점주 설정, 자연어)")
+            lines.append(policy_text)
 
         if rag_context:
             lines.append("")

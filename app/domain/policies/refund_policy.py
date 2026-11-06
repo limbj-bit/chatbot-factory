@@ -29,6 +29,7 @@ class RefundPolicyEngine:
         observation: ClaimVisionObservation,
         customer_claim_count_30d: int = 0,
         is_duplicate_image: bool = False,
+        is_suspicious_image: bool = False,
         now: Optional[datetime] = None,
     ) -> PolicyDecisionResult:
         current_time = now or datetime.now(timezone.utc)
@@ -81,6 +82,16 @@ class RefundPolicyEngine:
                 refund_ratio=0,
                 explanation="Duplicate image submission detected.",
                 suggested_customer_message="제출하신 사진에 대한 정밀 확인이 필요하여 담당 부서에서 검토 후 안내해 드리겠습니다.",
+            )
+
+        if is_suspicious_image:
+            return PolicyDecisionResult(
+                decision=PolicyDecisionType.MANUAL_REVIEW,
+                reason_code=PolicyReasonCode.SUSPICIOUS_CLAIM,
+                requires_manual_review=True,
+                refund_ratio=0,
+                explanation="Suspicious image metadata (possible AI-generated or edited photo).",
+                suggested_customer_message="사진 메타데이터 정밀 확인이 필요하여 담당자가 검토 후 안내해 드리겠습니다.",
             )
 
         if customer_claim_count_30d >= 3:

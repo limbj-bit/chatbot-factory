@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>챗봇공장 온보딩</title>
+  <style>
+    body { font-family: Pretendard, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; }
+    .step { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    input, textarea { width: 100%; padding: 8px; margin: 6px 0; }
+    button { padding: 10px 16px; background: #2E7D32; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+    pre { background: #f3f4f6; padding: 12px; border-radius: 8px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>챗봇공장 셀프 온보딩</h1>
+  <div class="step">
+    <h2>1. 매장 생성</h2>
+    <input id="mallId" placeholder="mall_id (예: my_store)" />
+    <input id="storeName" placeholder="스토어명" />
+    <input id="industry" placeholder="업종 (fresh_food/beauty/...)" value="fresh_food" />
+    <button onclick="createStore()">매장 생성</button>
+    <pre id="createResult"></pre>
+  </div>
+  <div class="step">
+    <h2>2. 샘플 데이터/정책 시드</h2>
+    <button onclick="bootstrap()">부트스트랩 실행</button>
+    <pre id="bootstrapResult"></pre>
+  </div>
+  <div class="step">
+    <h2>3. 위젯 임베드 코드</h2>
+    <pre id="embedCode">&lt;script src="https://YOUR_DOMAIN/static/chatbot-widget.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+window.FreshClaimWidgetConfig = { apiBase: "https://YOUR_DOMAIN", mallId: "YOUR_MALL_ID" };
+&lt;/script&gt;</pre>
+  </div>
+  <script>
+    const apiBase = location.origin;
+    async function createStore() {
+      const mall_id = document.getElementById('mallId').value;
+      const store_name = document.getElementById('storeName').value;
+      const industry = document.getElementById('industry').value;
+      const res = await fetch(apiBase + '/api/stores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mall_id, store_name, industry })
+      });
+      document.getElementById('createResult').textContent = await res.text();
+    }
+    async function bootstrap() {
+      const mall_id = document.getElementById('mallId').value;
+      const res = await fetch(apiBase + '/api/stores/' + encodeURIComponent(mall_id) + '/bootstrap', { method: 'POST' });
+      document.getElementById('bootstrapResult').textContent = await res.text();
+    }
+  </script>
+</body>
+</html>

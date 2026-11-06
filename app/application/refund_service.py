@@ -1,6 +1,7 @@
 import uuid
 from typing import Optional
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.logging import logger
@@ -57,7 +58,24 @@ class RefundService:
             execution_status="PENDING",
         )
         session.add(refund_record)
-        await session.flush()
+        try:
+            await session.flush()
+        except IntegrityError:
+            # Race: another request inserted the same idempotency key first.
+            await session.rollback()
+            existing_q = await session.execute(
+                select(RefundDecisionModel).where(
+                    RefundDecisionModel.idempotency_key == idempotency_key
+                )
+            )
+            if existing_q.scalar_one_or_none() is not None:
+                logger.warning(
+                    "Duplicate refund operation prevented (race) for claim=%s key=%s",
+                    claim.id,
+                    idempotency_key,
+                )
+                return True
+            raise
 
         # 3. Mutate Channel State (Cafe24 / Coupang / Smartstore)
         try:

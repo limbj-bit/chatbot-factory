@@ -1,7 +1,9 @@
 import base64
 import hashlib
-from typing import Optional, Tuple
-from fastapi import Header, HTTPException, status
+import time
+from collections import defaultdict, deque
+from typing import Callable, Optional, Tuple
+from fastapi import Header, HTTPException, Request, status
 from app.core.config import settings
 
 try:
@@ -51,6 +53,148 @@ def validate_image_file(
         return False, "application/octet-stream", "Invalid image format. Only JPEG, PNG, and WebP are allowed."
 
     return True, detected_mime, None
+
+
+def _is_heic(content: bytes, filename: str, declared_mime: str) -> bool:
+    name = (filename or "").lower()
+    mime = (declared_mime or "").lower()
+    if name.endswith((".heic", ".heif")):
+        return True
+    if mime in ("image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence"):
+        return True
+    # ISO BMFF: bytes 4..12 == "ftyp" + brand
+    if len(content) >= 12 and content[4:8] == b"ftyp":
+        brand = content[8:12].lower()
+        if brand in (b"heic", b"heix", b"hevc", b"hevx", b"mif1", b"msf1"):
+            return True
+    return False
+
+
+def normalize_uploaded_image(
+    content: bytes, filename: str, declared_mime: str
+) -> Tuple[bytes, str, Optional[str]]:
+    """Convert HEIC/HEIF to JPEG when possible; otherwise pass-through.
+
+    Returns (bytes, mime, error). On conversion failure returns original bytes
+    so the caller's magic-byte validation can reject it cleanly.
+    """
+    if not _is_heic(content, filename, declared_mime):
+        return content, declared_mime, None
+    try:
+        import io
+
+        import pillow_heif
+        from PIL import Image
+
+        pillow_heif.register_heif_opener()
+        img = Image.open(io.BytesIO(content))
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=90)
+        return buf.getvalue(), "image/jpeg", None
+    except Exception as exc:  # pragma: no cover - depends on libheif
+        return content, declared_mime, f"HEIC/HEIF conversion failed: {exc}"
+
+
+def extract_image_metadata(content: bytes) -> dict:
+    """Best-effort EXIF + dimensions extraction for fraud defense/audit."""
+    try:
+        import io
+
+        from PIL import Image
+        from PIL.ExifTags import TAGS
+
+        img = Image.open(io.BytesIO(content))
+        meta = {"width": img.width, "height": img.height, "format": img.format}
+        exif = getattr(img, "getexif", None)
+        exif_obj = exif() if callable(exif) else None
+        if exif_obj:
+            for tag_id, value in exif_obj.items():
+                name = TAGS.get(tag_id, str(tag_id))
+                if name in (
+                    "Make",
+                    "Model",
+                    "DateTimeOriginal",
+                    "DateTime",
+                    "Software",
+                    "LensModel",
+                ):
+                    meta[name] = str(value)
+        return meta
+    except Exception:
+        return {}
+
+
+def compute_perceptual_hash(content: bytes, size: int = 8) -> Optional[str]:
+    """Average-hash (aHash) for near-duplicate detection; no extra deps."""
+    try:
+        import io
+
+        from PIL import Image
+
+        img = Image.open(io.BytesIO(content)).convert("L").resize((size, size))
+        pixels = list(img.getdata())
+        avg = sum(pixels) / len(pixels)
+        bits = "".join("1" if p > avg else "0" for p in pixels)
+        return format(int(bits, 2), "x").zfill(size * size // 4)
+    except Exception:
+        return None
+
+
+def ai_generated_suspicion(metadata: dict) -> int:
+    """Heuristic 0-100 suspicion score for AI-generated/edited photos.
+
+    v1: based on missing camera EXIF and editing software hints. This is a
+    triage signal only; high scores route the claim to manual review.
+    """
+    if not isinstance(metadata, dict):
+        return 0
+    score = 0
+    if not metadata.get("Make"):
+        score += 20
+    if not metadata.get("Model"):
+        score += 15
+    if not metadata.get("DateTimeOriginal") and not metadata.get("DateTime"):
+        score += 15
+    software = str(metadata.get("Software") or "").lower()
+    if any(tok in software for tok in ("photoshop", "gimp", "canva", "midjourney", "dall", "stable diffusion")):
+        score += 30
+    return min(100, score)
+
+
+def hamming_distance(a: Optional[str], b: Optional[str]) -> int:
+    if not a or not b or len(a) != len(b):
+        return 64
+    try:
+        return bin(int(a, 16) ^ int(b, 16)).count("1")
+    except ValueError:
+        return 64
+
+
+# Simple in-memory rate limiter (per-process; sufficient for single-instance hardening).
+_RATE_BUCKETS: dict = defaultdict(deque)
+
+
+def check_rate_limit(key: str, limit: int, window_sec: int) -> None:
+    now = time.time()
+    bucket = _RATE_BUCKETS[key]
+    while bucket and bucket[0] < now - window_sec:
+        bucket.popleft()
+    if len(bucket) >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many requests. Please retry later.",
+        )
+    bucket.append(now)
+
+
+def rate_limiter(limit: int = 60, window_sec: int = 60) -> Callable:
+    async def _dep(request: Request) -> None:
+        client = request.client.host if request.client else "unknown"
+        check_rate_limit(f"{request.url.path}:{client}", limit, window_sec)
+
+    return _dep
 
 
 def is_valid_admin_key(x_admin_key: Optional[str]) -> bool:

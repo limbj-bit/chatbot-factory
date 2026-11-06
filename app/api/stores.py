@@ -40,6 +40,15 @@ async def create_store_endpoint(
     return await store_service.create_store(session, request)
 
 
+@router.post("/{mall_id}/bootstrap", response_model=StoreResponse)
+async def bootstrap_store_endpoint(mall_id: str, session: AsyncSession = Depends(get_db)):
+    try:
+        store = await store_service.bootstrap_store(session, mall_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    return store_service._to_response(store)
+
+
 @router.get("/{mall_id}", response_model=StoreResponse)
 async def get_single_store_endpoint(
     mall_id: str, session: AsyncSession = Depends(get_db)
