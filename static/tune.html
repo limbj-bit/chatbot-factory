@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>챗봇 튜닝 콘솔</title>
+  <style>
+    body { font-family: Pretendard, sans-serif; margin: 24px; max-width: 960px; }
+    section { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    input, textarea { width: 100%; padding: 8px; margin: 6px 0; box-sizing: border-box; }
+    button { padding: 8px 14px; background: #2E7D32; color: #fff; border: none; border-radius: 8px; cursor: pointer; margin-right: 6px; }
+    pre { background: #f3f4f6; padding: 10px; border-radius: 8px; white-space: pre-wrap; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #e5e7eb; padding: 6px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>셀프 튜닝 콘솔</h1>
+  <section>
+    <h2>1. 매장 연결</h2>
+    <input id="mallId" placeholder="mall_id" />
+    <input id="adminKey" placeholder="X-Admin-Key (관리자 작업 시)" />
+    <button onclick="loadStore()">불러오기</button>
+    <pre id="storeInfo"></pre>
+  </section>
+
+  <section>
+    <h2>2. 정책 텍스트 튜닝</h2>
+    <textarea id="policyText" rows="4" placeholder="예: 신선식품은 수령 후 2일 이내 사진과 함께 접수. 파손/변질은 사진 접수 시 빠른 처리."></textarea>
+    <button onclick="savePolicy()">저장</button>
+    <pre id="policyResult"></pre>
+  </section>
+
+  <section>
+    <h2>3. FAQ/지식 추가</h2>
+    <input id="faqTitle" placeholder="제목" />
+    <textarea id="faqContent" rows="3" placeholder="내용"></textarea>
+    <button onclick="addFaq()">추가</button>
+    <pre id="faqResult"></pre>
+  </section>
+
+  <section>
+    <h2>4. 챗봇 테스트</h2>
+    <input id="testMsg" placeholder="테스트 메시지" />
+    <button onclick="testChat()">전송</button>
+    <pre id="chatResult"></pre>
+  </section>
+
+  <section>
+    <h2>5. 클레임 검토 큐</h2>
+    <button onclick="loadClaims()">새로고침</button>
+    <table>
+      <thead><tr><th>Claim</th><th>상태</th><th>SLA</th><th>손상률</th><th>액션</th></tr></thead>
+      <tbody id="claimRows"></tbody>
+    </table>
+  </section>
+
+  <script>
+    const apiBase = location.origin;
+    function headers(admin=false) {
+      const h = { 'Content-Type': 'application/json' };
+      const key = document.getElementById('adminKey').value;
+      if (admin && key) h['X-Admin-Key'] = key;
+      return h;
+    }
+    async function loadStore() {
+      const mallId = document.getElementById('mallId').value;
+      const res = await fetch(apiBase + '/api/stores/' + encodeURIComponent(mallId));
+      document.getElementById('storeInfo').textContent = await res.text();
+    }
+    async function savePolicy() {
+      const mallId = document.getElementById('mallId').value;
+      const policy_text = document.getElementById('policyText').value;
+      const res = await fetch(apiBase + '/api/stores/' + encodeURIComponent(mallId) + '/policy-text', {
+        method: 'PATCH',
+        headers: headers(),
+        body: JSON.stringify({ policy_text })
+      });
+      document.getElementById('policyResult').textContent = await res.text();
+    }
+    async function addFaq() {
+      const mallId = document.getElementById('mallId').value;
+      const title = document.getElementById('faqTitle').value;
+      const content = document.getElementById('faqContent').value;
+      const res = await fetch(apiBase + '/api/stores/' + encodeURIComponent(mallId) + '/knowledge', {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ doc_type: 'faq', title, content })
+      });
+      document.getElementById('faqResult').textContent = await res.text();
+    }
+    async function testChat() {
+      const mallId = document.getElementById('mallId').value;
+      const message = document.getElementById('testMsg').value;
+      const res = await fetch(apiBase + '/api/chat', {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ mall_id: mallId, message, customer_id: 'tuner' })
+      });
+      document.getElementById('chatResult').textContent = await res.text();
+    }
+    async function loadClaims() {
+      const key = document.getElementById('adminKey').value;
+      const res = await fetch(apiBase + '/api/admin/claims', { headers: { 'X-Admin-Key': key } });
+      const data = await res.json();
+      document.getElementById('claimRows').innerHTML = (data || []).map(c => {
+        const img = (c.images || [])[0] || {};
+        return `<tr>
+          <td>${(c.claim_id||'').slice(0,8)}</td>
+          <td>${c.status}</td>
+          <td>${c.sla_status || 'ok'}</td>
+          <td>${img.damage_ratio || 0}%</td>
+          <td>
+            <button onclick="approveClaim('${c.claim_id}')">승인</button>
+            <button onclick="rejectClaim('${c.claim_id}')">거부</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+    async function approveClaim(claimId) {
+      const key = document.getElementById('adminKey').value;
+      const amount = prompt('환불 금액(원)');
+      const reason = prompt('사유');
+      await fetch(apiBase + '/api/admin/claims/' + claimId + '/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key },
+        body: JSON.stringify({ refund_amount: Number(amount || 0), reason: reason || '' })
+      });
+      loadClaims();
+    }
+    async function rejectClaim(claimId) {
+      const key = document.getElementById('adminKey').value;
+      const reason = prompt('거부 사유');
+      await fetch(apiBase + '/api/admin/claims/' + claimId + '/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key },
+        body: JSON.stringify({ reason: reason || '' })
+      });
+      loadClaims();
+    }
+  </script>
+</body>
+</html>

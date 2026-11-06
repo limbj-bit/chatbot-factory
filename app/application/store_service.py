@@ -962,6 +962,22 @@ class StoreService:
         await session.refresh(store)
         return self._to_response(store)
 
+    async def update_policy_text(self, session, mall_id, policy_text):
+        store = await self.get_store_by_mall_id(session, mall_id)
+        if not store:
+            return None
+        try:
+            policy = json.loads(store.policy_config_json or "{}")
+        except Exception:
+            policy = {}
+        if not isinstance(policy, dict):
+            policy = {}
+        policy["policy_text"] = (policy_text or "").strip()
+        store.policy_config_json = json.dumps(policy, ensure_ascii=False)
+        await session.commit()
+        await session.refresh(store)
+        return self._to_response(store)
+
     async def add_knowledge(
         self,
         session: AsyncSession,

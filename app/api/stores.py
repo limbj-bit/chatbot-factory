@@ -40,6 +40,18 @@ async def create_store_endpoint(
     return await store_service.create_store(session, request)
 
 
+@router.patch("/{mall_id}/policy-text", response_model=StoreResponse)
+async def update_policy_text_endpoint(
+    mall_id: str,
+    body: Dict[str, Any],
+    session: AsyncSession = Depends(get_db),
+):
+    store = await store_service.update_policy_text(session, mall_id, body.get("policy_text", ""))
+    if not store:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Store not found")
+    return store
+
+
 @router.post("/{mall_id}/bootstrap", response_model=StoreResponse)
 async def bootstrap_store_endpoint(mall_id: str, session: AsyncSession = Depends(get_db)):
     try:
