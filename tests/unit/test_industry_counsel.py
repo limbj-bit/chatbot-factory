@@ -79,3 +79,16 @@ def test_sanitize_no_ai_jargon():
     sanitized = ChatService._sanitize_no_ai_jargon(raw)
     assert '학습' not in sanitized
     assert '관련 제품이' in sanitized
+
+    raw2 = '고객님께서 문의하신 내용은 현재 보유하고 있는 공식 지식 베이스에 포함되어 있지 않습니다. 지식 베이스에 없는 내용은 추측하여 답변드리지 않습니다.'
+    sanitized2 = ChatService._sanitize_no_ai_jargon(raw2)
+    assert '지식 베이스' not in sanitized2
+    assert '추측하여' not in sanitized2
+
+
+def test_beauty_persona_encourages_ingredient_explanation():
+    beauty = "\n".join(ChatService._industry_persona_lines("beauty", "엘라봇", "화장품"))
+    assert "PDRN" in beauty
+    assert "콜라겐" in beauty
+    assert "성분" in beauty
+
