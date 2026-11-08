@@ -81,6 +81,10 @@ class StoreCreateRequest(BaseModel):
         None,
         description="헤더 브랜드 배지 로고 (없으면 상점 이름 텍스트 유지)",
     )
+    custom_prompt: Optional[str] = Field(
+        None,
+        description="점주 1줄 추가 특별 지침 (AI 상담 시 최우선 반영)",
+    )
 
 
 class StoreSubscriptionUpdateRequest(BaseModel):
@@ -104,6 +108,7 @@ class StoreSubscriptionUpdateRequest(BaseModel):
     input_placeholder: Optional[str] = Field(None, description="하단 입력창 placeholder 변경")
     bot_avatar_url: Optional[str] = Field(None, description="커스텀 아바타 이미지 URL 또는 Data URI 변경")
     brand_logo_url: Optional[str] = Field(None, description="헤더 브랜드 배지 로고 이미지 URL 또는 Data URI")
+    custom_prompt: Optional[str] = Field(None, description="점주 1줄 추가 특별 지침 변경")
     welcome_bubbles: Optional[List[str]] = Field(None, description="첫 화면 봇 말풍선 목록")
     bubble_first_delay_ms: Optional[int] = Field(None, ge=0, le=10000)
     bubble_gap_ms: Optional[int] = Field(None, ge=0, le=10000)
@@ -221,6 +226,7 @@ class StoreResponse(BaseModel):
     input_placeholder: str = "궁금한 상품명이나 질문을 입력하세요..."
     bot_avatar_url: Optional[str] = None
     brand_logo_url: Optional[str] = None
+    custom_prompt: Optional[str] = None
     widget_layout: Optional[Dict[str, Any]] = None
     commerce_platform: Optional[str] = None
     commerce_api_Connected: bool = False

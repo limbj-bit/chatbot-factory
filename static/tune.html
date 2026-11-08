@@ -31,6 +31,13 @@
   </section>
 
   <section>
+    <h2>2-1. 점주 1줄 추가 특별 지침 (AI 상담 시 최우선 반영)</h2>
+    <input id="customPrompt" style="width:100%;box-sizing:border-box;padding:8px;" placeholder="예: 루이셀은 30년 전통 피부과/에스테틱 입점 전문 화장품입니다 / 오후 2시 이전 주문 시 당일 발송" />
+    <button onclick="saveCustomPrompt()" style="margin-top:6px;">저장</button>
+    <pre id="customPromptResult"></pre>
+  </section>
+
+  <section>
     <h2>3. FAQ/지식 추가</h2>
     <input id="faqTitle" placeholder="제목" />
     <textarea id="faqContent" rows="3" placeholder="내용"></textarea>
@@ -65,7 +72,11 @@
     async function loadStore() {
       const mallId = document.getElementById('mallId').value;
       const res = await fetch(apiBase + '/api/stores/' + encodeURIComponent(mallId));
-      document.getElementById('storeInfo').textContent = await res.text();
+      const data = await res.json();
+      document.getElementById('storeInfo').textContent = JSON.stringify(data, null, 2);
+      if (data.custom_prompt) {
+        document.getElementById('customPrompt').value = data.custom_prompt;
+      }
     }
     async function savePolicy() {
       const mallId = document.getElementById('mallId').value;
@@ -76,6 +87,16 @@
         body: JSON.stringify({ policy_text })
       });
       document.getElementById('policyResult').textContent = await res.text();
+    }
+    async function saveCustomPrompt() {
+      const mallId = document.getElementById('mallId').value;
+      const custom_prompt = document.getElementById('customPrompt').value;
+      const res = await fetch(apiBase + '/api/stores/' + encodeURIComponent(mallId) + '/custom-prompt', {
+        method: 'PATCH',
+        headers: headers(),
+        body: JSON.stringify({ custom_prompt })
+      });
+      document.getElementById('customPromptResult').textContent = await res.text();
     }
     async function addFaq() {
       const mallId = document.getElementById('mallId').value;

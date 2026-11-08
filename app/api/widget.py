@@ -1523,6 +1523,60 @@ async def get_dynamic_widget_script(
     bindFollowChips(row);
   }}
 
+  function appendIntakeChips(botText) {{
+    const txt = String(botText || "");
+    const isQuestion = txt.includes("?") || txt.includes("어떤") || txt.includes("알려주") || txt.includes("고민") || txt.includes("타입") || txt.includes("선택") || txt.includes("원하시") || txt.includes("루틴");
+    if (!isQuestion) return;
+    const ind = String(config.industry || "").toLowerCase();
+    let chips = [];
+    if (ind.includes("beauty") || ind.includes("cosmetic")) {{
+      chips = [
+        "💧 건성 / 속건조 피부예요",
+        "✨ 지성 / 트러블 피부예요",
+        "🌿 민감성 / 진정 케어 원해요",
+        "⏳ 탄력 / 주름 개선 원해요"
+      ];
+    }} else if (ind.includes("fresh") || ind.includes("food") || ind.includes("농수산")) {{
+      chips = [
+        "❄️ 보관법 및 유통기한 안내",
+        "🚚 당일 출고 배송 일정",
+        "🎁 선물 세트 추천해줘"
+      ];
+    }} else if (ind.includes("fashion") || ind.includes("의류")) {{
+      chips = [
+        "📏 사이즈 및 핏 추천해줘",
+        "🔄 무료 사이즈 맞교환 신청",
+        "🧵 소재 및 세탁 관리법"
+      ];
+    }} else if (ind.includes("elec") || ind.includes("가전")) {{
+      chips = [
+        "⚡ 전원/작동 자가진단",
+        "🛠️ A/S 무상 보증 안내",
+        "📦 배송 현황 조회"
+      ];
+    }} else if (ind.includes("pet") || ind.includes("반려")) {{
+      chips = [
+        "🐶 자견 / 어린 반려견 사료",
+        "🐕 성견 / 알레르기 케어 사료",
+        "📐 하네스 / 의류 사이즈 문의"
+      ];
+    }} else {{
+      chips = [
+        "✨ 인기 베스트 상품 추천",
+        "📦 주문 / 배송 일정 확인",
+        "💬 고객센터 상담원 연결"
+      ];
+    }}
+    const row = document.createElement("div");
+    row.className = "fresh-chips-row fresh-follow-chips fresh-intake-chips";
+    row.innerHTML = chips.map(label =>
+      `<button type="button" class="fresh-chip" data-q="${{label.replace(/"/g, "&quot;")}}">${{label}}</button>`
+    ).join("");
+    messagesContainer.appendChild(row);
+    bindFollowChips(row);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }}
+
   function appendProductCards(cards) {{
     if (!cards || !cards.length) return;
     const wrap = document.createElement("div");
@@ -1627,6 +1681,7 @@ async def get_dynamic_widget_script(
 
     const botMsg = appendMessage("답변을 준비 중입니다...", "bot");
     let gotToken = false;
+    let hasCards = false;
 
     try {{
       const response = await fetch(config.apiBase + "/api/chat/stream", {{
@@ -1676,12 +1731,16 @@ async def get_dynamic_widget_script(
                 botMsg.innerHTML = formatBotHtml(fullText);
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
               }}
-              if (data.recommended_products) {{
+              if (data.recommended_products && data.recommended_products.length > 0) {{
                 appendProductCards(data.recommended_products);
+                hasCards = true;
               }}
             }} catch (e) {{}}
           }}
         }}
+      }}
+      if (!hasCards && fullText) {{
+        appendIntakeChips(fullText);
       }}
       if (!gotToken || !String(fullText || "").trim()) {{
         botMsg.innerText = "맞춤 안내를 위해 피부타입이나 관심 고민을 알려주세요.";

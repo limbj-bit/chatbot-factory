@@ -513,6 +513,7 @@ class StoreService:
             input_placeholder=store.input_placeholder or "궁금한 성분명이나 질문을 입력하세요...",
             bot_avatar_url=store.bot_avatar_url,
             brand_logo_url=self._safe_brand_logo_url(store),
+            custom_prompt=store.__dict__.get("custom_prompt") or "",
             widget_layout=widget_layout,
             commerce_platform=comm_platform,
             commerce_api_Connected=comm_connected,
@@ -581,6 +582,8 @@ class StoreService:
                     existing_store.brand_logo_url = None
                 else:
                     existing_store.brand_logo_url = request.brand_logo_url
+            if request.custom_prompt is not None:
+                existing_store.custom_prompt = request.custom_prompt
             if request.allowed_domains is not None:
                 existing_store.allowed_domains = request.allowed_domains
             if request.webhook_url is not None:
@@ -757,6 +760,7 @@ class StoreService:
             input_placeholder=input_placeholder,
             bot_avatar_url=saved_avatar_url,
             brand_logo_url=request.brand_logo_url or None,
+            custom_prompt=request.custom_prompt or "",
         )
         session.add(store)
         await session.commit()
@@ -893,6 +897,8 @@ class StoreService:
                     store.brand_logo_url = compress_avatar_data_uri(logo, force=True) or logo
             else:
                 store.brand_logo_url = logo
+        if update_req.custom_prompt is not None:
+            store.custom_prompt = update_req.custom_prompt
 
         if update_req.reset_days is not None:
             store.trial_days = update_req.reset_days
@@ -974,6 +980,15 @@ class StoreService:
             policy = {}
         policy["policy_text"] = (policy_text or "").strip()
         store.policy_config_json = json.dumps(policy, ensure_ascii=False)
+        await session.commit()
+        await session.refresh(store)
+        return self._to_response(store)
+
+    async def update_custom_prompt(self, session, mall_id, custom_prompt):
+        store = await self.get_store_by_mall_id(session, mall_id)
+        if not store:
+            return None
+        store.custom_prompt = (custom_prompt or "").strip()
         await session.commit()
         await session.refresh(store)
         return self._to_response(store)
@@ -2301,7 +2316,7 @@ class StoreService:
         q_full = select(StoreModel).where(StoreModel.mall_id == mall_id)
         q_defer = (
             select(StoreModel)
-            .options(defer(StoreModel.brand_logo_url))
+            .options(defer(StoreModel.brand_logo_url), defer(StoreModel.custom_prompt))
             .where(StoreModel.mall_id == mall_id)
         )
         try:

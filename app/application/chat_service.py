@@ -19,6 +19,7 @@ from app.infrastructure.rag.engine import (
     RAGDocument,
     RAGEngine,
     RAGSearchResult,
+    correct_typos,
     rag_engine,
 )
 from app.schemas.chat import ProductRecommendationCard
@@ -249,6 +250,7 @@ def _normalize_product_query(message_text: str) -> str:
     )
     cleaned = re.sub(r"[을를이가은는]\s*$", "", cleaned)
     cleaned = re.sub(r"인데", " ", cleaned)
+    cleaned = correct_typos(cleaned)
     return re.sub(r"\s+", "", cleaned).strip()
 
 
@@ -1465,6 +1467,12 @@ class ChatService:
             lines.append("")
             lines.append("## 매장 정책 안내 (점주 설정, 자연어)")
             lines.append(policy_text)
+
+        custom_prompt = (store_obj.__dict__.get("custom_prompt") or "").strip()
+        if custom_prompt:
+            lines.append("")
+            lines.append("## 점주 특별 전달사항 (상담 시 최우선 반영)")
+            lines.append(f"- {custom_prompt}")
 
         if rag_context:
             lines.append("")

@@ -68,6 +68,7 @@ class StoreModel(Base):
     )
     bot_avatar_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     brand_logo_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    custom_prompt: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

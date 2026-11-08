@@ -42,15 +42,73 @@ BEAUTY_CONCERN_EXPANSIONS = {
     "각질": ["각질", "필링", "AHA", "BHA", "PHA"],
 }
 
+# Common customer typos & colloquial equivalents mapped to canonical keywords.
+TYPO_CORRECTIONS: Dict[str, str] = {
+    # 뷰티 / 화장품 주요 오타 & 이명
+    "골라겐": "콜라겐",
+    "콜라갠": "콜라겐",
+    "피디알엔": "pdrn",
+    "피디알": "pdrn",
+    "연어주사": "pdrn",
+    "루이셆": "루이셀",
+    "루이셑": "루이셀",
+    "루이쎌": "루이셀",
+    "수딩클랜저": "수딩클렌저",
+    "클랜저": "클렌저",
+    "클렌져": "클렌저",
+    "선구림": "선크림",
+    "썬크림": "선크림",
+    "썬블록": "선블록",
+    "썬스크린": "선크림",
+    "나이아신": "나이아신아마이드",
+    "히알우론산": "히알루론산",
+    "히알우론": "히알루론산",
+    "히아루론산": "히알루론산",
+    "세라마이드": "세라마이드",
+    "쎄라마이드": "세라마이드",
+    "판태놀": "판테놀",
+    "래티놀": "레티놀",
+    "엠플": "앰플",
+    "앰풀": "앰플",
+    "탈모": "탈모",
+    # 패션 / 가전 / 신선식품 / 일반 오타
+    "싸이즈": "사이즈",
+    "탈기": "딸기",
+    "딸긔": "딸기",
+    "사과": "사과",
+    "토마토": "토마토",
+    "빳데리": "배터리",
+    "밧데리": "배터리",
+    "베터리": "배터리",
+    "환불": "환불",
+    "반품": "반품",
+}
+
+
+def correct_typos(text: str) -> str:
+    """Normalize common typos and colloquial words to canonical catalog terms."""
+    res = text or ""
+    for typo, canonical in TYPO_CORRECTIONS.items():
+        if typo in res:
+            res = res.replace(typo, canonical)
+    return res
+
 
 def expand_query_tokens(query: str, industry: Optional[str] = None) -> set:
-    """Query tokens + concern synonyms (beauty only)."""
-    tokens = set((query or "").lower().split())
+    """Query tokens + typo corrections + concern synonyms."""
+    raw = (query or "").lower()
+    corrected = correct_typos(raw)
+    tokens = set(raw.split())
+    tokens.update(corrected.split())
+    for typo, canonical in TYPO_CORRECTIONS.items():
+        if typo in raw:
+            tokens.add(canonical.lower())
+
     if normalize_industry_key(industry or "") != "beauty":
         return tokens
-    q = (query or "").lower()
+
     for concern, extras in BEAUTY_CONCERN_EXPANSIONS.items():
-        if concern in q:
+        if concern in raw or concern in corrected:
             tokens.update(t.lower() for t in extras)
     return tokens
 
