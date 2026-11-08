@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     AI_FALLBACK_PROVIDER: str = "nvidia"
     # Streaming UX: a provider that doesn't emit the first token within this
     # window is skipped so the customer never stares at a silent bubble.
-    AI_STREAM_FIRST_TOKEN_TIMEOUT: float = 8.0
+    AI_STREAM_FIRST_TOKEN_TIMEOUT: float = 3.5
     # Any provider error benches that provider briefly, preventing every
     # request from re-waiting on the same broken/slow endpoint.
     AI_FAILURE_COOLDOWN_SEC: float = 60.0
@@ -85,7 +85,7 @@ class Settings(BaseSettings):
         "openai/gpt-4o-mini"
     )
     OPENROUTER_VISION_MODEL: str = "nvidia/nemotron-3.5-super-vl:free"
-    GEMINI_TEXT_MODEL: str = "gemini-2.0-flash"  # paid last-resort chat+vision
+    GEMINI_TEXT_MODEL: str = "gemini-2.5-flash"  # paid last-resort chat+vision
 
     # Cafe24 Integration
     CAFE24_MALL_ID: str = "demo_mall"

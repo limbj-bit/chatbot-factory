@@ -101,7 +101,7 @@ class NvidiaProvider(AIProviderPort):
         model: str,
         messages: List[Dict],
         *,
-        timeout: float = 20.0,
+        timeout: float = 5.0,
         max_tokens: int = 1024,
         temperature: float = 0.2,
     ) -> str:
@@ -119,8 +119,8 @@ class NvidiaProvider(AIProviderPort):
             resp = await client.post(self.BASE_URL, json=payload, headers=headers)
             if resp.status_code == 429:
                 raise RuntimeError("429 Too Many Requests: NVIDIA NIM rate limit")
-            if resp.status_code == 404:
-                raise RuntimeError(f"404 NVIDIA model unavailable: {model}")
+            if resp.status_code in (404, 410):
+                raise RuntimeError(f"{resp.status_code} NVIDIA model unavailable: {model}")
             resp.raise_for_status()
             data = resp.json()
             return data["choices"][0]["message"]["content"]
@@ -170,14 +170,14 @@ class NvidiaProvider(AIProviderPort):
                     "stream": True,
                 }
                 got = False
-                async with httpx.AsyncClient(timeout=30.0) as client:
+                async with httpx.AsyncClient(timeout=6.0) as client:
                     async with client.stream(
                         "POST", self.BASE_URL, json=payload, headers=headers
                     ) as response:
                         if response.status_code == 429:
                             raise RuntimeError("429 Too Many Requests: NVIDIA NIM rate limit")
-                        if response.status_code == 404:
-                            raise RuntimeError(f"404 NVIDIA model unavailable: {model}")
+                        if response.status_code in (404, 410):
+                            raise RuntimeError(f"{response.status_code} NVIDIA model unavailable: {model}")
                         response.raise_for_status()
                         async for line in response.aiter_lines():
                             if not line.startswith("data:"):

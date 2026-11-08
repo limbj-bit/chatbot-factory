@@ -259,6 +259,10 @@ class AIProviderRouter(AIProviderPort):
                         self.mark_provider_rate_limited(provider_name)
                         last_error = exc
                         break  # Immediately break to next provider on 429
+                    if any(c in err_msg for c in ("404", "410", "403", "not found", "unavailable")):
+                        self.mark_provider_failed(provider_name, settings.AI_FAILURE_COOLDOWN_SEC)
+                        last_error = exc
+                        break  # Break immediately without second retry on dead/forbidden endpoints
                     logger.warning(
                         f"Provider {provider_name} attempt {attempt + 1} failed: {err_msg}"
                     )
