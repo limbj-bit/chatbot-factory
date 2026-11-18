@@ -1,9 +1,10 @@
 import json
 from typing import Dict, List
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.commerce_service import commerce_service
 from app.application.store_service import INDUSTRY_DEFAULTS, store_service
+from app.core.security import check_rate_limit
 from app.infrastructure.database.session import get_db
 
 router = APIRouter(prefix="/api/widget", tags=["Widget"])
@@ -251,6 +252,16 @@ async def get_dynamic_widget_script(
     session: AsyncSession = Depends(get_db),
 ):
     """Serve a dynamically customized JavaScript widget with 10 Commercial Chat Window Templates & 16 Flaticon Avatars."""
+    # Per-store bandwidth guard: the script is ~80KB, so bot loops against one
+    # mall_id dominate outbound bandwidth. 60/min per mall_id stays far above
+    # any real storefront pageview rate.
+    try:
+        check_rate_limit(f"widget_script:{mall_id}", limit=60, window_sec=60)
+    except HTTPException:
+        from app.core.logging import logger as _log
+
+        _log.warning("[Widget] script rate-limited mall_id=%s", mall_id)
+        raise
     try:
         store = await store_service.get_store_by_mall_id(session, mall_id)
     except Exception as e:
@@ -1801,8 +1812,19 @@ async def get_dynamic_widget_script(
   }});
 }})();
 """
+    # Real embed loads must be cacheable (80KB per hit is the bandwidth hog);
+    # preview_* overrides change the output per query, so keep them uncached.
+    has_preview = any(key.startswith("preview_") for key in request.query_params)
+    cache_headers = (
+        {"Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"}
+        if has_preview
+        else {
+            "Cache-Control": "public, max-age=600, stale-while-revalidate=86400",
+            "Vary": "Accept-Encoding",
+        }
+    )
     return Response(
         content=js_content,
         media_type="application/javascript",
-        headers={"Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"},
+        headers=cache_headers,
     )
