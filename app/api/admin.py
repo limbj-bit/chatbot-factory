@@ -208,8 +208,10 @@ async def sla_check_endpoint(
     from app.application.admin_service import AdminService
 
     svc = AdminService()
-    count = await svc.check_sla_alerts(session, sla_hours=sla_hours)
-    return {"alerts_sent": count, "sla_hours": sla_hours}
+    result = await svc.check_sla_alerts(
+        session, sla_hours=sla_hours, warning_hours=settings.SLA_WARNING_HOURS
+    )
+    return {"sla_hours": sla_hours, **result}
 
 
 @router.post("/translate", dependencies=[Depends(rate_limiter(20, 60))])

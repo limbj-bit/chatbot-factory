@@ -72,33 +72,83 @@ class AdminService:
         )
         return success
 
-    async def check_sla_alerts(self, session, sla_hours=24):
+    async def check_sla_alerts(
+        self,
+        session,
+        sla_hours: int = 24,
+        warning_hours: int = 4,
+    ) -> dict:
+        """Detect SLA-aged pending claims and notify the merchant once per level.
+
+        Returns {"checked", "notified", "skipped_duplicates"}.
+        Deduplication key is (claim_id, alert_type): an already-attempted alert
+        (even one whose delivery failed) is never retried, so a broken webhook
+        cannot flood the merchant every check cycle.
+        """
         from datetime import datetime, timedelta, timezone
 
         from app.application.notification_service import notification_service
+        from app.infrastructure.database.models import WebhookAlertLogModel
 
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=sla_hours)
+        now = datetime.now(timezone.utc)
+        warn_cutoff = now - timedelta(hours=warning_hours)
+        breach_cutoff = now - timedelta(hours=sla_hours)
+
         q = select(ClaimModel).where(
             ClaimModel.status.in_([ClaimStatus.MANUAL_REVIEW.value, ClaimStatus.RECEIVED.value]),
-            ClaimModel.created_at < cutoff,
+            ClaimModel.created_at < warn_cutoff,
         )
         res = await session.execute(q)
-        claims = list(res.scalars().all())
-        count = 0
-        for c in claims:
+        # Flatten before notifying: notify_merchant_alert commits, which expires
+        # ORM instances and would break lazy attribute access mid-loop.
+        claims = [
+            (c.id, c.mall_id or "demo_mall", c.status, c.created_at)
+            for c in res.scalars().all()
+        ]
+
+        checked = len(claims)
+        notified = 0
+        skipped = 0
+        for claim_id, mall_id, status, created_at in claims:
+            created = created_at if created_at.tzinfo else created_at.replace(tzinfo=timezone.utc)
+            breached = created < breach_cutoff
+            age_minutes = int((now - created).total_seconds() / 60)
+            alert_type = "SLA_BREACH" if breached else "SLA_WARNING"
+            title = "SLA 초과 클레임" if breached else "SLA 경고 클레임"
+
             try:
+                dup = await session.execute(
+                    select(WebhookAlertLogModel.id)
+                    .where(
+                        WebhookAlertLogModel.claim_id == claim_id,
+                        WebhookAlertLogModel.alert_type == alert_type,
+                    )
+                    .limit(1)
+                )
+                if dup.scalar_one_or_none() is not None:
+                    skipped += 1
+                    continue
+
                 await notification_service.notify_merchant_alert(
                     session=session,
-                    mall_id=c.mall_id or "demo_mall",
-                    alert_type="SLA_BREACH",
-                    title="SLA 초과 클레임",
-                    message=f"claim_id={c.id} status={c.status}",
-                    claim_id=c.id,
+                    mall_id=mall_id,
+                    alert_type=alert_type,
+                    title=title,
+                    message=(
+                        f"claim_id={claim_id} status={status} "
+                        f"경과={age_minutes}분 (경고 {warning_hours}h / 초과 {sla_hours}h)"
+                    ),
+                    claim_id=claim_id,
+                    extra_data={"age_minutes": age_minutes, "level": alert_type},
                 )
-                count += 1
-            except Exception:
+                notified += 1
+            except Exception as exc:
+                logging.getLogger(__name__).warning(
+                    "SLA alert failed for claim=%s: %s", claim_id, exc
+                )
                 continue
-        return count
+
+        return {"checked": checked, "notified": notified, "skipped_duplicates": skipped}
 
     async def reject_claim(
         self,

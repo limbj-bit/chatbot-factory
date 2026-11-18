@@ -152,5 +152,11 @@ class Settings(BaseSettings):
     # Absolute origin for staff inbox links in Telegram/email (e.g. https://….onrender.com)
     PUBLIC_BASE_URL: str = ""
 
+    # SLA alert automation. Interval <= 0 disables the background loop
+    # (the manual POST /api/admin/sla/check endpoint stays available).
+    SLA_CHECK_INTERVAL_MINUTES: int = 30
+    SLA_HOURS: int = 24
+    SLA_WARNING_HOURS: int = 4
+
 
 settings = Settings()

@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import asyncio
 import os
 import uuid
 from fastapi import FastAPI, Request
@@ -26,7 +27,45 @@ async def lifespan(app: FastAPI):
     # Initialize DB tables on startup
     await init_db()
     logger.info("Database initialized successfully.")
+
+    sla_task = asyncio.create_task(sla_alert_loop())
     yield
+
+    sla_task.cancel()
+    try:
+        await sla_task
+    except asyncio.CancelledError:
+        pass
+
+
+async def sla_alert_loop():
+    """Periodic SLA sweep: notify merchants about aging pending claims.
+
+    Every cycle failure is logged and swallowed so the loop survives a bad DB
+    session or transient webhook error and retries on the next cycle.
+    """
+    interval_min = settings.SLA_CHECK_INTERVAL_MINUTES
+    if interval_min <= 0:
+        logger.info("SLA alert loop disabled (SLA_CHECK_INTERVAL_MINUTES<=0).")
+        return
+    from app.application.admin_service import AdminService
+    from app.infrastructure.database.session import async_session_factory
+
+    while True:
+        await asyncio.sleep(interval_min * 60)
+        try:
+            async with async_session_factory() as session:
+                result = await AdminService().check_sla_alerts(
+                    session,
+                    sla_hours=settings.SLA_HOURS,
+                    warning_hours=settings.SLA_WARNING_HOURS,
+                )
+            if result.get("notified"):
+                logger.info(f"SLA alert sweep: {result}")
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.warning(f"SLA alert sweep failed (will retry next cycle): {exc}")
 
 
 app = FastAPI(
