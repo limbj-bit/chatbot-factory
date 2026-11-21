@@ -1,11 +1,14 @@
 services:
   - type: web
     name: chatbot-factory
-    runtime: docker
-    dockerfilePath: ./docker/Dockerfile
+    # Live service was created from the dashboard with the Python 3 runtime,
+    # so this file was previously ignored (runtime: docker / autoDeploy: true
+    # never applied). Keep it aligned with the live service instead.
+    runtime: python
     plan: free
     branch: main
-    autoDeploy: true
+    # Manual deploys only (Trigger deploy in the dashboard), by explicit choice.
+    autoDeploy: false
     healthCheckPath: /health
     # bump: drop Chromium from image (API/sale-span only on Free) 2026-10-30
     envVars:
